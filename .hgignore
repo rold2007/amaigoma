@@ -1,0 +1,11 @@
+syntax: glob
+.vscode
+.vs
+*.user
+Amaigoma/bin
+Amaigoma/obj
+AmaigomaConsole/bin
+AmaigomaConsole/obj
+AmaigomaTests/bin
+AmaigomaTests/obj
+*.cache
