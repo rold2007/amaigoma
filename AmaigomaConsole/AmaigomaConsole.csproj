@@ -6,11 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="numl" Version="0.9.20-beta" />
+    <ProjectReference Include="..\Amaigoma\Amaigoma.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Amaigoma\Amaigoma.csproj" />
+    <ProjectReference Include="..\..\numl\Src\numl\numl.csproj" />
   </ItemGroup>
 
 </Project>
