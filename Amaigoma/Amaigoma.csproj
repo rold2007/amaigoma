@@ -1,11 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net47</TargetFrameworks>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="numl" Version="0.9.20-beta" />
+    <None Remove="Amaigoma.v3.ncrunchsolution" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\numl\Src\numl\numl.csproj" />
   </ItemGroup>
 
 </Project>
