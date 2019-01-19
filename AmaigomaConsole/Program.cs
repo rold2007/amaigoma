@@ -4,6 +4,7 @@
    using System.Collections.Generic;
    using Amaigoma;
    using numl;
+   using numl.Math.Probability;
    using numl.Model;
    using numl.Supervised;
    using numl.Supervised.DecisionTree;
@@ -45,16 +46,30 @@
          Iris[] data = Iris.Load();
          List<Generator> generators = new List<Generator>();
 
+         List<Iris> samples = new List<Iris>();
+
+         for(int i = 0; i< 1000; i++)
+         {
+            decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
+            decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
+            decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
+            decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
+
+            samples.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+         }
+
+
          // generators.Add(new PakiraGenerator());
          //generators.Add(new DecisionTreeGenerator(description));
          //generators.Add(new DecisionTreeGenerator(10, 2, description));
-         generators.Add(new DecisionTreeGenerator(fluentDescriptor));
+         //generators.Add(new DecisionTreeGenerator(fluentDescriptor));
          //generators.Add(new NaiveBayesGenerator(2));
          //generators.Add(new NaiveBayesGenerator(3));
          //generators.Add(new NaiveBayesGenerator(5));
          //generators.Add(new NaiveBayesGenerator(8));
          //generators.Add(new NaiveBayesGenerator(13));
          //generators.Add(new NaiveBayesGenerator(21));
+         generators.Add(new PakiraGenerator(fluentDescriptor, samples));
 
          foreach (Generator generator in generators)
          {
