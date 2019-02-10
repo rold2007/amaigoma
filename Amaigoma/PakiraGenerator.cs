@@ -4,6 +4,7 @@
    using System.Collections.Generic;
    using System.Linq;
    using numl.Data;
+   using numl.Math;
    using numl.Math.Information;
    using numl.Math.LinearAlgebra;
    using numl.Model;
@@ -17,10 +18,12 @@
       {
       }
 
-      public PakiraGenerator(Descriptor descriptor, IEnumerable<object> samples) : this()
+      public PakiraGenerator(Descriptor descriptor, IEnumerable<object> samples, double defaultClassIndex) : this()
       {
          Descriptor = descriptor;
          Samples = samples;
+         Hint = defaultClassIndex;
+         ImpurityType = typeof(DispersionError);
       }
 
       private IEnumerable<object> samples;
@@ -45,36 +48,18 @@
 
       public override IModel Generate(Matrix x, Vector y)
       {
-
-         //use this on the random sample
-         //this.FeatureProperties = new numl.Math.Summary()
-         //{
-         //   Average = X.Mean(VectorType.Row),
-         //       StandardDeviation = X.StdDev(VectorType.Row),
-         //       Minimum = X.Min(VectorType.Row),
-         //       Maximum = X.Max(VectorType.Row),
-         //       Median = X.Median(VectorType.Row)
-         //   };
-
-
          if (Descriptor == null)
          {
             throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
          }
 
+         System.Diagnostics.Debug.Assert(Descriptor.Label.Convert(Hint) != null, "Default class does not exists.");
+
          this.Preprocess(x);
 
          var tree = new Tree();
 
-         tree.Root = BuildTree(x, y, Depth, new List<int>(x.Cols), tree);
-
-         // have to guess something....
-         // especially when automating
-         // the thing in a Learner
-         // this only happens if it is something
-         // it has never seen.
-         if (Hint == double.Epsilon)
-            Hint = y.GetRandom(); // flip a coin...
+         tree.Root = BuildTree(convertedSamples, y, Depth, tree);
 
          return new DecisionTreeModel
          {
@@ -91,25 +76,30 @@
       /// <param name="x">The Matrix to process.</param>
       /// <param name="y">The Vector to process.</param>
       /// <param name="depth">The depth.</param>
-      /// <param name="used">The used.</param>
       /// <returns>A Node.</returns>
-      private Node BuildTree(Matrix x, Vector y, int depth, List<int> used, Tree tree)
+      private Node BuildTree(Matrix x, Vector y, int depth, Tree tree)
       {
          if (depth < 0)
-            return BuildLeafNode(y.Mode());
+         {
+            System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
 
-         var tuple = GetBestSplit(x, y, used);
+            return BuildLeafNode(y.Mode());
+         }
+
+         var tuple = GetBestSplit(x, y);
          var col = tuple.Item1;
          var gain = tuple.Item2;
-         var measure = tuple.Item3;
+         var segments = tuple.Item3;
 
          // uh oh, need to return something?
          // a weird node of some sort...
          // but just in case...
          if (col == -1)
-            return BuildLeafNode(y.Mode());
+         {
+            System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
 
-         used.Add(col);
+            return BuildLeafNode(y.Mode());
+         }
 
          Node node = new Node
          {
@@ -120,15 +110,15 @@
          };
 
          // populate edges
-         List<Edge> edges = new List<Edge>(measure.Segments.Length);
-         for (int i = 0; i < measure.Segments.Length; i++)
+         List<Edge> edges = new List<Edge>(segments.Length);
+         for (int i = 0; i < segments.Length; i++)
          {
             // working set
-            var segment = measure.Segments[i];
+            var segment = segments[i];
             var edge = new Edge()
             {
                ParentId = node.Id,
-               Discrete = measure.Discrete,
+               Discrete = false, // measure.Discrete,
                Min = segment.Min,
                Max = segment.Max
             };
@@ -137,6 +127,8 @@
 
             if (edge.Discrete)
             {
+               System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+
                // get discrete label
                edge.Label = Descriptor.At(col).Convert(segment.Min).ToString();
                // do value check for matrix slicing
@@ -167,12 +159,16 @@
                // otherwise continue to build tree
                else
                {
-                  var child = BuildTree(x.Slice(slice), ySlice, depth - 1, used, tree);
+                  var child = BuildTree(x.Slice(slice), ySlice, depth - 1, tree);
                   tree.AddVertex(child);
                   edge.ChildId = child.Id;
                }
 
                edges.Add(edge);
+            }
+            else
+            {
+               System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
             }
          }
 
@@ -181,6 +177,8 @@
          // with mode
          if (edges.Count <= 1)
          {
+            System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+
             var val = y.Mode();
             node.IsLeaf = true;
             node.Value = val;
@@ -189,8 +187,12 @@
          tree.AddVertex(node);
 
          if (edges.Count > 1)
+         {
             foreach (var e in edges)
+            {
                tree.AddEdge(e);
+            }
+         }
 
          return node;
       }
@@ -200,44 +202,78 @@
       /// <param name="y">The Vector to process.</param>
       /// <param name="used">The used.</param>
       /// <returns>The best split.</returns>
-      private Tuple<int, double, Impurity> GetBestSplit(Matrix x, Vector y, List<int> used)
+      private Tuple<int, double, Range[]> GetBestSplit(Matrix x, Vector y)
       {
          double bestGain = -1;
          int bestFeature = -1;
 
-         Impurity bestMeasure = null;
+         Range[] bestSegments = null;
+
+         numl.Math.Summary featureProperties = new numl.Math.Summary()
+         {
+            Average = x.Mean(VectorType.Row),
+            StandardDeviation = x.StdDev(VectorType.Row),
+            Minimum = x.Min(VectorType.Row),
+            Maximum = x.Max(VectorType.Row),
+            //Median = x.Median(VectorType.Row)
+         };
+
+         //for (int i = 0; i < x.Cols; i++)
          for (int i = 0; i < x.Cols; i++)
          {
-            // already used?
-            if (used.Contains(i)) continue;
-
             double gain = 0;
+            Range[] segments = null;
 
-            Impurity measure = (Impurity)Ject.Create(ImpurityType);
+            //System.Diagnostics.Debug.Assert(false, "Need to create my own impurity logic.");
+
+            //Impurity measure = (Impurity)Ject.Create(ImpurityType);
+
+            //Vector convertedSamplesColumn = convertedSamples[i];
+            //double average = convertedSamplesColumn.Average();
+
 
             // get appropriate column vector
-            var feature = x.Col(i);
+            //var feature = x.Col(i);
             // get appropriate feature at index i
             // (important on because of multivalued
             // cols)
             var property = Descriptor.At(i);
             // if discrete, calculate full relative gain
             if (property.Discrete)
-               gain = measure.RelativeGain(y, feature);
+            {
+               System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+               //gain = measure.RelativeGain(y, feature);
+            }
             // otherwise segment based on width
             else
-               gain = measure.SegmentedRelativeGain(y, feature, Width);
+            {
+               double average = featureProperties.Average[i];
+               double standardDeviation = featureProperties.StandardDeviation[i];
+               double minimumValue = featureProperties.Minimum[i];
+               double maximumValue = featureProperties.Maximum[i];
+
+               if (standardDeviation > double.Epsilon)
+               {
+                  double minimumValueSigma = minimumValue - average / standardDeviation;
+                  double maximumValueSigma = maximumValue - average / standardDeviation;
+
+                  gain = Math.Max(Math.Abs(minimumValueSigma), Math.Abs(maximumValueSigma));
+                  segments = new Range[] {new Range(double.MinValue, average), new Range(average, double.MaxValue) };
+               }
+               //gain = measure.SegmentedRelativeGain(y, feature, Width);
+            }
 
             // best one?
             if (gain > bestGain)
             {
                bestGain = gain;
                bestFeature = i;
-               bestMeasure = measure;
+               //bestMeasure = measure;
+               bestSegments = segments;
             }
          }
 
-         return new Tuple<int, double, Impurity>(bestFeature, bestGain, bestMeasure);
+         return new Tuple<int, double, Range[]>(bestFeature, bestGain, bestSegments);
       }
 
       private Node BuildLeafNode(double val)
