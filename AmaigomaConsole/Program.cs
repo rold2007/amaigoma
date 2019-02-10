@@ -69,7 +69,7 @@
          //generators.Add(new NaiveBayesGenerator(8));
          //generators.Add(new NaiveBayesGenerator(13));
          //generators.Add(new NaiveBayesGenerator(21));
-         generators.Add(new PakiraGenerator(fluentDescriptor, samples));
+         generators.Add(new PakiraGenerator(fluentDescriptor, samples, 0));
 
          foreach (Generator generator in generators)
          {
