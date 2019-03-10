@@ -11,9 +11,11 @@
    using numl.Supervised;
    using numl.Supervised.DecisionTree;
    using numl.Utils;
+   using Shouldly;
 
    public class PakiraGenerator : DecisionTreeGenerator
    {
+      static public double UNKNOWN_CLASS_INDEX = -1.0;
       public PakiraGenerator()
       {
       }
@@ -24,6 +26,7 @@
          Samples = samples;
          Hint = defaultClassIndex;
          ImpurityType = typeof(DispersionError);
+         Depth = int.MaxValue;
       }
 
       private IEnumerable<object> samples;
@@ -53,13 +56,24 @@
             throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
          }
 
-         System.Diagnostics.Debug.Assert(Descriptor.Label.Convert(Hint) != null, "Default class does not exists.");
+         if (Hint != UNKNOWN_CLASS_INDEX)
+         {
+            const string errorMessage = "Default class doesn not exists in descriptors.";
+
+            Should.NotThrow(() =>
+            {
+               object convertedHint = Descriptor.Label.Convert(Hint);
+
+               convertedHint.ShouldNotBeNull(errorMessage);
+            }, errorMessage
+            );
+         }
 
          this.Preprocess(x);
 
          var tree = new Tree();
 
-         tree.Root = BuildTree(convertedSamples, y, Depth, tree);
+         tree.Root = BuildTree(convertedSamples, x, y, Depth, tree);
 
          return new DecisionTreeModel
          {
@@ -77,16 +91,15 @@
       /// <param name="y">The Vector to process.</param>
       /// <param name="depth">The depth.</param>
       /// <returns>A Node.</returns>
-      private Node BuildTree(Matrix x, Vector y, int depth, Tree tree)
+      private Node BuildTree(Matrix samples, Matrix x2, Vector y, int depth, Tree tree)
       {
          if (depth < 0)
          {
-            System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
-
-            return BuildLeafNode(y.Mode());
+            // We already reached the maximum allowed depth. Create an indecisive node at -1
+            return BuildLeafNode(Hint);
          }
 
-         var tuple = GetBestSplit(x, y);
+         var tuple = GetBestSplit(samples);
          var col = tuple.Item1;
          var gain = tuple.Item2;
          var segments = tuple.Item3;
@@ -123,6 +136,7 @@
                Max = segment.Max
             };
 
+            IEnumerable<int> samplesSlice;
             IEnumerable<int> slice;
 
             if (edge.Discrete)
@@ -131,16 +145,24 @@
 
                // get discrete label
                edge.Label = Descriptor.At(col).Convert(segment.Min).ToString();
+
+               samplesSlice = samples.Indices(v => v[col] == segment.Min);
+
                // do value check for matrix slicing
-               slice = x.Indices(v => v[col] == segment.Min);
+               slice = x2.Indices(v => v[col] == segment.Min);
             }
             else
             {
                // get range label
                edge.Label = string.Format("{0} <= x < {1}", segment.Min, segment.Max);
+
+               samplesSlice = samples.Indices(v => v[col] >= segment.Min && v[col] < segment.Max);
+
                // do range check for matrix slicing
-               slice = x.Indices(v => v[col] >= segment.Min && v[col] < segment.Max);
+               slice = x2.Indices(v => v[col] >= segment.Min && v[col] < segment.Max);
             }
+
+            samplesSlice.Count().ShouldBeGreaterThan(0, "Not enough samples to continue analysis.");
 
             // something to look at?
             // if this number is 0 then this edge 
@@ -159,7 +181,7 @@
                // otherwise continue to build tree
                else
                {
-                  var child = BuildTree(x.Slice(slice), ySlice, depth - 1, tree);
+                  var child = BuildTree(samples.Slice(samplesSlice), x2.Slice(slice), ySlice, depth - 1, tree);
                   tree.AddVertex(child);
                   edge.ChildId = child.Id;
                }
@@ -202,7 +224,7 @@
       /// <param name="y">The Vector to process.</param>
       /// <param name="used">The used.</param>
       /// <returns>The best split.</returns>
-      private Tuple<int, double, Range[]> GetBestSplit(Matrix x, Vector y)
+      private Tuple<int, double, Range[]> GetBestSplit(Matrix x)
       {
          double bestGain = -1;
          int bestFeature = -1;
@@ -258,7 +280,7 @@
                   double maximumValueSigma = maximumValue - average / standardDeviation;
 
                   gain = Math.Max(Math.Abs(minimumValueSigma), Math.Abs(maximumValueSigma));
-                  segments = new Range[] {new Range(double.MinValue, average), new Range(average, double.MaxValue) };
+                  segments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
                }
                //gain = measure.SegmentedRelativeGain(y, feature, Width);
             }
