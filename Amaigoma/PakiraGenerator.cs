@@ -1,32 +1,34 @@
 ﻿namespace Amaigoma
 {
-   using System;
-   using System.Collections.Generic;
-   using System.Linq;
    using numl.Data;
    using numl.Math;
-   using numl.Math.Information;
    using numl.Math.LinearAlgebra;
    using numl.Model;
    using numl.Supervised;
    using numl.Supervised.DecisionTree;
    using numl.Utils;
    using Shouldly;
+   using System;
+   using System.Collections.Generic;
+   using System.Linq;
 
    public class PakiraGenerator : DecisionTreeGenerator
    {
       static public double UNKNOWN_CLASS_INDEX = -1.0;
+      static public double INSUFFICIENT_SAMPLES_CLASS_INDEX = -2.0;
+
       public PakiraGenerator()
       {
       }
 
-      public PakiraGenerator(Descriptor descriptor, IEnumerable<object> samples, double defaultClassIndex) : this()
+      public PakiraGenerator(Descriptor descriptor, IEnumerable<object> samples, double defaultClassIndex, int minimumSampleCount) : this()
       {
          Descriptor = descriptor;
          Samples = samples;
          Hint = defaultClassIndex;
          ImpurityType = typeof(DispersionError);
          Depth = int.MaxValue;
+         MinimumSampleCount = minimumSampleCount;
       }
 
       private IEnumerable<object> samples;
@@ -49,8 +51,12 @@
          }
       }
 
+      public int MinimumSampleCount { get; set; }
+
       public override IModel Generate(Matrix x, Vector y)
       {
+         Need to update the descriptor labels to add -1 and - 2, but they will need to be positive...
+
          if (Descriptor == null)
          {
             throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
@@ -91,7 +97,7 @@
       /// <param name="y">The Vector to process.</param>
       /// <param name="depth">The depth.</param>
       /// <returns>A Node.</returns>
-      private Node BuildTree(Matrix samples, Matrix x2, Vector y, int depth, Tree tree)
+      private Node BuildTree(Matrix samples, Matrix x, Vector y, int depth, Tree tree)
       {
          if (depth < 0)
          {
@@ -99,19 +105,16 @@
             return BuildLeafNode(Hint);
          }
 
-         var tuple = GetBestSplit(samples);
-         var col = tuple.Item1;
-         var gain = tuple.Item2;
-         var segments = tuple.Item3;
+         Tuple<int, double, Range[]> tuple = GetBestSplit(samples);
+         int col = tuple.Item1;
+         double gain = tuple.Item2;
+         Range[] segments = tuple.Item3;
 
-         // uh oh, need to return something?
-         // a weird node of some sort...
-         // but just in case...
+         // Cannot find a split in the samples.
+         // Not enough samples or all samples are identical.
          if (col == -1)
          {
-            System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
-
-            return BuildLeafNode(y.Mode());
+            return BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
          }
 
          Node node = new Node
@@ -124,14 +127,15 @@
 
          // populate edges
          List<Edge> edges = new List<Edge>(segments.Length);
+
          for (int i = 0; i < segments.Length; i++)
          {
             // working set
-            var segment = segments[i];
-            var edge = new Edge()
+            Range segment = segments[i];
+            Edge edge = new Edge()
             {
                ParentId = node.Id,
-               Discrete = false, // measure.Discrete,
+               Discrete = false,
                Min = segment.Min,
                Max = segment.Max
             };
@@ -149,7 +153,7 @@
                samplesSlice = samples.Indices(v => v[col] == segment.Min);
 
                // do value check for matrix slicing
-               slice = x2.Indices(v => v[col] == segment.Min);
+               slice = x.Indices(v => v[col] == segment.Min);
             }
             else
             {
@@ -159,38 +163,58 @@
                samplesSlice = samples.Indices(v => v[col] >= segment.Min && v[col] < segment.Max);
 
                // do range check for matrix slicing
-               slice = x2.Indices(v => v[col] >= segment.Min && v[col] < segment.Max);
+               slice = x.Indices(v => v[col] >= segment.Min && v[col] < segment.Max);
             }
 
-            samplesSlice.Count().ShouldBeGreaterThan(0, "Not enough samples to continue analysis.");
+            int sampleSliceCount = samplesSlice.Count();
 
-            // something to look at?
-            // if this number is 0 then this edge 
-            // leads to a dead end - the edge will 
-            // not be built
-            if (slice.Count() > 0)
+            if (sampleSliceCount >= MinimumSampleCount)
             {
-               Vector ySlice = y.Slice(slice);
-               // only one answer, set leaf
-               if (ySlice.Distinct().Count() == 1)
+               int sliceCount = slice.Count();
+
+               if (sliceCount > 0)
                {
-                  var child = BuildLeafNode(ySlice[0]);
-                  tree.AddVertex(child);
-                  edge.ChildId = child.Id;
+                  Vector ySlice = y.Slice(slice);
+
+                  // only one answer, set leaf
+                  if (ySlice.Distinct().Count() == 1)
+                  {
+                     Node child = BuildLeafNode(ySlice[0]);
+
+                     tree.AddVertex(child);
+                     edge.ChildId = child.Id;
+                  }
+                  // otherwise continue to build tree
+                  else
+                  {
+                     int nextDepth = depth == int.MaxValue ? depth : depth - 1;
+
+                     Node child = BuildTree(samples.Slice(samplesSlice), x.Slice(slice), ySlice, nextDepth, tree);
+
+                     tree.AddVertex(child);
+                     edge.ChildId = child.Id;
+                  }
+
+                  edges.Add(edge);
                }
-               // otherwise continue to build tree
                else
                {
-                  var child = BuildTree(samples.Slice(samplesSlice), x2.Slice(slice), ySlice, depth - 1, tree);
+                  // We don't have any training data for this node
+                  Node child = BuildLeafNode(Hint);
+
                   tree.AddVertex(child);
                   edge.ChildId = child.Id;
+                  edges.Add(edge);
                }
-
-               edges.Add(edge);
             }
             else
             {
-               System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+               // We don't have enough sample data for this node
+               Node child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
+
+               tree.AddVertex(child);
+               edge.ChildId = child.Id;
+               edges.Add(edge);
             }
          }
 
@@ -226,45 +250,33 @@
       /// <returns>The best split.</returns>
       private Tuple<int, double, Range[]> GetBestSplit(Matrix x)
       {
-         double bestGain = -1;
+         double bestGain = 0.0;
          int bestFeature = -1;
 
          Range[] bestSegments = null;
 
-         numl.Math.Summary featureProperties = new numl.Math.Summary()
+         Summary featureProperties = new Summary()
          {
             Average = x.Mean(VectorType.Row),
             StandardDeviation = x.StdDev(VectorType.Row),
             Minimum = x.Min(VectorType.Row),
             Maximum = x.Max(VectorType.Row),
-            //Median = x.Median(VectorType.Row)
          };
 
-         //for (int i = 0; i < x.Cols; i++)
          for (int i = 0; i < x.Cols; i++)
          {
             double gain = 0;
             Range[] segments = null;
 
-            //System.Diagnostics.Debug.Assert(false, "Need to create my own impurity logic.");
-
-            //Impurity measure = (Impurity)Ject.Create(ImpurityType);
-
-            //Vector convertedSamplesColumn = convertedSamples[i];
-            //double average = convertedSamplesColumn.Average();
-
-
-            // get appropriate column vector
-            //var feature = x.Col(i);
             // get appropriate feature at index i
             // (important on because of multivalued
             // cols)
             var property = Descriptor.At(i);
+
             // if discrete, calculate full relative gain
             if (property.Discrete)
             {
                System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
-               //gain = measure.RelativeGain(y, feature);
             }
             // otherwise segment based on width
             else
@@ -282,7 +294,6 @@
                   gain = Math.Max(Math.Abs(minimumValueSigma), Math.Abs(maximumValueSigma));
                   segments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
                }
-               //gain = measure.SegmentedRelativeGain(y, feature, Width);
             }
 
             // best one?
@@ -290,7 +301,6 @@
             {
                bestGain = gain;
                bestFeature = i;
-               //bestMeasure = measure;
                bestSegments = segments;
             }
          }
