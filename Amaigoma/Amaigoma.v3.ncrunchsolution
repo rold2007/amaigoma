@@ -1,0 +1,8 @@
+﻿<SolutionConfiguration>
+  <Settings>
+    <MetricsExclusionList>
+      <Value>..\..\numl\Src\numl\numl.csproj</Value>
+    </MetricsExclusionList>
+    <SolutionConfigured>True</SolutionConfigured>
+  </Settings>
+</SolutionConfiguration>

@@ -35,7 +35,6 @@
                                                    //.With("Sum").As(customFeature)
                                                    .Learn("Class").As(typeof(string));
 
-
          features.AddRange(fluentDescriptor.Features);
 
          fluentDescriptor.Features = features.ToArray();
@@ -69,7 +68,7 @@
          //generators.Add(new NaiveBayesGenerator(8));
          //generators.Add(new NaiveBayesGenerator(13));
          //generators.Add(new NaiveBayesGenerator(21));
-         generators.Add(new PakiraGenerator(fluentDescriptor, samples, PakiraGenerator.UNKNOWN_CLASS_INDEX));
+         generators.Add(new PakiraGenerator(fluentDescriptor, samples, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
 
          foreach (Generator generator in generators)
          {
