@@ -55,16 +55,24 @@
 
       public override IModel Generate(Matrix x, Vector y)
       {
-         Need to update the descriptor labels to add -1 and - 2, but they will need to be positive...
-
          if (Descriptor == null)
          {
             throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
          }
 
+         var labelsProperty = Descriptor.Label as StringProperty;
+         var labels = labelsProperty.Dictionary;
+         var labelsList = new List<string>(labels)
+         {
+            "Insufficient",
+            "Unknown"
+         };
+
+         labels = labelsList.ToArray();
+
          if (Hint != UNKNOWN_CLASS_INDEX)
          {
-            const string errorMessage = "Default class doesn not exists in descriptors.";
+            const string errorMessage = "Default class does not exists in descriptors.";
 
             Should.NotThrow(() =>
             {
@@ -99,10 +107,19 @@
       /// <returns>A Node.</returns>
       private Node BuildTree(Matrix samples, Matrix x, Vector y, int depth, Tree tree)
       {
+         var labelsCount = (Descriptor.Label as StringProperty).Dictionary.Length;
+
          if (depth < 0)
          {
-            // We already reached the maximum allowed depth. Create an indecisive node at -1
-            return BuildLeafNode(Hint);
+            if (Hint < 0)
+            {
+               // We already reached the maximum allowed depth. Create an indecisive node at -1
+               return BuildLeafNode(labelsCount + Hint);
+            }
+            else
+            {
+               return BuildLeafNode(Hint);
+            }
          }
 
          Tuple<int, double, Range[]> tuple = GetBestSplit(samples);
@@ -114,7 +131,7 @@
          // Not enough samples or all samples are identical.
          if (col == -1)
          {
-            return BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
+            return BuildLeafNode(labelsCount + INSUFFICIENT_SAMPLES_CLASS_INDEX);
          }
 
          Node node = new Node
@@ -200,7 +217,7 @@
                else
                {
                   // We don't have any training data for this node
-                  Node child = BuildLeafNode(Hint);
+                  Node child = BuildLeafNode(Hint < 0 ? labelsCount + Hint : Hint);
 
                   tree.AddVertex(child);
                   edge.ChildId = child.Id;
@@ -210,7 +227,7 @@
             else
             {
                // We don't have enough sample data for this node
-               Node child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
+               Node child = BuildLeafNode(labelsCount + INSUFFICIENT_SAMPLES_CLASS_INDEX);
 
                tree.AddVertex(child);
                edge.ChildId = child.Id;
