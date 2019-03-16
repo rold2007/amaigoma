@@ -1,14 +1,14 @@
 ﻿namespace AmaigomaConsole
 {
-   using System;
-   using System.Collections.Generic;
    using Amaigoma;
    using numl;
    using numl.Math.Probability;
    using numl.Model;
    using numl.Supervised;
-   using numl.Supervised.DecisionTree;
+   using numl.Supervised.NaiveBayes;
    using numl.Tests.Data;
+   using System;
+   using System.Collections.Generic;
 
    class Program
    {
@@ -45,17 +45,39 @@
          Iris[] data = Iris.Load();
          List<Generator> generators = new List<Generator>();
 
-         List<Iris> samples = new List<Iris>();
+         List<Iris> samples1000 = new List<Iris>();
+         List<Iris> samples5000 = new List<Iris>();
+         List<Iris> samples10000 = new List<Iris>();
 
-         for(int i = 0; i< 1000; i++)
+         for (int i = 0; i < 1000; i++)
          {
             decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
             decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
             decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
             decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
 
-            samples.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+            samples1000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
          }
+
+         //for (int i = 0; i < 5000; i++)
+         //{
+         //   decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
+         //   decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
+         //   decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
+         //   decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
+
+         //   samples5000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+         //}
+
+         //for (int i = 0; i < 10000; i++)
+         //{
+         //   decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
+         //   decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
+         //   decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
+         //   decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
+
+         //   samples10000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+         //}
 
 
          // generators.Add(new PakiraGenerator());
@@ -67,12 +89,25 @@
          //generators.Add(new NaiveBayesGenerator(5));
          //generators.Add(new NaiveBayesGenerator(8));
          //generators.Add(new NaiveBayesGenerator(13));
-         //generators.Add(new NaiveBayesGenerator(21));
-         generators.Add(new PakiraGenerator(fluentDescriptor, samples, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
+         generators.Add(new NaiveBayesGenerator(21));
+         generators.Add(new PakiraGenerator(fluentDescriptor, samples1000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
+         //generators.Add(new PakiraGenerator(fluentDescriptor, samples5000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
+         //generators.Add(new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
+
+         int generatorIndex = 0;
 
          foreach (Generator generator in generators)
          {
-            IModel model = generator.Generate(data);
+            IModel model;
+
+            if (generator.Descriptor == null)
+            {
+               model = generator.Generate(description, data);
+            }
+            else
+            {
+               model = generator.Generate(data);
+            }
 
             Iris prediction;
 
@@ -111,14 +146,30 @@
             //  learnedModel = learned.Model;
             //  accuracy = learned.Accuracy;
 
-            for (int i = 0; i < 1; i++)
+            Console.WriteLine("Analyzing generator index " + generatorIndex++);
+            double minAccuracy = double.MaxValue;
+            double maxAccuracy = double.MinValue;
+            double sumAccuracy = 0.0;
+            const int learnCount = 50;
+
+            for (int i = 0; i < learnCount; i++)
             {
                learned = Learner.Learn(data, 0.10, 10, generator);
                learnedModel = learned.Model;
                accuracy = learned.Accuracy;
 
-               Console.WriteLine(accuracy.ToString());
+               minAccuracy = Math.Min(minAccuracy, accuracy);
+               maxAccuracy = Math.Max(maxAccuracy, accuracy);
+               sumAccuracy += accuracy;
+
+               //Console.WriteLine(accuracy.ToString());
             }
+
+            Console.WriteLine("Min: " + minAccuracy.ToString());
+            Console.WriteLine("Max: " + maxAccuracy.ToString());
+            Console.WriteLine("Average: " + (sumAccuracy / learnCount).ToString());
+
+            Console.WriteLine();
          }
       }
    }
