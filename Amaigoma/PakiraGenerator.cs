@@ -45,7 +45,7 @@
          {
             samples = value;
 
-            var doubles = Descriptor.Convert(value, false, false);
+            var doubles = Descriptor.Convert(value, false);
 
             convertedSamples = doubles.ToMatrix();
          }
