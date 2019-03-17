@@ -9,8 +9,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AmaigomaConsole", "..\Amaig
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AmaigomaTests", "..\AmaigomaTests\AmaigomaTests.csproj", "{9F44F507-A5DF-4CA0-A140-21AFB95B7AE8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "numl", "..\..\numl\Src\numl\numl.csproj", "{B6D26055-CD4C-436E-8F6D-5B7FC10FD0C4}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,10 +27,6 @@ Global
 		{9F44F507-A5DF-4CA0-A140-21AFB95B7AE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F44F507-A5DF-4CA0-A140-21AFB95B7AE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F44F507-A5DF-4CA0-A140-21AFB95B7AE8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B6D26055-CD4C-436E-8F6D-5B7FC10FD0C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B6D26055-CD4C-436E-8F6D-5B7FC10FD0C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B6D26055-CD4C-436E-8F6D-5B7FC10FD0C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B6D26055-CD4C-436E-8F6D-5B7FC10FD0C4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -5,15 +5,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="_NCrunch_Amaigoma\**" />
+    <EmbeddedResource Remove="_NCrunch_Amaigoma\**" />
+    <None Remove="_NCrunch_Amaigoma\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Amaigoma.v3.ncrunchsolution" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="numl" Version="0.9.20-beta" />
     <PackageReference Include="Shouldly" Version="3.0.2" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\numl\Src\numl\numl.csproj" />
   </ItemGroup>
 
 </Project>
