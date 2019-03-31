@@ -5,7 +5,6 @@
    using numl.Math.Probability;
    using numl.Model;
    using numl.Supervised;
-   using numl.Supervised.NaiveBayes;
    using numl.Tests.Data;
    using System;
    using System.Collections.Generic;
@@ -18,12 +17,32 @@
 
          for (int i = 0; i < 3; i++)
          {
-            CustomFeature customFeature = new CustomFeature(i, i + 1);
+            SumFeature sumFeature = new SumFeature(i, i + 1)
+            {
+               Name = "Sum" + i.ToString(),
+               Type = typeof(System.Double)
+            };
 
-            customFeature.Name = "Sum";
-            customFeature.Type = typeof(System.Double);
+            features.Add(sumFeature);
 
-            features.Add(customFeature);
+            ProductFeature productFeature = new ProductFeature(i, i + 1)
+            {
+               Name = "Product" + i.ToString(),
+               Type = typeof(System.Double)
+            };
+
+            features.Add(productFeature);
+         }
+
+         for (int i = 0; i < 100; i++)
+         {
+            RandomFeature randomFeature = new RandomFeature()
+            {
+               Name = "Random" + i.ToString(),
+               Type = typeof(System.Double)
+            };
+
+            //features.Add(randomFeature);
          }
 
          Descriptor description = Descriptor.Create<Iris>();
@@ -59,25 +78,25 @@
             samples1000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
          }
 
-         //for (int i = 0; i < 5000; i++)
-         //{
-         //   decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
-         //   decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
-         //   decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
-         //   decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
+         for (int i = 0; i < 5000; i++)
+         {
+            decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
+            decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
+            decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
+            decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
 
-         //   samples5000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
-         //}
+            samples5000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+         }
 
-         //for (int i = 0; i < 10000; i++)
-         //{
-         //   decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
-         //   decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
-         //   decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
-         //   decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
+         for (int i = 0; i < 10000; i++)
+         {
+            decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
+            decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
+            decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
+            decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
 
-         //   samples10000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
-         //}
+            samples10000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+         }
 
 
          // generators.Add(new PakiraGenerator());
@@ -89,55 +108,57 @@
          //generators.Add(new NaiveBayesGenerator(5));
          //generators.Add(new NaiveBayesGenerator(8));
          //generators.Add(new NaiveBayesGenerator(13));
-         generators.Add(new NaiveBayesGenerator(21));
-         generators.Add(new PakiraGenerator(fluentDescriptor, samples1000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
+         //generators.Add(new NaiveBayesGenerator(21));
+         //generators.Add(new PakiraGenerator(fluentDescriptor, samples1000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
          //generators.Add(new PakiraGenerator(fluentDescriptor, samples5000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
-         //generators.Add(new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
+         generators.Add(new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
 
          int generatorIndex = 0;
 
          foreach (Generator generator in generators)
          {
-            IModel model;
+            //IModel model;
 
-            if (generator.Descriptor == null)
-            {
-               model = generator.Generate(description, data);
-            }
-            else
-            {
-               model = generator.Generate(data);
-            }
+            //if (generator.Descriptor == null)
+            //{
+            //   model = generator.Generate(description, data);
+            //}
+            //else
+            //{
+            //   model = generator.Generate(data);
+            //}
 
-            Iris prediction;
+            //Console.WriteLine("Model " + model.ToString());
 
-            prediction = model.Predict(data[0]);
+            //Iris prediction;
 
-            prediction.Class = string.Empty;
-            prediction.PetalLength = 9.9m;
-            prediction.PetalWidth = 9.9m;
-            prediction.SepalLength = 9.9m;
-            prediction.SepalWidth = 9.9m;
+            //prediction = model.Predict(data[0]);
 
-            prediction = model.Predict(prediction);
+            //prediction.Class = string.Empty;
+            //prediction.PetalLength = 9.9m;
+            //prediction.PetalWidth = 9.9m;
+            //prediction.SepalLength = 9.9m;
+            //prediction.SepalWidth = 9.9m;
 
-            prediction.Class = string.Empty;
-            prediction.PetalLength = 0.0m;
-            prediction.PetalWidth = 0.0m;
-            prediction.SepalLength = 0.0m;
-            prediction.SepalWidth = 0.0m;
+            //prediction = model.Predict(prediction);
 
-            prediction = model.Predict(prediction);
+            //prediction.Class = string.Empty;
+            //prediction.PetalLength = 0.0m;
+            //prediction.PetalWidth = 0.0m;
+            //prediction.SepalLength = 0.0m;
+            //prediction.SepalWidth = 0.0m;
 
-            prediction.Class = string.Empty;
-            prediction.PetalLength = 5.2m;
-            prediction.PetalWidth = 1.9m;
-            prediction.SepalLength = 6.0m;
-            prediction.SepalWidth = 3.1m;
+            //prediction = model.Predict(prediction);
 
-            prediction = model.Predict(prediction);
+            //prediction.Class = string.Empty;
+            //prediction.PetalLength = 5.2m;
+            //prediction.PetalWidth = 1.9m;
+            //prediction.SepalLength = 6.0m;
+            //prediction.SepalWidth = 3.1m;
 
-            prediction = model.Predict(data[149]);
+            //prediction = model.Predict(prediction);
+
+            //prediction = model.Predict(data[149]);
 
             LearningModel learned;
             IModel learnedModel;
@@ -150,11 +171,11 @@
             double minAccuracy = double.MaxValue;
             double maxAccuracy = double.MinValue;
             double sumAccuracy = 0.0;
-            const int learnCount = 50;
+            const int learnCount = 1;
 
             for (int i = 0; i < learnCount; i++)
             {
-               learned = Learner.Learn(data, 0.10, 10, generator);
+               learned = Learner.Learn(data, 0.10, 1, generator);
                learnedModel = learned.Model;
                accuracy = learned.Accuracy;
 
@@ -162,7 +183,8 @@
                maxAccuracy = Math.Max(maxAccuracy, accuracy);
                sumAccuracy += accuracy;
 
-               //Console.WriteLine(accuracy.ToString());
+               Console.WriteLine(accuracy.ToString());
+               Console.WriteLine("Model " + learnedModel.ToString());
             }
 
             Console.WriteLine("Min: " + minAccuracy.ToString());
