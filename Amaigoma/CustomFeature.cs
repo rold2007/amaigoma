@@ -1,19 +1,14 @@
 namespace Amaigoma
 {
-   using System;
-   using System.Collections.Generic;
    using numl.Model;
    using numl.Utils;
+   using System;
+   using System.Collections.Generic;
 
    public class CustomFeature : Property
    {
-      private int firstIndex;
-      private int secondIndex;
-
-      public CustomFeature(int firstIndex, int secondIndex)
+      public CustomFeature()
       {
-         this.firstIndex = firstIndex;
-         this.secondIndex = secondIndex;
       }
 
       /// <summary>
@@ -70,9 +65,7 @@ namespace Amaigoma
       /// <returns>Lazy list of doubles.</returns>
       public override IEnumerable<double> Convert(object o)
       {
-         double[] data = o as double[];
-
-         yield return (data[firstIndex] + data[secondIndex]);
+         throw new NotImplementedException();
       }
 
       /// <summary>
@@ -85,6 +78,68 @@ namespace Amaigoma
       public override IEnumerable<string> GetColumns()
       {
          yield return this.Name;
+      }
+   }
+
+   public class SumFeature : CustomFeature
+   {
+      private readonly int firstIndex;
+      private readonly int secondIndex;
+
+      public SumFeature(int firstIndex, int secondIndex) : base()
+      {
+         this.firstIndex = firstIndex;
+         this.secondIndex = secondIndex;
+      }
+
+      /// <summary>Convert an object to a list of numbers.</summary>
+      /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
+      /// <param name="o">Object.</param>
+      /// <returns>Lazy list of doubles.</returns>
+      public override IEnumerable<double> Convert(object o)
+      {
+         double[] data = o as double[];
+
+         yield return (data[firstIndex] + data[secondIndex]);
+      }
+   }
+
+   public class ProductFeature : CustomFeature
+   {
+      private readonly int firstIndex;
+      private readonly int secondIndex;
+
+      public ProductFeature(int firstIndex, int secondIndex) : base()
+      {
+         this.firstIndex = firstIndex;
+         this.secondIndex = secondIndex;
+      }
+
+      /// <summary>Convert an object to a list of numbers.</summary>
+      /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
+      /// <param name="o">Object.</param>
+      /// <returns>Lazy list of doubles.</returns>
+      public override IEnumerable<double> Convert(object o)
+      {
+         double[] data = o as double[];
+
+         yield return (data[firstIndex] * data[secondIndex]);
+      }
+   }
+
+   public class RandomFeature : CustomFeature
+   {
+      public RandomFeature() : base()
+      {
+      }
+
+      /// <summary>Convert an object to a list of numbers.</summary>
+      /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
+      /// <param name="o">Object.</param>
+      /// <returns>Lazy list of doubles.</returns>
+      public override IEnumerable<double> Convert(object o)
+      {
+         yield return (numl.Math.Probability.Sampling.GetNormal(0, 10));
       }
    }
 }

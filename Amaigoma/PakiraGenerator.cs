@@ -45,7 +45,7 @@
          {
             samples = value;
 
-            var doubles = Descriptor.Convert(value, false);
+            IEnumerable<IEnumerable<double>> doubles = Descriptor.Convert(value, false);
 
             convertedSamples = doubles.ToMatrix();
          }
@@ -60,15 +60,14 @@
             throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
          }
 
-         var labelsProperty = Descriptor.Label as StringProperty;
-         var labels = labelsProperty.Dictionary;
-         var labelsList = new List<string>(labels)
+         StringProperty labelsProperty = Descriptor.Label as StringProperty;
+         List<string> labelsList = new List<string>(labelsProperty.Dictionary)
          {
             "Insufficient",
             "Unknown"
          };
 
-         labels = labelsList.ToArray();
+         labelsProperty.Dictionary = labelsList.ToArray();
 
          if (Hint != UNKNOWN_CLASS_INDEX)
          {
@@ -85,7 +84,7 @@
 
          this.Preprocess(x);
 
-         var tree = new Tree();
+         Tree tree = new Tree();
 
          tree.Root = BuildTree(convertedSamples, x, y, Depth, tree);
 
@@ -107,7 +106,7 @@
       /// <returns>A Node.</returns>
       private Node BuildTree(Matrix samples, Matrix x, Vector y, int depth, Tree tree)
       {
-         var labelsCount = (Descriptor.Label as StringProperty).Dictionary.Length;
+         int labelsCount = (Descriptor.Label as StringProperty).Dictionary.Length;
 
          if (depth < 0)
          {
@@ -122,7 +121,7 @@
             }
          }
 
-         Tuple<int, double, Range[]> tuple = GetBestSplit(samples);
+         Tuple<int, double, Range[]> tuple = GetBestSplit(samples, x, y);
          int col = tuple.Item1;
          double gain = tuple.Item2;
          Range[] segments = tuple.Item3;
@@ -242,7 +241,8 @@
          {
             System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
 
-            var val = y.Mode();
+            double val = y.Mode();
+
             node.IsLeaf = true;
             node.Value = val;
          }
@@ -251,7 +251,7 @@
 
          if (edges.Count > 1)
          {
-            foreach (var e in edges)
+            foreach (Edge e in edges)
             {
                tree.AddEdge(e);
             }
@@ -261,11 +261,11 @@
       }
 
       /// <summary>Gets best split.</summary>
-      /// <param name="x">The Matrix to process.</param>
+      /// <param name="samples">The Matrix to process.</param>
       /// <param name="y">The Vector to process.</param>
       /// <param name="used">The used.</param>
       /// <returns>The best split.</returns>
-      private Tuple<int, double, Range[]> GetBestSplit(Matrix x)
+      private Tuple<int, double, Range[]> GetBestSplit(Matrix samples, Matrix x, Vector y)
       {
          double bestGain = 0.0;
          int bestFeature = -1;
@@ -274,13 +274,13 @@
 
          Summary featureProperties = new Summary()
          {
-            Average = x.Mean(VectorType.Row),
-            StandardDeviation = x.StdDev(VectorType.Row),
-            Minimum = x.Min(VectorType.Row),
-            Maximum = x.Max(VectorType.Row),
+            Average = samples.Mean(VectorType.Row),
+            StandardDeviation = samples.StdDev(VectorType.Row),
+            Minimum = samples.Min(VectorType.Row),
+            Maximum = samples.Max(VectorType.Row),
          };
 
-         for (int i = 0; i < x.Cols; i++)
+         for (int i = 0; i < samples.Cols; i++)
          {
             double gain = 0;
             Range[] segments = null;
@@ -288,7 +288,7 @@
             // get appropriate feature at index i
             // (important on because of multivalued
             // cols)
-            var property = Descriptor.At(i);
+            Property property = Descriptor.At(i);
 
             // if discrete, calculate full relative gain
             if (property.Discrete)
