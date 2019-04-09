@@ -53,6 +53,20 @@
 
       public int MinimumSampleCount { get; set; }
 
+      /// <summary>Generate model based on a set of examples.</summary>
+      /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
+      /// <param name="examples">Example set.</param>
+      /// <returns>Model.</returns>
+      public new PakiraModel Generate(IEnumerable<object> examples)
+      {
+         if (examples.Count() == 0) throw new InvalidOperationException("Empty example set.");
+
+         if (Descriptor == null)
+            throw new InvalidOperationException("Descriptor is null");
+
+         return Generate(Descriptor, examples) as PakiraModel;
+      }
+
       public override IModel Generate(Matrix x, Vector y)
       {
          if (Descriptor == null)
@@ -88,7 +102,7 @@
 
          tree.Root = BuildTree(convertedSamples, x, y, Depth, tree);
 
-         return new DecisionTreeModel
+         return new PakiraModel
          {
             Descriptor = Descriptor,
             NormalizeFeatures = NormalizeFeatures,
@@ -280,7 +294,7 @@
             Maximum = samples.Max(VectorType.Row),
          };
 
-         for (int i = 0; i < samples.Cols; i++)
+         for (int col = 0; col < samples.Cols; col++)
          {
             double gain = 0;
             Range[] segments = null;
@@ -288,7 +302,7 @@
             // get appropriate feature at index i
             // (important on because of multivalued
             // cols)
-            Property property = Descriptor.At(i);
+            Property property = Descriptor.At(col);
 
             // if discrete, calculate full relative gain
             if (property.Discrete)
@@ -298,18 +312,24 @@
             // otherwise segment based on width
             else
             {
-               double average = featureProperties.Average[i];
-               double standardDeviation = featureProperties.StandardDeviation[i];
-               double minimumValue = featureProperties.Minimum[i];
-               double maximumValue = featureProperties.Maximum[i];
+               double average = featureProperties.Average[col];
+               double standardDeviation = featureProperties.StandardDeviation[col];
+               //double minimumValue = featureProperties.Minimum[i];
+               //double maximumValue = featureProperties.Maximum[i];
 
                if (standardDeviation > double.Epsilon)
                {
-                  double minimumValueSigma = minimumValue - average / standardDeviation;
-                  double maximumValueSigma = maximumValue - average / standardDeviation;
+                  //double minimumValueSigma = minimumValue - average / standardDeviation;
+                  //double maximumValueSigma = maximumValue - average / standardDeviation;
 
-                  gain = Math.Max(Math.Abs(minimumValueSigma), Math.Abs(maximumValueSigma));
-                  segments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
+                  for (int row = 0; row < x.Rows; row++)
+                  {
+                     double rowValue = x[row][col];
+                     double rowValueSigma = rowValue - average / standardDeviation;
+
+                     gain = Math.Abs(rowValueSigma);
+                     segments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
+                  }
                }
             }
 
@@ -317,7 +337,7 @@
             if (gain > bestGain)
             {
                bestGain = gain;
-               bestFeature = i;
+               bestFeature = col;
                bestSegments = segments;
             }
          }
