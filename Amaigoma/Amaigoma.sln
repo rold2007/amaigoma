@@ -9,6 +9,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AmaigomaConsole", "..\Amaig
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AmaigomaTests", "..\AmaigomaTests\AmaigomaTests.csproj", "{9F44F507-A5DF-4CA0-A140-21AFB95B7AE8}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{93823D39-EC11-45BB-84A6-BB3A6C546B45}"
+	ProjectSection(SolutionItems) = preProject
+		..\LICENSE.md = ..\LICENSE.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

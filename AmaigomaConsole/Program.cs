@@ -113,6 +113,14 @@
          //generators.Add(new PakiraGenerator(fluentDescriptor, samples5000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
          generators.Add(new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
 
+         PakiraGenerator pakiraGenerator = new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10);
+         PakiraModel pakiraModel;
+
+         pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0]});
+
+         Console.WriteLine("Model " + pakiraModel.ToString());
+
+
          int generatorIndex = 0;
 
          foreach (Generator generator in generators)
