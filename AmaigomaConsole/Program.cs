@@ -2,9 +2,11 @@
 {
    using Amaigoma;
    using numl;
+   using numl.Math.LinearAlgebra;
    using numl.Math.Probability;
    using numl.Model;
    using numl.Supervised;
+   using numl.Supervised.DecisionTree;
    using numl.Tests.Data;
    using System;
    using System.Collections.Generic;
@@ -67,6 +69,7 @@
          List<Iris> samples1000 = new List<Iris>();
          List<Iris> samples5000 = new List<Iris>();
          List<Iris> samples10000 = new List<Iris>();
+         int minimumSampleCount = 10;
 
          for (int i = 0; i < 1000; i++)
          {
@@ -111,15 +114,20 @@
          //generators.Add(new NaiveBayesGenerator(21));
          //generators.Add(new PakiraGenerator(fluentDescriptor, samples1000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
          //generators.Add(new PakiraGenerator(fluentDescriptor, samples5000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
-         generators.Add(new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
+         //generators.Add(new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
 
-         PakiraGenerator pakiraGenerator = new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10);
+         PakiraGenerator pakiraGenerator = new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, minimumSampleCount);
          PakiraModel pakiraModel;
 
-         pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0]});
+         pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[100] });
 
          Console.WriteLine("Model " + pakiraModel.ToString());
 
+         for (int i = 0; i < data.Length; i++)
+         {
+            (Matrix, Vector) valueTuple = pakiraGenerator.Descriptor.Convert(new List<Iris>() { data[i] }, true, false).ToExamples();
+            Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
+         }
 
          int generatorIndex = 0;
 
