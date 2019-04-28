@@ -10,6 +10,7 @@
    using numl.Tests.Data;
    using System;
    using System.Collections.Generic;
+   using System.Linq;
 
    class Program
    {
@@ -120,13 +121,86 @@
          PakiraModel pakiraModel;
 
          pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[100] });
+         //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[50], data[51], data[100], data[101] });
+         //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[51], data[52], data[53], data[54], data[100] });
+         pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[2], data[50], data[51], data[52], data[100], data[101], data[102] });
 
          Console.WriteLine("Model " + pakiraModel.ToString());
 
+         int labelCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Count();
+         List<List<int>> confusionMatrix = new List<List<int>>(labelCount);
+
+         for (int i = 0; i < labelCount; i++)
+         {
+            List<int> confusionMatrixLine = new List<int>(labelCount);
+
+            confusionMatrixLine.AddRange(Enumerable.Repeat(0, labelCount));
+
+            confusionMatrix.Add(confusionMatrixLine);
+         }
+
          for (int i = 0; i < data.Length; i++)
          {
-            (Matrix, Vector) valueTuple = pakiraGenerator.Descriptor.Convert(new List<Iris>() { data[i] }, true, false).ToExamples();
+            (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(data[i], true) }.ToExamples();
             Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
+            int currentSampleClass = (int)valueTuple.Item2[0];
+            int predictedClass = (int)predictionNode.Value;
+
+            confusionMatrix[currentSampleClass][predictedClass]++;
+         }
+
+         // Compute the Matthews coefficient for each class
+         for (int labelIndex = 0; labelIndex < labelCount; labelIndex++)
+         {
+            int truePositives = 0;
+            int falsePositives = 0;
+            int falseNegatives = 0;
+            int trueNegatives = 0;
+
+            for (int i = 0; i < labelCount; i++)
+            {
+               for (int j = 0; j < labelCount; j++)
+               {
+                  if (i == labelIndex)
+                  {
+                     if (j == labelIndex)
+                     {
+                        truePositives += confusionMatrix[i][j];
+                     }
+                     else
+                     {
+                        falsePositives += confusionMatrix[i][j];
+                     }
+                  }
+                  else
+                  {
+                     if (i == j)
+                     {
+                        trueNegatives += confusionMatrix[i][j];
+                     }
+                     else
+                     {
+                        falseNegatives += confusionMatrix[i][j];
+                     }
+                  }
+               }
+            }
+
+            double mccDenominator = (truePositives + falsePositives) * 
+               (truePositives + falseNegatives) *
+               (trueNegatives + falsePositives) *
+               (trueNegatives + falseNegatives);
+
+            if(mccDenominator == 0.0)
+            {
+               mccDenominator = 1.0;
+            }
+            else
+            {
+               mccDenominator = Math.Sqrt(mccDenominator);
+            }
+
+            double mcc = ((truePositives * trueNegatives) - (falsePositives * falseNegatives)) / mccDenominator;
          }
 
          int generatorIndex = 0;
