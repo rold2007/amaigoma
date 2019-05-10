@@ -149,6 +149,8 @@
             confusionMatrix[currentSampleClass][predictedClass]++;
          }
 
+         Console.WriteLine();
+
          // Compute the Matthews coefficient for each class
          for (int labelIndex = 0; labelIndex < labelCount; labelIndex++)
          {
@@ -187,9 +189,9 @@
             }
 
             double mccDenominator = (truePositives + falsePositives) * 
-               (truePositives + falseNegatives) *
-               (trueNegatives + falsePositives) *
-               (trueNegatives + falseNegatives);
+                                    (truePositives + falseNegatives) *
+                                    (trueNegatives + falsePositives) *
+                                    (trueNegatives + falseNegatives);
 
             if(mccDenominator == 0.0)
             {
@@ -201,7 +203,11 @@
             }
 
             double mcc = ((truePositives * trueNegatives) - (falsePositives * falseNegatives)) / mccDenominator;
+
+            Console.Write(mcc.ToString() + ";");
          }
+
+         Console.WriteLine();
 
          int generatorIndex = 0;
 
