@@ -8,6 +8,7 @@
    using numl.Supervised;
    using numl.Supervised.DecisionTree;
    using numl.Tests.Data;
+   using Shouldly;
    using System;
    using System.Collections.Generic;
    using System.Linq;
@@ -119,92 +120,86 @@
 
          PakiraGenerator pakiraGenerator = new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, minimumSampleCount);
          PakiraModel pakiraModel;
+         List<Iris> trainingSet = new List<Iris>() { data[0], data[50], data[100] };
+         List<Iris> trainingSamples = new List<Iris>();
+         List<Iris> testSamples = new List<Iris>();
 
-         pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[100] });
+         for (int dataindex = 1; dataindex < data.Count() / 3; dataindex++)
+         {
+            if (dataindex < 25)
+            {
+               trainingSamples.Add(data[dataindex]);
+               trainingSamples.Add(data[dataindex + 50]);
+               trainingSamples.Add(data[dataindex + 100]);
+            }
+            else
+            {
+               testSamples.Add(data[dataindex]);
+               testSamples.Add(data[dataindex + 50]);
+               testSamples.Add(data[dataindex + 100]);
+            }
+         }
+
+         //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[100] });
          //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[50], data[51], data[100], data[101] });
          //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[51], data[52], data[53], data[54], data[100] });
-         pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[2], data[50], data[51], data[52], data[100], data[101], data[102] });
+         //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[2], data[50], data[51], data[52], data[100], data[101], data[102] });
+         pakiraModel = pakiraGenerator.Generate(trainingSet);
 
          Console.WriteLine("Model " + pakiraModel.ToString());
 
          int labelCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Count();
-         List<List<int>> confusionMatrix = new List<List<int>>(labelCount);
+         ConfusionMatrix trainingSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
+         ConfusionMatrix testSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
 
-         for (int i = 0; i < labelCount; i++)
+         for (int i = 0; i < trainingSamples.Count(); i++)
          {
-            List<int> confusionMatrixLine = new List<int>(labelCount);
-
-            confusionMatrixLine.AddRange(Enumerable.Repeat(0, labelCount));
-
-            confusionMatrix.Add(confusionMatrixLine);
-         }
-
-         for (int i = 0; i < data.Length; i++)
-         {
-            (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(data[i], true) }.ToExamples();
+            (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[i], true) }.ToExamples();
             Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
             int currentSampleClass = (int)valueTuple.Item2[0];
             int predictedClass = (int)predictionNode.Value;
 
-            confusionMatrix[currentSampleClass][predictedClass]++;
+            trainingSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
+
+
+            //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
+            //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
+         }
+
+         for (int i = 0; i < testSamples.Count(); i++)
+         {
+            (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(testSamples[i], true) }.ToExamples();
+            Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
+            int currentSampleClass = (int)valueTuple.Item2[0];
+            int predictedClass = (int)predictionNode.Value;
+
+            testSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
+
+
+            //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
+            //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
          }
 
          Console.WriteLine();
 
-         // Compute the Matthews coefficient for each class
-         for (int labelIndex = 0; labelIndex < labelCount; labelIndex++)
+
+         List<double> matthewsCorrelationCoefficients = trainingSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
+
+         Console.WriteLine("Training set Matthews Correlation Coefficients");
+
+         foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
          {
-            int truePositives = 0;
-            int falsePositives = 0;
-            int falseNegatives = 0;
-            int trueNegatives = 0;
+            Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
+         }
 
-            for (int i = 0; i < labelCount; i++)
-            {
-               for (int j = 0; j < labelCount; j++)
-               {
-                  if (i == labelIndex)
-                  {
-                     if (j == labelIndex)
-                     {
-                        truePositives += confusionMatrix[i][j];
-                     }
-                     else
-                     {
-                        falsePositives += confusionMatrix[i][j];
-                     }
-                  }
-                  else
-                  {
-                     if (i == j)
-                     {
-                        trueNegatives += confusionMatrix[i][j];
-                     }
-                     else
-                     {
-                        falseNegatives += confusionMatrix[i][j];
-                     }
-                  }
-               }
-            }
+         Console.WriteLine();
+         Console.WriteLine("Test set Matthews Correlation Coefficients");
 
-            double mccDenominator = (truePositives + falsePositives) * 
-                                    (truePositives + falseNegatives) *
-                                    (trueNegatives + falsePositives) *
-                                    (trueNegatives + falseNegatives);
+         matthewsCorrelationCoefficients = testSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
 
-            if(mccDenominator == 0.0)
-            {
-               mccDenominator = 1.0;
-            }
-            else
-            {
-               mccDenominator = Math.Sqrt(mccDenominator);
-            }
-
-            double mcc = ((truePositives * trueNegatives) - (falsePositives * falseNegatives)) / mccDenominator;
-
-            Console.Write(mcc.ToString() + ";");
+         foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
+         {
+            Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
          }
 
          Console.WriteLine();
@@ -289,6 +284,115 @@
 
             Console.WriteLine();
          }
+      }
+   }
+
+   public class ConfusionMatrix
+   {
+      public int LabelCount
+      {
+         get
+         {
+            return Matrix.Count();
+         }
+
+         private set
+         {
+            int labelCount = value;
+
+            Matrix.ShouldBeNull();
+
+            Matrix = new List<List<int>>(value);
+
+            for (int i = 0; i < labelCount; i++)
+            {
+               List<int> matrixLine = new List<int>(labelCount);
+
+               matrixLine.AddRange(Enumerable.Repeat(0, labelCount));
+
+               Matrix.Add(matrixLine);
+            }
+         }
+      }
+
+      private List<List<int>> Matrix
+      {
+         get;
+         set;
+      }
+
+      public ConfusionMatrix(int labelCount)
+      {
+         LabelCount = labelCount;
+      }
+
+      public void AddPrediction(int expectedSampleLabel, int predictedSampleLabel)
+      {
+         Matrix[expectedSampleLabel][predictedSampleLabel]++;
+      }
+
+      // Based on https://en.wikipedia.org/wiki/Matthews_correlation_coefficient
+      public List<double> ComputeMatthewsCorrelationCoefficient()
+      {
+         List<double> matthewsCorrelationCoefficients = new List<double>(LabelCount);
+
+         // Compute the Matthews coefficient for each class
+         for (int labelIndex = 0; labelIndex < LabelCount; labelIndex++)
+         {
+            int truePositives = 0;
+            int falsePositives = 0;
+            int falseNegatives = 0;
+            int trueNegatives = 0;
+
+            for (int i = 0; i < LabelCount; i++)
+            {
+               for (int j = 0; j < LabelCount; j++)
+               {
+                  if (i == labelIndex)
+                  {
+                     if (j == labelIndex)
+                     {
+                        truePositives += Matrix[i][j];
+                     }
+                     else
+                     {
+                        falsePositives += Matrix[i][j];
+                     }
+                  }
+                  else
+                  {
+                     if (i == j)
+                     {
+                        trueNegatives += Matrix[i][j];
+                     }
+                     else
+                     {
+                        falseNegatives += Matrix[i][j];
+                     }
+                  }
+               }
+            }
+
+            double matthewsCorrelationCoefficientDenominator = (truePositives + falsePositives) *
+                                    (truePositives + falseNegatives) *
+                                    (trueNegatives + falsePositives) *
+                                    (trueNegatives + falseNegatives);
+
+            if (matthewsCorrelationCoefficientDenominator == 0.0)
+            {
+               matthewsCorrelationCoefficientDenominator = 1.0;
+            }
+            else
+            {
+               matthewsCorrelationCoefficientDenominator = Math.Sqrt(matthewsCorrelationCoefficientDenominator);
+            }
+
+            double matthewsCorrelationCoefficient = ((truePositives * trueNegatives) - (falsePositives * falseNegatives)) / matthewsCorrelationCoefficientDenominator;
+
+            matthewsCorrelationCoefficients.Add(matthewsCorrelationCoefficient);
+         }
+
+         return matthewsCorrelationCoefficients;
       }
    }
 }
