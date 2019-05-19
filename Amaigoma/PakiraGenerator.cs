@@ -14,8 +14,8 @@
 
    public class PakiraGenerator : DecisionTreeGenerator
    {
-      static public double UNKNOWN_CLASS_INDEX = -1.0;
-      static public double INSUFFICIENT_SAMPLES_CLASS_INDEX = -2.0;
+      static public int UNKNOWN_CLASS_INDEX = -1;
+      static public int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
 
       public PakiraGenerator()
       {
@@ -135,7 +135,7 @@
             }
          }
 
-         Tuple<int, double, Range[]> tuple = GetBestSplit(samples, x, y);
+         Tuple<int, double, Range[]> tuple = GetBestSplit(samples, x);
          int col = tuple.Item1;
          double gain = tuple.Item2;
          Range[] segments = tuple.Item3;
@@ -279,7 +279,7 @@
       /// <param name="y">The Vector to process.</param>
       /// <param name="used">The used.</param>
       /// <returns>The best split.</returns>
-      private Tuple<int, double, Range[]> GetBestSplit(Matrix samples, Matrix x, Vector y)
+      private Tuple<int, double, Range[]> GetBestSplit(Matrix samples, Matrix x)
       {
          double bestGain = 0.0;
          int bestFeature = -1;

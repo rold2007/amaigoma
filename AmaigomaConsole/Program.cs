@@ -1,6 +1,7 @@
 ﻿namespace AmaigomaConsole
 {
    using Amaigoma;
+   using ExtensionMethods;
    using numl;
    using numl.Math.LinearAlgebra;
    using numl.Math.Probability;
@@ -15,7 +16,7 @@
 
    class Program
    {
-      static void Main(string[] args)
+      static void Main()
       {
          List<Property> features = new List<Property>();
 
@@ -40,11 +41,11 @@
 
          for (int i = 0; i < 100; i++)
          {
-            RandomFeature randomFeature = new RandomFeature()
-            {
-               Name = "Random" + i.ToString(),
-               Type = typeof(System.Double)
-            };
+            //RandomFeature randomFeature = new RandomFeature()
+            //{
+            //   Name = "Random" + i.ToString(),
+            //   Type = typeof(System.Double)
+            //};
 
             //features.Add(randomFeature);
          }
@@ -68,57 +69,23 @@
          Iris[] data = Iris.Load();
          List<Generator> generators = new List<Generator>();
 
-         List<Iris> samples1000 = new List<Iris>();
-         List<Iris> samples5000 = new List<Iris>();
-         List<Iris> samples10000 = new List<Iris>();
-         int minimumSampleCount = 10;
+         const int sampleCount = 100000;
+         const int minimumSampleCount = /*500*/50;
+         List<Iris> samples = new List<Iris>();
 
-         for (int i = 0; i < 1000; i++)
+         for (int i = 0; i < sampleCount; i++)
          {
-            decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
-            decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
-            decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
-            decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
+            decimal sepalLength = Convert.ToDecimal(MySampling.GetUniform(0.1, 10.0));
+            decimal sepalWidth = Convert.ToDecimal(MySampling.GetUniform(0.1, 6.0));
+            decimal petalLength = Convert.ToDecimal(MySampling.GetUniform(0.1, 8.0));
+            decimal petalWidth = Convert.ToDecimal(MySampling.GetUniform(0.1, 3.0));
 
-            samples1000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+            //System.Diagnostics.Debug.WriteLine(sepalLength.ToString() + ";" + sepalWidth.ToString());
+
+            samples.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
          }
 
-         for (int i = 0; i < 5000; i++)
-         {
-            decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
-            decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
-            decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
-            decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
-
-            samples5000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
-         }
-
-         for (int i = 0; i < 10000; i++)
-         {
-            decimal sepalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 10.0));
-            decimal sepalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 6.0));
-            decimal petalLength = Convert.ToDecimal(Sampling.GetUniform(0.1, 8.0));
-            decimal petalWidth = Convert.ToDecimal(Sampling.GetUniform(0.1, 3.0));
-
-            samples10000.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
-         }
-
-
-         // generators.Add(new PakiraGenerator());
-         //generators.Add(new DecisionTreeGenerator(description));
-         //generators.Add(new DecisionTreeGenerator(10, 2, description));
-         //generators.Add(new DecisionTreeGenerator(fluentDescriptor));
-         //generators.Add(new NaiveBayesGenerator(2));
-         //generators.Add(new NaiveBayesGenerator(3));
-         //generators.Add(new NaiveBayesGenerator(5));
-         //generators.Add(new NaiveBayesGenerator(8));
-         //generators.Add(new NaiveBayesGenerator(13));
-         //generators.Add(new NaiveBayesGenerator(21));
-         //generators.Add(new PakiraGenerator(fluentDescriptor, samples1000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
-         //generators.Add(new PakiraGenerator(fluentDescriptor, samples5000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
-         //generators.Add(new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, 10));
-
-         PakiraGenerator pakiraGenerator = new PakiraGenerator(fluentDescriptor, samples10000, PakiraGenerator.UNKNOWN_CLASS_INDEX, minimumSampleCount);
+         PakiraGenerator pakiraGenerator = new PakiraGenerator(fluentDescriptor, samples, PakiraGenerator.UNKNOWN_CLASS_INDEX, minimumSampleCount);
          PakiraModel pakiraModel;
          List<Iris> trainingSet = new List<Iris>() { data[0], data[50], data[100] };
          List<Iris> trainingSamples = new List<Iris>();
@@ -144,65 +111,104 @@
          //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[50], data[51], data[100], data[101] });
          //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[51], data[52], data[53], data[54], data[100] });
          //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[2], data[50], data[51], data[52], data[100], data[101], data[102] });
-         pakiraModel = pakiraGenerator.Generate(trainingSet);
 
-         Console.WriteLine("Model " + pakiraModel.ToString());
-
-         int labelCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Count();
-         ConfusionMatrix trainingSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
-         ConfusionMatrix testSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
-
-         for (int i = 0; i < trainingSamples.Count(); i++)
+         for (int j = 0; j < 10; j++)
          {
-            (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[i], true) }.ToExamples();
-            Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
-            int currentSampleClass = (int)valueTuple.Item2[0];
-            int predictedClass = (int)predictionNode.Value;
+            Console.WriteLine("Training " + j.ToString());
 
-            trainingSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
+            pakiraModel = pakiraGenerator.Generate(trainingSet);
+
+            Console.WriteLine("Model " + pakiraModel.ToString());
+
+            int labelCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Count();
+            ConfusionMatrix trainingSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
+            ConfusionMatrix testSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
+            Dictionary<Node, int> failedNodes = new Dictionary<Node, int>();
+
+            for (int i = 0; i < trainingSamples.Count(); i++)
+            {
+               (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[i], true) }.ToExamples();
+               Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
+               int currentSampleClass = (int)valueTuple.Item2[0];
+               int predictedClass = (int)predictionNode.Value;
+
+               trainingSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
+
+               if (currentSampleClass != predictedClass)
+               {
+                  predictedClass.ShouldNotBe<int>(labelCount + PakiraGenerator.INSUFFICIENT_SAMPLES_CLASS_INDEX);
+                  
+                  if (failedNodes.ContainsKey(predictionNode))
+                  {
+                     // For now, we simply keep the first fail found
+                     // But it would probably be better to keep only the worst fail found
+                     // The worst fail would have the strongest bad prediction of the last node
+
+                     //(Matrix, Vector) previousFailValueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[failedNodes[predictionNode]], true) }.ToExamples();
+                  }
+                  else
+                  {
+                     failedNodes[predictionNode] = i;
+                  }
+               }
+
+               //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
+               //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
+            }
+
+            for (int i = 0; i < testSamples.Count(); i++)
+            {
+               (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(testSamples[i], true) }.ToExamples();
+               Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
+               int currentSampleClass = (int)valueTuple.Item2[0];
+               int predictedClass = (int)predictionNode.Value;
+
+               testSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
 
 
-            //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
-            //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
+               //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
+               //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
+            }
+
+            Console.WriteLine();
+
+
+            List<double> matthewsCorrelationCoefficients = trainingSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
+
+            Console.WriteLine("Training set Matthews Correlation Coefficients");
+
+            foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
+            {
+               Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("Test set Matthews Correlation Coefficients");
+
+            matthewsCorrelationCoefficients = testSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
+
+            foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
+            {
+               Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
+            }
+
+            Console.WriteLine();
+
+            SortedSet<int> sortedDataIndices = new SortedSet<int>();
+
+            // Transfer some samples from the training samples to the training set
+            foreach (int dataIndex in failedNodes.Values)
+            {
+               trainingSet.Add(trainingSamples[dataIndex]);
+               sortedDataIndices.Add(dataIndex);
+            }
+
+            foreach (int dataIndex in sortedDataIndices.Reverse())
+            {
+               trainingSamples.RemoveAt(dataIndex);
+            }
          }
 
-         for (int i = 0; i < testSamples.Count(); i++)
-         {
-            (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(testSamples[i], true) }.ToExamples();
-            Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
-            int currentSampleClass = (int)valueTuple.Item2[0];
-            int predictedClass = (int)predictionNode.Value;
-
-            testSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
-
-
-            //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
-            //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
-         }
-
-         Console.WriteLine();
-
-
-         List<double> matthewsCorrelationCoefficients = trainingSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
-
-         Console.WriteLine("Training set Matthews Correlation Coefficients");
-
-         foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
-         {
-            Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
-         }
-
-         Console.WriteLine();
-         Console.WriteLine("Test set Matthews Correlation Coefficients");
-
-         matthewsCorrelationCoefficients = testSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
-
-         foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
-         {
-            Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
-         }
-
-         Console.WriteLine();
 
          int generatorIndex = 0;
 
@@ -393,6 +399,24 @@
          }
 
          return matthewsCorrelationCoefficients;
+      }
+   }
+}
+
+namespace ExtensionMethods
+{
+   public class MySampling
+   {
+      /// <summary>
+      /// Produce a uniform random sample from the open interval (min, max). The method will not return
+      /// either end point
+      /// </summary>
+      /// <param name="min"></param>
+      /// <param name="max"></param>
+      /// <returns></returns>
+      public static double GetUniform(double min = 0d, double max = 1.0d)
+      {
+         return (min + (numl.Math.Probability.Sampling.GetUniform() * ((max - min))));
       }
    }
 }
