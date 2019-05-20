@@ -11,6 +11,8 @@
    using System;
    using System.Collections.Generic;
    using System.Linq;
+   using System.Threading;
+   using System.Threading.Tasks;
 
    public class PakiraGenerator : DecisionTreeGenerator
    {
@@ -281,9 +283,6 @@
       /// <returns>The best split.</returns>
       private Tuple<int, double, Range[]> GetBestSplit(Matrix samples, Matrix x)
       {
-         double bestGain = 0.0;
-         int bestFeature = -1;
-
          Range[] bestSegments = null;
 
          Summary featureProperties = new Summary()
@@ -294,10 +293,13 @@
             Maximum = samples.Max(VectorType.Row),
          };
 
-         for (int col = 0; col < samples.Cols; col++)
+         double[] gains = new double[samples.Cols];
+
+         Parallel.For(0, samples.Cols, col =>
+         //for (int col = 0; col < samples.Cols; col++)
          {
             double gain = 0;
-            Range[] segments = null;
+            //Range[] segments = null;
 
             // get appropriate feature at index i
             // (important on because of multivalued
@@ -325,21 +327,44 @@
                   for (int row = 0; row < x.Rows; row++)
                   {
                      double rowValue = x[row][col];
-                     double rowValueSigma = rowValue - average / standardDeviation;
+                     double rowValueSigma = (rowValue - average) / standardDeviation;
 
-                     gain = Math.Abs(rowValueSigma);
-                     segments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
+                     gain = Math.Max(gain, Math.Abs(rowValueSigma));
+                     //segments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
                   }
                }
             }
 
+            gains[col] = gain;
+
             // best one?
+            //if (gain > bestGain)
+            //{
+            //   bestGain = gain;
+            //   bestFeature = col;
+            //   bestSegments = segments;
+            //}
+         }
+         );
+
+         double bestGain = 0.0;
+         int bestFeature = -1;
+
+         for (int col = 0; col < samples.Cols; col++)
+         {
+            double gain = gains[col];
+
             if (gain > bestGain)
             {
                bestGain = gain;
                bestFeature = col;
-               bestSegments = segments;
             }
+         }
+
+         {
+            double average = featureProperties.Average[bestFeature];
+
+            bestSegments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
          }
 
          return new Tuple<int, double, Range[]>(bestFeature, bestGain, bestSegments);
