@@ -1,5 +1,6 @@
 ﻿namespace Amaigoma
 {
+   using ExtensionMethods;
    using numl.Data;
    using numl.Math;
    using numl.Math.LinearAlgebra;
@@ -11,7 +12,6 @@
    using System;
    using System.Collections.Generic;
    using System.Linq;
-   using System.Threading;
    using System.Threading.Tasks;
 
    public class PakiraGenerator : DecisionTreeGenerator
@@ -47,9 +47,9 @@
          {
             samples = value;
 
-            IEnumerable<IEnumerable<double>> doubles = Descriptor.Convert(value, false);
+            IEnumerable<IEnumerable<double>> doubles = Descriptor.Convert(value, false, false);
 
-            convertedSamples = doubles.ToMatrix();
+            convertedSamples = doubles.ToMatrixParallel();
          }
       }
 
@@ -377,6 +377,84 @@
             IsLeaf = true,
             Value = val
          };
+      }
+   }
+}
+
+namespace ExtensionMethods
+{
+   using numl.Math.LinearAlgebra;
+   using System;
+   using System.Collections.Generic;
+   using System.Linq;
+
+   public class MySampling
+   {
+      /// <summary>
+      /// Produce a uniform random sample from the open interval (min, max). The method will not return
+      /// either end point
+      /// </summary>
+      /// <param name="min"></param>
+      /// <param name="max"></param>
+      /// <returns></returns>
+      public static double GetUniform(double min = 0d, double max = 1.0d)
+      {
+         return (min + (numl.Math.Probability.Sampling.GetUniform() * ((max - min))));
+      }
+   }
+
+   public static class MyConversions
+   {
+      private static Matrix Build(double[][] x)
+      {
+         // rows
+         int n = x.Length;
+         if (n == 0)
+            throw new InvalidOperationException("Empty matrix (n)");
+
+         // cols (being nice here...)
+         var cols = x.Select(v => v.Length);
+         int d = cols.Max();
+
+         if (d == 0)
+            throw new InvalidOperationException("Empty matrix (d)");
+
+         // total zeros in matrix
+         var zeros = (from v in x select v.Count(i => i == 0)).Sum();
+
+         // if irregularities in jagged matrix, need to 
+         // pad rows with less columns with additional
+         // zeros by subtracting max width with each
+         // individual row and getting the sum
+         var pad = cols.Select(c => d - c).Sum();
+
+         // check sparsity
+         //var percent = (decimal)(zeros + pad) / (decimal)(n * d);
+
+         Matrix m = Matrix.Zeros(n, d);
+
+         return m;
+      }
+
+      public static Matrix ToMatrixParallel(this IEnumerable<IEnumerable<double>> matrix)
+      {
+         // materialize
+         //double[][] x = (from v in matrix select v.ToArray()).ToArray();
+         double[][] x = (from v in matrix.AsParallel() select v.ToArray()).ToArray();
+
+         // determine matrix
+         // size and type
+         var m = Build(x);
+
+         // fill 'er up!
+         for (int i = 0; i < m.Rows; i++)
+            for (int j = 0; j < m.Cols; j++)
+               if (j >= x[i].Length)  // over bound limits
+                  m[i, j] = 0;       // pad overflow to 0
+               else
+                  m[i, j] = x[i][j];
+
+         return m;
       }
    }
 }
