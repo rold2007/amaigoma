@@ -4,7 +4,6 @@
    using ExtensionMethods;
    using numl;
    using numl.Math.LinearAlgebra;
-   using numl.Math.Probability;
    using numl.Model;
    using numl.Supervised;
    using numl.Supervised.DecisionTree;
@@ -13,6 +12,7 @@
    using System;
    using System.Collections.Generic;
    using System.Linq;
+   using System.Threading.Tasks;
 
    class Program
    {
@@ -69,11 +69,12 @@
          Iris[] data = Iris.Load();
          List<Generator> generators = new List<Generator>();
 
-         const int sampleCount = 100000;
+         const int sampleCount = 50000;
          const int minimumSampleCount = /*500*/50;
-         List<Iris> samples = new List<Iris>();
+         Iris[] samples = new Iris[sampleCount];
 
-         for (int i = 0; i < sampleCount; i++)
+         Parallel.For(0, sampleCount, i =>
+         //for (int i = 0; i < sampleCount; i++)
          {
             decimal sepalLength = Convert.ToDecimal(MySampling.GetUniform(0.1, 10.0));
             decimal sepalWidth = Convert.ToDecimal(MySampling.GetUniform(0.1, 6.0));
@@ -82,8 +83,10 @@
 
             //System.Diagnostics.Debug.WriteLine(sepalLength.ToString() + ";" + sepalWidth.ToString());
 
-            samples.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+            //samples.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+            samples[i] = new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty };
          }
+         );
 
          PakiraGenerator pakiraGenerator = new PakiraGenerator(fluentDescriptor, samples, PakiraGenerator.UNKNOWN_CLASS_INDEX, minimumSampleCount);
          PakiraModel pakiraModel;
@@ -137,7 +140,7 @@
                if (currentSampleClass != predictedClass)
                {
                   predictedClass.ShouldNotBe<int>(labelCount + PakiraGenerator.INSUFFICIENT_SAMPLES_CLASS_INDEX);
-                  
+
                   if (failedNodes.ContainsKey(predictionNode))
                   {
                      // For now, we simply keep the first fail found
@@ -399,24 +402,6 @@
          }
 
          return matthewsCorrelationCoefficients;
-      }
-   }
-}
-
-namespace ExtensionMethods
-{
-   public class MySampling
-   {
-      /// <summary>
-      /// Produce a uniform random sample from the open interval (min, max). The method will not return
-      /// either end point
-      /// </summary>
-      /// <param name="min"></param>
-      /// <param name="max"></param>
-      /// <returns></returns>
-      public static double GetUniform(double min = 0d, double max = 1.0d)
-      {
-         return (min + (numl.Math.Probability.Sampling.GetUniform() * ((max - min))));
       }
    }
 }
