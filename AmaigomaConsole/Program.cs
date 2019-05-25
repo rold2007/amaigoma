@@ -69,8 +69,8 @@
          Iris[] data = Iris.Load();
          List<Generator> generators = new List<Generator>();
 
-         const int sampleCount = 50000;
-         const int minimumSampleCount = /*500*/50;
+         const int sampleCount = 400000;
+         const int minimumSampleCount = /*500*/100;
          Iris[] samples = new Iris[sampleCount];
 
          Parallel.For(0, sampleCount, i =>
@@ -83,10 +83,10 @@
 
             //System.Diagnostics.Debug.WriteLine(sepalLength.ToString() + ";" + sepalWidth.ToString());
 
-            //samples.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
+            // samples.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
             samples[i] = new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty };
          }
-         );
+          );
 
          PakiraGenerator pakiraGenerator = new PakiraGenerator(fluentDescriptor, samples, PakiraGenerator.UNKNOWN_CLASS_INDEX, minimumSampleCount);
          PakiraModel pakiraModel;
@@ -115,9 +115,13 @@
          //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[51], data[52], data[53], data[54], data[100] });
          //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[2], data[50], data[51], data[52], data[100], data[101], data[102] });
 
-         for (int j = 0; j < 10; j++)
+         bool trainingSamplesCountIncreased = true;
+         int previousSamplesCount = -1;
+         int trainingRound = 0;
+
+         while (trainingSamplesCountIncreased)
          {
-            Console.WriteLine("Training " + j.ToString());
+            Console.WriteLine("Training " + trainingRound.ToString());
 
             pakiraModel = pakiraGenerator.Generate(trainingSet);
 
@@ -168,6 +172,11 @@
 
                testSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
 
+               if (currentSampleClass != predictedClass)
+               {
+                  Console.WriteLine("Expected " + currentSampleClass.ToString() + " but predicted " + predictedClass.ToString());
+               }
+
 
                //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
                //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
@@ -210,6 +219,11 @@
             {
                trainingSamples.RemoveAt(dataIndex);
             }
+
+            trainingSamplesCountIncreased = (previousSamplesCount != trainingSamples.Count());
+            previousSamplesCount = trainingSamples.Count();
+
+            trainingRound++;
          }
 
 
