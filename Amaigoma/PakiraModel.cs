@@ -7,7 +7,7 @@
    using System.Linq;
    using System.Text;
 
-   public class PakiraModel : DecisionTreeModel
+   public class PakiraModel : PakiraDecisionTreeModel
    {
       /// <summary>Default constructor.</summary>
       public PakiraModel() : base()

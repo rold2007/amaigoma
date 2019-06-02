@@ -14,7 +14,7 @@
    using System.Linq;
    using System.Threading.Tasks;
 
-   public class PakiraGenerator : DecisionTreeGenerator
+   public class PakiraGenerator : PakiraDecisionTreeGenerator
    {
       static public int UNKNOWN_CLASS_INDEX = -1;
       static public int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
@@ -23,7 +23,7 @@
       {
       }
 
-      public PakiraGenerator(Descriptor descriptor, IEnumerable<object> samples, double defaultClassIndex, int minimumSampleCount) : this()
+      public PakiraGenerator(PakiraDescriptor descriptor, IEnumerable<object> samples, double defaultClassIndex, int minimumSampleCount) : this()
       {
          Descriptor = descriptor;
          Samples = samples;
@@ -69,7 +69,7 @@
          return Generate(Descriptor, examples) as PakiraModel;
       }
 
-      public override IModel Generate(Matrix x, Vector y)
+      public override BaseModel Generate(Matrix x, Vector y)
       {
          if (Descriptor == null)
          {
@@ -352,12 +352,12 @@
 
          for (int col = 0; col < samples.Cols; col++)
          {
-            double gain = gains[col];
+               double gain = gains[col];
 
-            if (gain > bestGain)
-            {
-               bestGain = gain;
-               bestFeature = col;
+               if (gain > bestGain)
+               {
+                  bestGain = gain;
+                  bestFeature = col;
             }
          }
 

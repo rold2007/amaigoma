@@ -1,6 +1,7 @@
 namespace Amaigoma
 {
-   using numl.Model;
+    using ExtensionMethods;
+    using numl.Model;
    using numl.Utils;
    using System;
    using System.Collections.Generic;
@@ -139,7 +140,9 @@ namespace Amaigoma
       /// <returns>Lazy list of doubles.</returns>
       public override IEnumerable<double> Convert(object o)
       {
-         yield return (numl.Math.Probability.Sampling.GetNormal(0, 10));
+         double randomValue = MySampling.GetUniform(0.1, 10.0);
+
+         yield return randomValue;
       }
    }
 }
