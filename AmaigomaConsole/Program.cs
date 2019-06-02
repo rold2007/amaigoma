@@ -3,6 +3,7 @@
    using Amaigoma;
    using ExtensionMethods;
    using numl;
+   using numl.Data;
    using numl.Math.LinearAlgebra;
    using numl.Model;
    using numl.Supervised;
@@ -39,24 +40,23 @@
             features.Add(productFeature);
          }
 
-         for (int i = 0; i < 100; i++)
+         for (int i = 0; i < 1; i++)
          {
-            //RandomFeature randomFeature = new RandomFeature()
-            //{
-            //   Name = "Random" + i.ToString(),
-            //   Type = typeof(System.Double)
-            //};
+            RandomFeature randomFeature = new RandomFeature()
+            {
+               Name = "Random" + i.ToString(),
+               Type = typeof(System.Double)
+            };
 
-            //features.Add(randomFeature);
+            features.Add(randomFeature);
          }
 
-         Descriptor description = Descriptor.Create<Iris>();
-         Descriptor fluentDescriptor = Descriptor.New(typeof(Iris))
+         PakiraDescriptor description = PakiraDescriptor.Create<Iris>();
+         PakiraDescriptor fluentDescriptor = PakiraDescriptor.New(typeof(Iris))
                                                    .With("SepalLength").As(typeof(decimal))
                                                    .With("SepalWidth").As(typeof(double))
                                                    .With("PetalLength").As(typeof(decimal))
                                                    .With("PetalWidth").As(typeof(int))
-                                                   //.With("Sum").As(customFeature)
                                                    .Learn("Class").As(typeof(string));
 
          features.AddRange(fluentDescriptor.Features);
@@ -127,84 +127,99 @@
 
             Console.WriteLine("Model " + pakiraModel.ToString());
 
-            int labelCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Count();
-            ConfusionMatrix trainingSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
-            ConfusionMatrix testSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
             Dictionary<Node, int> failedNodes = new Dictionary<Node, int>();
 
-            for (int i = 0; i < trainingSamples.Count(); i++)
+            for (int swapRootNode = 0; swapRootNode < 2; swapRootNode++)
             {
-               (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[i], true) }.ToExamples();
-               Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
-               int currentSampleClass = (int)valueTuple.Item2[0];
-               int predictedClass = (int)predictionNode.Value;
+               int labelCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Count();
+               ConfusionMatrix trainingSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
+               ConfusionMatrix testSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
 
-               trainingSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
-
-               if (currentSampleClass != predictedClass)
+               for (int i = 0; i < trainingSamples.Count(); i++)
                {
-                  predictedClass.ShouldNotBe<int>(labelCount + PakiraGenerator.INSUFFICIENT_SAMPLES_CLASS_INDEX);
+                  (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[i], true) }.ToExamples();
+                  Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
+                  int currentSampleClass = (int)valueTuple.Item2[0];
+                  int predictedClass = (int)predictionNode.Value;
 
-                  if (failedNodes.ContainsKey(predictionNode))
-                  {
-                     // For now, we simply keep the first fail found
-                     // But it would probably be better to keep only the worst fail found
-                     // The worst fail would have the strongest bad prediction of the last node
+                  trainingSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
 
-                     //(Matrix, Vector) previousFailValueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[failedNodes[predictionNode]], true) }.ToExamples();
-                  }
-                  else
+                  if (swapRootNode == 0)
                   {
-                     failedNodes[predictionNode] = i;
+                     if (currentSampleClass != predictedClass)
+                     {
+                        predictedClass.ShouldNotBe<int>(labelCount + PakiraGenerator.INSUFFICIENT_SAMPLES_CLASS_INDEX);
+
+                        if (failedNodes.ContainsKey(predictionNode))
+                        {
+                           // For now, we simply keep the first fail found
+                           // But it would probably be better to keep only the worst fail found
+                           // The worst fail would have the strongest bad prediction of the last node
+
+                           //(Matrix, Vector) previousFailValueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[failedNodes[predictionNode]], true) }.ToExamples();
+                        }
+                        else
+                        {
+                           failedNodes[predictionNode] = i;
+                        }
+                     }
                   }
+
+                  //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
+                  //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
                }
 
-               //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
-               //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
-            }
-
-            for (int i = 0; i < testSamples.Count(); i++)
-            {
-               (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(testSamples[i], true) }.ToExamples();
-               Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
-               int currentSampleClass = (int)valueTuple.Item2[0];
-               int predictedClass = (int)predictionNode.Value;
-
-               testSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
-
-               if (currentSampleClass != predictedClass)
+               for (int i = 0; i < testSamples.Count(); i++)
                {
-                  Console.WriteLine("Expected " + currentSampleClass.ToString() + " but predicted " + predictedClass.ToString());
+                  (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(testSamples[i], true) }.ToExamples();
+                  Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
+                  int currentSampleClass = (int)valueTuple.Item2[0];
+                  int predictedClass = (int)predictionNode.Value;
+
+                  testSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
+
+                  if (currentSampleClass != predictedClass)
+                  {
+                     //Console.WriteLine("Expected " + currentSampleClass.ToString() + " but predicted " + predictedClass.ToString());
+                  }
+
+
+                  //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
+                  //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
                }
 
+               Console.WriteLine();
 
-               //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
-               //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
+
+               List<double> matthewsCorrelationCoefficients = trainingSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
+
+               Console.WriteLine("Training set Matthews Correlation Coefficients");
+
+               foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
+               {
+                  Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
+               }
+
+               Console.WriteLine();
+               Console.WriteLine("Test set Matthews Correlation Coefficients");
+
+               matthewsCorrelationCoefficients = testSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
+
+               foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
+               {
+                  Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
+               }
+
+               Console.WriteLine();
+
+               if(swapRootNode == 0)
+               {
+                  IEdge[] edges = pakiraModel.Tree.GetOutEdges(pakiraModel.Tree.Root).ToArray();
+
+                  // Swap values using tuples
+                  (edges[0].ChildId, edges[1].ChildId) = (edges[1].ChildId, edges[0].ChildId);
+               }
             }
-
-            Console.WriteLine();
-
-
-            List<double> matthewsCorrelationCoefficients = trainingSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
-
-            Console.WriteLine("Training set Matthews Correlation Coefficients");
-
-            foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
-            {
-               Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("Test set Matthews Correlation Coefficients");
-
-            matthewsCorrelationCoefficients = testSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
-
-            foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
-            {
-               Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
-            }
-
-            Console.WriteLine();
 
             SortedSet<int> sortedDataIndices = new SortedSet<int>();
 
