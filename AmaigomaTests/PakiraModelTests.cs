@@ -1,14 +1,15 @@
-using System;
-using Xunit;
-
 namespace AmaigomaTests
 {
-    public class UnitTest1
-    {
-        [Fact]
-        public void Test1()
-        {
+   using Amaigoma;
+   using System;
+   using Xunit;
 
-        }
-    }
+   public class PakiraModelTests
+   {
+      [Fact]
+      public void Constructor()
+      {
+         PakiraModel pakiraModel = new PakiraModel();
+      }
+   }
 }

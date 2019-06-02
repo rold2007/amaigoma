@@ -55,6 +55,52 @@
 
       public int MinimumSampleCount { get; set; }
 
+      public PakiraModel Generate(IEnumerable<int[]> examples)
+      {
+         if (Descriptor == null)
+         {
+            throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
+         }
+
+         StringProperty labelsProperty = Descriptor.Label as StringProperty;
+         List<string> labelsList = new List<string>(labelsProperty.Dictionary)
+         {
+            "Insufficient",
+            "Unknown"
+         };
+
+         labelsProperty.Dictionary = labelsList.ToArray();
+
+         if (Hint != UNKNOWN_CLASS_INDEX)
+         {
+            const string errorMessage = "Default class does not exists in descriptors.";
+
+            Should.NotThrow(() =>
+            {
+               object convertedHint = Descriptor.Label.Convert(Hint);
+
+               convertedHint.ShouldNotBeNull(errorMessage);
+            }, errorMessage
+            );
+         }
+
+         //this.Preprocess(x);
+
+         Tree tree = new Tree();
+
+         //tree.Root = BuildTree(convertedSamples, x, y, Depth, tree);
+
+         return new PakiraModel
+         {
+            Descriptor = Descriptor,
+            NormalizeFeatures = NormalizeFeatures,
+            FeatureNormalizer = FeatureNormalizer,
+            FeatureProperties = FeatureProperties,
+            Tree = tree,
+            Hint = Hint
+         };
+      }
+
       /// <summary>Generate model based on a set of examples.</summary>
       /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
       /// <param name="examples">Example set.</param>
