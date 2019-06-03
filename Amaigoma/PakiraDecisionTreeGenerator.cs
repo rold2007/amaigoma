@@ -107,11 +107,7 @@
          return new PakiraDecisionTreeModel
          {
             Descriptor = Descriptor,
-            NormalizeFeatures = NormalizeFeatures,
-            FeatureNormalizer = FeatureNormalizer,
-            FeatureProperties = FeatureProperties,
             Tree = tree,
-            Hint = Hint
          };
       }
 
