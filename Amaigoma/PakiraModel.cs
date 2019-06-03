@@ -12,6 +12,7 @@
       /// <summary>Default constructor.</summary>
       public PakiraModel() : base()
       {
+         Tree = new numl.Data.Tree();
       }
 
       /// <summary>Predicts the given y coordinate.</summary>
@@ -19,8 +20,6 @@
       /// <returns>A double.</returns>
       public new Node Predict(Vector y)
       {
-         this.Preprocess(y);
-
          return WalkNode(y, (Node)Tree.Root);
       }
 

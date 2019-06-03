@@ -6,30 +6,22 @@
    using numl.Math.LinearAlgebra;
    using System.Collections.Generic;
    using numl.Data;
-    using numl.Supervised.DecisionTree;
+   using numl.Supervised.DecisionTree;
 
-    /// <summary>A data Model for the decision tree.</summary>
-    public class PakiraDecisionTreeModel : BaseModel
+   /// <summary>A data Model for the decision tree.</summary>
+   public class PakiraDecisionTreeModel : BaseModel
    {
       public Tree Tree { get; set; }
-
-      /// <summary>Gets or sets the hint.</summary>
-      /// <value>The hint.</value>
-      public double Hint { get; set; }
 
       /// <summary>Default constructor.</summary>
       public PakiraDecisionTreeModel()
       {
-         // no hint
-         Hint = double.Epsilon;
       }
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>
       /// <returns>A double.</returns>
       public override double Predict(Vector y)
       {
-         this.Preprocess(y);
-
          return WalkNode(y, (Node)Tree.Root);
       }
 
@@ -58,10 +50,7 @@
                return WalkNode(v, (Node)Tree.GetVertex(edge.ChildId));
          }
 
-         if (Hint != double.Epsilon)
-            return Hint;
-         else
-            throw new InvalidOperationException(String.Format("Unable to match split value {0} for feature {1}[2]\nConsider setting a Hint in order to avoid this error.", v[col], Descriptor.At(col), col));
+         throw new InvalidOperationException(String.Format("Unable to match split value {0} for feature {1}[2]\nConsider setting a Hint in order to avoid this error.", v[col], Descriptor.At(col), col));
       }
 
       /// <summary>Returns a string that represents the current object.</summary>

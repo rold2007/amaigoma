@@ -55,14 +55,16 @@
 
       public int MinimumSampleCount { get; set; }
 
-      public PakiraModel Generate(IEnumerable<int[]> examples)
+      public void Generate(PakiraModel pakiraModel, IEnumerable<int[]> examples)
       {
-         if (Descriptor == null)
+         PakiraDescriptor pakiraDescriptor = pakiraModel.Descriptor;
+
+         if (pakiraDescriptor == null)
          {
             throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
          }
 
-         StringProperty labelsProperty = Descriptor.Label as StringProperty;
+         StringProperty labelsProperty = pakiraDescriptor.Label as StringProperty;
          List<string> labelsList = new List<string>(labelsProperty.Dictionary)
          {
             "Insufficient",
@@ -77,28 +79,23 @@
 
             Should.NotThrow(() =>
             {
-               object convertedHint = Descriptor.Label.Convert(Hint);
+               object convertedHint = pakiraDescriptor.Label.Convert(Hint);
 
                convertedHint.ShouldNotBeNull(errorMessage);
             }, errorMessage
             );
          }
 
-         //this.Preprocess(x);
-
-         Tree tree = new Tree();
+         //Tree tree = new Tree();
 
          //tree.Root = BuildTree(convertedSamples, x, y, Depth, tree);
+         //pakiraModel.Tree.Root = BuildTree(convertedSamples, x, y, Depth, tree);
 
-         return new PakiraModel
-         {
-            Descriptor = Descriptor,
-            NormalizeFeatures = NormalizeFeatures,
-            FeatureNormalizer = FeatureNormalizer,
-            FeatureProperties = FeatureProperties,
-            Tree = tree,
-            Hint = Hint
-         };
+         //return new PakiraModel
+         //{
+         //   Descriptor = descriptor,
+         //   Tree = tree,
+         //};
       }
 
       /// <summary>Generate model based on a set of examples.</summary>
@@ -153,11 +150,7 @@
          return new PakiraModel
          {
             Descriptor = Descriptor,
-            NormalizeFeatures = NormalizeFeatures,
-            FeatureNormalizer = FeatureNormalizer,
-            FeatureProperties = FeatureProperties,
             Tree = tree,
-            Hint = Hint
          };
       }
 

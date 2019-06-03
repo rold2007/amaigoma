@@ -18,37 +18,6 @@
       /// <value>The descriptor.</value>
       public PakiraDescriptor Descriptor { get; set; }
 
-      /// <summary>
-      /// Gets or Sets whether to perform feature normalization using the specified Feature Normalizer.
-      /// </summary>
-      public bool NormalizeFeatures { get; set; }
-
-      /// <summary>
-      /// Feature normalizer to use over each item.
-      /// </summary>
-      public INormalizer FeatureNormalizer { get; set; }
-
-      /// <summary>
-      /// Feature properties from the original item set.
-      /// </summary>
-      public Summary FeatureProperties { get; set; }
-
-      /// <summary>
-      /// Preprocessed the input vector.
-      /// </summary>
-      /// <param name="x">Input vector.</param>
-      /// <returns>Vector.</returns>
-      protected void Preprocess(Vector x)
-      {
-         if (this.NormalizeFeatures)
-         {
-            Vector xp = this.FeatureNormalizer.Normalize(x, this.FeatureProperties);
-
-            for (int i = 0; i < x.Length; i++)
-               x[i] = xp[i];
-         }
-      }
-
       /// <summary>Predicts the given o.</summary>
       /// <param name="y">The Vector to process.</param>
       /// <returns>An object.</returns>
