@@ -1,6 +1,7 @@
 ﻿namespace AmaigomaTests
 {
    using Amaigoma;
+   using MathNet.Numerics.LinearAlgebra;
    using numl.Model;
    using Shouldly;
    using System.Collections.Generic;
@@ -20,7 +21,9 @@
          PakiraGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          PakiraModel pakiraModel = new PakiraModel();
          PakiraDescriptor pakiraDescriptor = new PakiraDescriptor();
-         List<int[]> samples = new List<int[]>();
+         TestDataDistributionProvider testDataDistributionProvider = new TestDataDistributionProvider();
+         Matrix<double> samples = Matrix<double>.Build.Dense(2, 2);
+         Vector<double> labels = Vector<double>.Build.Dense(2);
          StringProperty labelsProperty = new StringProperty();
 
          labelsProperty.Dictionary = new string[] { "Label1", "Label2" };
@@ -28,10 +31,12 @@
 
          pakiraModel.Descriptor = pakiraDescriptor;
 
-         samples.Add(new int[] { 0, 0 });
-         samples.Add(new int[] { 1, 1 });
+         samples.At(0, 0, 0.0);
+         samples.At(0, 1, 0.0);
+         samples.At(1, 0, 1.0);
+         samples.At(1, 1, 1.0);
 
-         pakiraGenerator.Generate(pakiraModel, samples);
+         pakiraGenerator.Generate(pakiraModel, testDataDistributionProvider, samples, labels);
 
          pakiraModel.Tree.Root.ShouldNotBeNull();
       }
@@ -40,5 +45,9 @@
       {
          return new PakiraGenerator();
       }
+   }
+
+   internal class TestDataDistributionProvider : IDataProvider
+   {
    }
 }

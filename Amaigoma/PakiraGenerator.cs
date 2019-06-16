@@ -1,6 +1,7 @@
 ﻿namespace Amaigoma
 {
    using ExtensionMethods;
+   using MathNet.Numerics.LinearAlgebra;
    using numl.Data;
    using numl.Math;
    using numl.Math.LinearAlgebra;
@@ -11,6 +12,7 @@
    using Shouldly;
    using System;
    using System.Collections.Generic;
+   using System.Diagnostics;
    using System.Linq;
    using System.Threading.Tasks;
 
@@ -55,7 +57,7 @@
 
       public int MinimumSampleCount { get; set; }
 
-      public void Generate(PakiraModel pakiraModel, IEnumerable<int[]> examples)
+      public void Generate(PakiraModel pakiraModel, IDataProvider dataProvider, Matrix<double> trainSamples, Vector<double> trainLabels)
       {
          PakiraDescriptor pakiraDescriptor = pakiraModel.Descriptor;
 
@@ -86,16 +88,7 @@
             );
          }
 
-         //Tree tree = new Tree();
-
-         //tree.Root = BuildTree(convertedSamples, x, y, Depth, tree);
-         //pakiraModel.Tree.Root = BuildTree(convertedSamples, x, y, Depth, tree);
-
-         //return new PakiraModel
-         //{
-         //   Descriptor = descriptor,
-         //   Tree = tree,
-         //};
+         pakiraModel.Tree.Root = BuildTree(pakiraModel, dataProvider, trainSamples, trainLabels, pakiraModel.Tree.Root);
       }
 
       /// <summary>Generate model based on a set of examples.</summary>
@@ -152,6 +145,161 @@
             Descriptor = Descriptor,
             Tree = tree,
          };
+      }
+
+      private Node BuildTree(PakiraModel pakiraModel, IDataProvider dataProvider, Matrix<double> trainSamples, Vector<double> trainLabels, IVertex currentVertex)
+      {
+         Tree tree = pakiraModel.Tree;
+         Matrix<double> dataDistributionSamples = null;
+         int labelsCount = (Descriptor.Label as StringProperty).Dictionary.Length;
+
+         Tuple<int, double, Range[]> tuple = GetBestSplit(dataDistributionSamples, trainSamples);
+         int col = tuple.Item1;
+         double gain = tuple.Item2;
+         Range[] segments = tuple.Item3;
+
+         // Cannot find a split in the samples.
+         // Not enough samples or all samples are identical.
+         if (col == -1)
+         {
+            return BuildLeafNode(labelsCount + INSUFFICIENT_SAMPLES_CLASS_INDEX);
+         }
+
+         Node node = new Node
+         {
+            Column = col,
+            Gain = gain,
+            IsLeaf = false,
+            Name = Descriptor.ColumnAt(col)
+         };
+
+         // populate edges
+         List<Edge> edges = new List<Edge>(segments.Length);
+
+         for (int i = 0; i < segments.Length; i++)
+         {
+            // working set
+            Range segment = segments[i];
+            Edge edge = new Edge()
+            {
+               ParentId = node.Id,
+               Discrete = false,
+               Min = segment.Min,
+               Max = segment.Max
+            };
+
+            IEnumerable<int> samplesSlice = null;
+            IEnumerable<int> slice = null;
+
+            if (edge.Discrete)
+            {
+               Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+
+               // get discrete label
+               edge.Label = Descriptor.At(col).Convert(segment.Min).ToString();
+
+               Debug.Fail("Need to convert this code.");
+               //samplesSlice = dataDistributionSamples.Indices(v => v[col] == segment.Min);
+
+               // do value check for matrix slicing
+               Debug.Fail("Need to convert this code.");
+               //slice = x.Indices(v => v[col] == segment.Min);
+            }
+            else
+            {
+               // get range label
+               edge.Label = string.Format("{0} <= x < {1}", segment.Min, segment.Max);
+
+               Debug.Fail("Need to convert this code.");
+               //samplesSlice = dataDistributionSamples.Indices(v => v[col] >= segment.Min && v[col] < segment.Max);
+
+               // do range check for matrix slicing
+               Debug.Fail("Need to convert this code.");
+               //slice = x.Indices(v => v[col] >= segment.Min && v[col] < segment.Max);
+            }
+
+            Debug.Fail("Need to convert this code.");
+            //int sampleSliceCount = samplesSlice.Count();
+            int sampleSliceCount = -1;
+
+            if (sampleSliceCount >= MinimumSampleCount)
+            {
+               Debug.Fail("Need to convert this code.");
+               //int sliceCount = slice.Count();
+               int sliceCount = -1;
+
+               if (sliceCount > 0)
+               {
+                  Debug.Fail("Need to convert this code.");
+                  //Vector ySlice = y.Slice(slice);
+                  Vector ySlice = null;
+
+                  // only one answer, set leaf
+                  if (ySlice.Distinct().Count() == 1)
+                  {
+                     Node child = BuildLeafNode(ySlice[0]);
+
+                     tree.AddVertex(child);
+                     edge.ChildId = child.Id;
+                  }
+                  // otherwise continue to build tree
+                  else
+                  {
+                     Debug.Fail("Need to convert this code.");
+                     //Node child = BuildTree(dataDistributionSamples.Slice(samplesSlice), x.Slice(slice), ySlice, tree);
+                     Node child = null;
+
+                     tree.AddVertex(child);
+                     edge.ChildId = child.Id;
+                  }
+
+                  edges.Add(edge);
+               }
+               else
+               {
+                  // We don't have any training data for this node
+                  Node child = BuildLeafNode(Hint < 0 ? labelsCount + Hint : Hint);
+
+                  tree.AddVertex(child);
+                  edge.ChildId = child.Id;
+                  edges.Add(edge);
+               }
+            }
+            else
+            {
+               // We don't have enough sample data for this node
+               Node child = BuildLeafNode(labelsCount + INSUFFICIENT_SAMPLES_CLASS_INDEX);
+
+               tree.AddVertex(child);
+               edge.ChildId = child.Id;
+               edges.Add(edge);
+            }
+         }
+
+         // problem, need to convert
+         // parent to terminal node
+         // with mode
+         if (edges.Count <= 1)
+         {
+            Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+
+            //double val = y.Mode();
+
+            //node.IsLeaf = true;
+            //node.Value = val;
+         }
+
+         tree.AddVertex(node);
+
+         if (edges.Count > 1)
+         {
+            foreach (Edge e in edges)
+            {
+               tree.AddEdge(e);
+            }
+         }
+
+         return node;
       }
 
       /// <summary>Builds a tree.</summary>
@@ -216,7 +364,7 @@
 
             if (edge.Discrete)
             {
-               System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+               Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
 
                // get discrete label
                edge.Label = Descriptor.At(col).Convert(segment.Min).ToString();
@@ -294,7 +442,7 @@
          // with mode
          if (edges.Count <= 1)
          {
-            System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+            Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
 
             double val = y.Mode();
 
@@ -313,6 +461,82 @@
          }
 
          return node;
+      }
+
+      private Tuple<int, double, Range[]> GetBestSplit(Matrix<double> samples, Matrix<double> x)
+      {
+         Range[] bestSegments = null;
+
+         Debug.Fail("Need to convert this code.");
+         Summary featureProperties = new Summary()
+         {
+            //Average = samples.Mean(VectorType.Row),
+            //StandardDeviation = samples.StdDev(VectorType.Row),
+            //Minimum = samples.Min(VectorType.Row),
+            //Maximum = samples.Max(VectorType.Row),
+         };
+
+         Debug.Fail("Need to convert this code.");
+         //double[] gains = new double[samples.Cols];
+         double[] gains = null;
+
+         Parallel.For(0, samples.ColumnCount, col =>
+         {
+            double gain = 0;
+
+            // get appropriate feature at index i
+            // (important on because of multivalued
+            // cols)
+            Property property = Descriptor.At(col);
+
+            // if discrete, calculate full relative gain
+            if (property.Discrete)
+            {
+               Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+            }
+            // otherwise segment based on width
+            else
+            {
+               double average = featureProperties.Average[col];
+               double standardDeviation = featureProperties.StandardDeviation[col];
+
+               if (standardDeviation > double.Epsilon)
+               {
+                  for (int row = 0; row < x.RowCount; row++)
+                  {
+                     double rowValue = x.At(row, col);
+                     double rowValueSigma = (rowValue - average) / standardDeviation;
+
+                     gain = Math.Max(gain, Math.Abs(rowValueSigma));
+                  }
+               }
+            }
+
+            gains[col] = gain;
+         }
+         );
+
+         double bestGain = 0.0;
+         int bestFeature = -1;
+
+         for (int col = 0; col < samples.ColumnCount; col++)
+         {
+            double gain = gains[col];
+
+            if (gain > bestGain)
+            {
+               bestGain = gain;
+               bestFeature = col;
+            }
+         }
+
+         {
+            double average = featureProperties.Average[bestFeature];
+
+            bestSegments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
+         }
+
+         return new Tuple<int, double, Range[]>(bestFeature, bestGain, bestSegments);
       }
 
       /// <summary>Gets best split.</summary>
@@ -348,7 +572,7 @@
             // if discrete, calculate full relative gain
             if (property.Discrete)
             {
-               System.Diagnostics.Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
+               Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
             }
             // otherwise segment based on width
             else
@@ -391,12 +615,12 @@
 
          for (int col = 0; col < samples.Cols; col++)
          {
-               double gain = gains[col];
+            double gain = gains[col];
 
-               if (gain > bestGain)
-               {
-                  bestGain = gain;
-                  bestFeature = col;
+            if (gain > bestGain)
+            {
+               bestGain = gain;
+               bestFeature = col;
             }
          }
 
@@ -417,6 +641,11 @@
             Value = val
          };
       }
+   }
+
+   public interface IDataProvider
+   {
+
    }
 }
 
