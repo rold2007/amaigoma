@@ -2,11 +2,11 @@
 {
    using ExtensionMethods;
    using MathNet.Numerics.LinearAlgebra;
+   using MathNet.Numerics.Statistics;
    using numl.Data;
    using numl.Math;
    using numl.Math.LinearAlgebra;
    using numl.Model;
-   using numl.Supervised;
    using numl.Supervised.DecisionTree;
    using numl.Utils;
    using Shouldly;
@@ -57,7 +57,7 @@
 
       public int MinimumSampleCount { get; set; }
 
-      public void Generate(PakiraModel pakiraModel, IDataProvider dataProvider, Matrix<double> trainSamples, Vector<double> trainLabels)
+      public void Generate(PakiraModel pakiraModel, Matrix<double> trainSamples, Vector<double> trainLabels)
       {
          PakiraDescriptor pakiraDescriptor = pakiraModel.Descriptor;
 
@@ -88,7 +88,7 @@
             );
          }
 
-         pakiraModel.Tree.Root = BuildTree(pakiraModel, dataProvider, trainSamples, trainLabels, pakiraModel.Tree.Root);
+         pakiraModel.Tree.Root = BuildTree(pakiraModel, trainSamples, trainLabels, pakiraModel.Tree.Root);
       }
 
       /// <summary>Generate model based on a set of examples.</summary>
@@ -147,11 +147,22 @@
          };
       }
 
-      private Node BuildTree(PakiraModel pakiraModel, IDataProvider dataProvider, Matrix<double> trainSamples, Vector<double> trainLabels, IVertex currentVertex)
+      private Node BuildTree(PakiraModel pakiraModel, Matrix<double> trainSamples, Vector<double> trainLabels, IVertex currentVertex)
       {
          Tree tree = pakiraModel.Tree;
          Matrix<double> dataDistributionSamples = null;
-         int labelsCount = (Descriptor.Label as StringProperty).Dictionary.Length;
+         int labelsCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Length;
+
+
+
+         //  The user should not have to pass an IDataProvider.We can generate the random samples from the PakiraDescriptor
+         // I just added RawFeatures for this purpose
+         //PakiraGenerator will manage the data distribution samples
+
+         // Create processing classes, including one version which takes 2D data in input
+         dataDistributionSamples.colum
+
+         FillDataDistributionSamples(pakiraModel, currentVertex);
 
          Tuple<int, double, Range[]> tuple = GetBestSplit(dataDistributionSamples, trainSamples);
          int col = tuple.Item1;
@@ -465,76 +476,49 @@
 
       private Tuple<int, double, Range[]> GetBestSplit(Matrix<double> samples, Matrix<double> x)
       {
-         Range[] bestSegments = null;
-
-         Debug.Fail("Need to convert this code.");
-         Summary featureProperties = new Summary()
-         {
-            //Average = samples.Mean(VectorType.Row),
-            //StandardDeviation = samples.StdDev(VectorType.Row),
-            //Minimum = samples.Min(VectorType.Row),
-            //Maximum = samples.Max(VectorType.Row),
-         };
-
-         Debug.Fail("Need to convert this code.");
-         //double[] gains = new double[samples.Cols];
-         double[] gains = null;
+         Vector<int> gains = CreateVector.Dense<int>(samples.ColumnCount);
 
          Parallel.For(0, samples.ColumnCount, col =>
          {
-            double gain = 0;
+            int gain = 100;
+            double minValue = x.Column(col).Minimum();
+            double maxValue = x.Column(col).Maximum();
+            bool continuePercentileAnalysis = true;
+            int percentile = 5;
 
-            // get appropriate feature at index i
-            // (important on because of multivalued
-            // cols)
-            Property property = Descriptor.At(col);
-
-            // if discrete, calculate full relative gain
-            if (property.Discrete)
+            while (continuePercentileAnalysis)
             {
-               Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
-            }
-            // otherwise segment based on width
-            else
-            {
-               double average = featureProperties.Average[col];
-               double standardDeviation = featureProperties.StandardDeviation[col];
+               double lowPercentile = samples.Column(col).Percentile(percentile);
 
-               if (standardDeviation > double.Epsilon)
+               if (minValue <= lowPercentile)
                {
-                  for (int row = 0; row < x.RowCount; row++)
-                  {
-                     double rowValue = x.At(row, col);
-                     double rowValueSigma = (rowValue - average) / standardDeviation;
+                  gain = percentile;
+                  continuePercentileAnalysis = false;
+               }
+               else
+               {
+                  double highPercentile = samples.Column(col).Percentile(100 - percentile);
 
-                     gain = Math.Max(gain, Math.Abs(rowValueSigma));
+                  if (maxValue >= highPercentile)
+                  {
+                     gain = percentile;
+                     continuePercentileAnalysis = false;
                   }
                }
+
+               percentile += 5;
             }
 
-            gains[col] = gain;
+            gains.At(col, gain);
          }
          );
 
-         double bestGain = 0.0;
-         int bestFeature = -1;
+         //MathNet.Numerics.LinearAlgebra.Double
+         int bestFeature = gains.MinimumIndex();
+         double bestGain = gains.At(bestFeature);
+         double average = samples.Column(bestFeature).Average();
 
-         for (int col = 0; col < samples.ColumnCount; col++)
-         {
-            double gain = gains[col];
-
-            if (gain > bestGain)
-            {
-               bestGain = gain;
-               bestFeature = col;
-            }
-         }
-
-         {
-            double average = featureProperties.Average[bestFeature];
-
-            bestSegments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
-         }
+         Range[] bestSegments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
 
          return new Tuple<int, double, Range[]>(bestFeature, bestGain, bestSegments);
       }

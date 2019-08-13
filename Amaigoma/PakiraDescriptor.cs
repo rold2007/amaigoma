@@ -30,6 +30,9 @@
       /// <summary>Descriptor name.</summary>
       /// <value>The name.</value>
       public string Name { get; set; }
+
+      public Property[] RawFeatures { get; set; }
+
       /// <summary>
       /// Set of features used to discriminate or learn about the <see cref="Label"/>.
       /// </summary>
