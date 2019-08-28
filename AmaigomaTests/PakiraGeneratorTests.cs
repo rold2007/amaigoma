@@ -21,7 +21,7 @@
          PakiraGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          PakiraModel pakiraModel = new PakiraModel();
          PakiraDescriptor pakiraDescriptor = new PakiraDescriptor();
-         TestDataDistributionProvider testDataDistributionProvider = new TestDataDistributionProvider();
+         //TestDataDistributionProvider testDataDistributionProvider = new TestDataDistributionProvider();
          Matrix<double> samples = Matrix<double>.Build.Dense(2, 2);
          Vector<double> labels = Vector<double>.Build.Dense(2);
          StringProperty labelsProperty = new StringProperty();
@@ -36,7 +36,10 @@
          samples.At(1, 0, 1.0);
          samples.At(1, 1, 1.0);
 
-         pakiraGenerator.Generate(pakiraModel, testDataDistributionProvider, samples, labels);
+         labels.At(0, 0.0);
+         labels.At(1, 1.0);
+
+         pakiraGenerator.Generate(pakiraModel, /*testDataDistributionProvider, */samples, labels);
 
          pakiraModel.Tree.Root.ShouldNotBeNull();
       }
@@ -45,9 +48,5 @@
       {
          return new PakiraGenerator();
       }
-   }
-
-   internal class TestDataDistributionProvider : IDataProvider
-   {
    }
 }
