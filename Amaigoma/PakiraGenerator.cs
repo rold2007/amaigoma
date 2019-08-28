@@ -57,6 +57,14 @@
 
       public int MinimumSampleCount { get; set; }
 
+      private class DataManager
+      {
+         DataManager()
+         {
+
+         }
+      }
+
       public void Generate(PakiraModel pakiraModel, Matrix<double> trainSamples, Vector<double> trainLabels)
       {
          PakiraDescriptor pakiraDescriptor = pakiraModel.Descriptor;
@@ -88,7 +96,28 @@
             );
          }
 
-         pakiraModel.Tree.Root = BuildTree(pakiraModel, trainSamples, trainLabels, pakiraModel.Tree.Root);
+         // Here, it is Generate() responsibility
+         // to produce more random training samples in case
+         // there wasn't enough for the last call to BuildTree().
+         // This will force many calls to BuildTree() but also allow
+         // parallelism in BuildTree()
+
+         // It is not BuildTree()'s responsibility to transform the
+         // raw data using features. It should be done prior by the Generator.
+
+         // The raw+train samples should be kept in memory, in the model,
+         // but the features (processing) should be done dynamically
+         // as it may take a lot of memory to keep a cache of everything
+         // and the features can change from one Generate() to another.
+
+         // Actually, it is probably to have a class which manages
+         // the random data distribution. We can ask it to have
+         // new (transformed) samples to fill a Matrix of the proper number
+         // of samples
+
+         Matrix<double> dataDistributionSamples = null;
+
+         pakiraModel.Tree.Root = BuildTree(pakiraModel, dataDistributionSamples, trainSamples, trainLabels, pakiraModel.Tree.Root);
       }
 
       /// <summary>Generate model based on a set of examples.</summary>
@@ -147,10 +176,9 @@
          };
       }
 
-      private Node BuildTree(PakiraModel pakiraModel, Matrix<double> trainSamples, Vector<double> trainLabels, IVertex currentVertex)
+      private Node BuildTree(PakiraModel pakiraModel, Matrix<double> dataDistributionSamples, Matrix<double> trainSamples, Vector<double> trainLabels, IVertex currentVertex)
       {
          Tree tree = pakiraModel.Tree;
-         Matrix<double> dataDistributionSamples = null;
          int labelsCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Length;
 
 
@@ -160,9 +188,9 @@
          //PakiraGenerator will manage the data distribution samples
 
          // Create processing classes, including one version which takes 2D data in input
-         dataDistributionSamples.colum
+         //dataDistributionSamples.colum
 
-         FillDataDistributionSamples(pakiraModel, currentVertex);
+         //FillDataDistributionSamples(pakiraModel, currentVertex);
 
          Tuple<int, double, Range[]> tuple = GetBestSplit(dataDistributionSamples, trainSamples);
          int col = tuple.Item1;
@@ -476,9 +504,9 @@
 
       private Tuple<int, double, Range[]> GetBestSplit(Matrix<double> samples, Matrix<double> x)
       {
-         Vector<int> gains = CreateVector.Dense<int>(samples.ColumnCount);
+         Vector<int> gains = CreateVector.Dense<int>(x.ColumnCount);
 
-         Parallel.For(0, samples.ColumnCount, col =>
+         Parallel.For(0, x.ColumnCount, col =>
          {
             int gain = 100;
             double minValue = x.Column(col).Minimum();
@@ -625,11 +653,6 @@
             Value = val
          };
       }
-   }
-
-   public interface IDataProvider
-   {
-
    }
 }
 
