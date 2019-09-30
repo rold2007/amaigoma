@@ -14,15 +14,9 @@
    /// <summary>A decision tree generator.</summary>
    public class PakiraDecisionTreeGenerator : BaseGenerator
    {
-      /// <summary>Gets or sets the depth.</summary>
-      /// <value>The depth.</value>
-      public int Depth { get; set; }
       /// <summary>Gets or sets the width.</summary>
       /// <value>The width.</value>
       public int Width { get; set; }
-      /// <summary>Gets or sets the hint.</summary>
-      /// <value>The hint.</value>
-      public double Hint { get; set; }
       /// <summary>Gets or sets the type of the impurity.</summary>
       /// <value>The type of the impurity.</value>
       public Type ImpurityType { get; set; }
@@ -42,13 +36,10 @@
       }
       /// <summary>Constructor.</summary>
       /// <param name="descriptor">the descriptor.</param>
-      public PakiraDecisionTreeGenerator(PakiraDescriptor descriptor)
+      public PakiraDecisionTreeGenerator()
       {
-         Depth = 5;
          Width = 2;
-         Descriptor = descriptor;
          ImpurityType = typeof(Entropy);
-         Hint = double.Epsilon;
       }
       /// <summary>Constructor.</summary>
       /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
@@ -58,26 +49,14 @@
       /// <param name="impurityType">(Optional) type of the impurity.</param>
       /// <param name="hint">(Optional) the hint.</param>
       public PakiraDecisionTreeGenerator(
-          int depth = 5,
           int width = 2,
-          PakiraDescriptor descriptor = null,
-          Type impurityType = null,
-          double hint = double.Epsilon)
+          Type impurityType = null)
       {
          if (width < 2)
             throw new InvalidOperationException("Cannot set dt tree width to less than 2!");
 
-         Descriptor = descriptor;
-         Depth = depth;
          Width = width;
          ImpurityType = impurityType ?? typeof(Entropy);
-         Hint = hint;
-      }
-      /// <summary>Sets a hint.</summary>
-      /// <param name="o">The object to process.</param>
-      public void SetHint(object o)
-      {
-         Hint = Descriptor.Label.Convert(o).First();
       }
 
       /// <summary>Generates.</summary>
@@ -85,31 +64,21 @@
       /// <param name="X">The Matrix to process.</param>
       /// <param name="y">The Vector to process.</param>
       /// <returns>An IModel.</returns>
+      /*
       public override BaseModel Generate(Matrix X, Vector y)
       {
-         if (Descriptor == null)
-            throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
-
          this.Preprocess(X);
 
          var tree = new Tree();
          //var n = BuildUglyTree(x, y, Depth, new List<int>(x.Cols));
-         tree.Root = BuildTree(X, y, Depth, new List<int>(X.Cols), tree);
-
-         // have to guess something....
-         // especially when automating
-         // the thing in a Learner
-         // this only happens if it is something
-         // it has never seen.
-         if (Hint == double.Epsilon)
-            Hint = y.GetRandom(); // flip a coin...
+         tree.Root = BuildTree(X, y, new List<int>(X.Cols), tree);
 
          return new PakiraDecisionTreeModel
          {
-            Descriptor = Descriptor,
             Tree = tree,
          };
       }
+      */
 
       /// <summary>Builds a tree.</summary>
       /// <param name="x">The Matrix to process.</param>
@@ -117,11 +86,9 @@
       /// <param name="depth">The depth.</param>
       /// <param name="used">The used.</param>
       /// <returns>A Node.</returns>
-      private Node BuildTree(Matrix x, Vector y, int depth, List<int> used, Tree tree)
+      /*
+      private Node BuildTree(Matrix x, Vector y, List<int> used, Tree tree)
       {
-         if (depth < 0)
-            return BuildLeafNode(y.Mode());
-
          var tuple = GetBestSplit(x, y, used);
          var col = tuple.Item1;
          var gain = tuple.Item2;
@@ -191,7 +158,7 @@
                // otherwise continue to build tree
                else
                {
-                  var child = BuildTree(x.Slice(slice), ySlice, depth - 1, used, tree);
+                  var child = BuildTree(x.Slice(slice), ySlice, used, tree);
                   tree.AddVertex(child);
                   edge.ChildId = child.Id;
                }
@@ -218,15 +185,14 @@
 
          return node;
       }
-
-
-
+      */
 
       /// <summary>Gets best split.</summary>
       /// <param name="x">The Matrix to process.</param>
       /// <param name="y">The Vector to process.</param>
       /// <param name="used">The used.</param>
       /// <returns>The best split.</returns>
+      /*
       private Tuple<int, double, Impurity> GetBestSplit(Matrix x, Vector y, List<int> used)
       {
          double bestGain = -1;
@@ -266,6 +232,7 @@
 
          return new Tuple<int, double, Impurity>(bestFeature, bestGain, bestMeasure);
       }
+      */
 
       private Node BuildLeafNode(double val)
       {

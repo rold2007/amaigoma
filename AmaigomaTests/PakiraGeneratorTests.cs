@@ -31,8 +31,11 @@
 
          pakiraModel.Descriptor = pakiraDescriptor;
 
+         // Row 0
          samples.At(0, 0, 0.0);
          samples.At(0, 1, 0.0);
+
+         // Row 1
          samples.At(1, 0, 1.0);
          samples.At(1, 1, 1.0);
 

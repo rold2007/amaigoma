@@ -88,8 +88,8 @@
          }
           );
 
-         PakiraGenerator pakiraGenerator = new PakiraGenerator(fluentDescriptor, samples, PakiraGenerator.UNKNOWN_CLASS_INDEX, minimumSampleCount);
-         PakiraModel pakiraModel;
+         PakiraGenerator pakiraGenerator = new PakiraGenerator(/*fluentDescriptor, */samples, minimumSampleCount);
+         PakiraModel pakiraModel = null;
          List<Iris> trainingSet = new List<Iris>() { data[0], data[50], data[100] };
          List<Iris> trainingSamples = new List<Iris>();
          List<Iris> testSamples = new List<Iris>();
@@ -123,7 +123,7 @@
          {
             Console.WriteLine("Training " + trainingRound.ToString());
 
-            pakiraModel = pakiraGenerator.Generate(trainingSet);
+            //pakiraModel = pakiraGenerator.Generate(trainingSet);
 
             Console.WriteLine("Model " + pakiraModel.ToString());
 
@@ -137,6 +137,7 @@
 
                for (int i = 0; i < trainingSamples.Count(); i++)
                {
+                  /*
                   (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[i], true) }.ToExamples();
                   Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
                   int currentSampleClass = (int)valueTuple.Item2[0];
@@ -164,13 +165,14 @@
                         }
                      }
                   }
-
+                  */
                   //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
                   //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
                }
 
                for (int i = 0; i < testSamples.Count(); i++)
                {
+                  /*
                   (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(testSamples[i], true) }.ToExamples();
                   Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
                   int currentSampleClass = (int)valueTuple.Item2[0];
@@ -182,7 +184,7 @@
                   {
                      //Console.WriteLine("Expected " + currentSampleClass.ToString() + " but predicted " + predictedClass.ToString());
                   }
-
+                  */
 
                   //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
                   //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();

@@ -25,35 +25,32 @@
       {
       }
 
-      public PakiraGenerator(PakiraDescriptor descriptor, IEnumerable<object> samples, double defaultClassIndex, int minimumSampleCount) : this()
+      public PakiraGenerator(IEnumerable<object> samples, int minimumSampleCount) : this()
       {
-         Descriptor = descriptor;
-         Samples = samples;
-         Hint = defaultClassIndex;
+         //Samples = samples;
          ImpurityType = typeof(DispersionError);
-         Depth = int.MaxValue;
          MinimumSampleCount = minimumSampleCount;
       }
 
-      private IEnumerable<object> samples;
-      private Matrix convertedSamples;
+      //private IEnumerable<object> samples;
+      //private Matrix convertedSamples;
 
-      public IEnumerable<object> Samples
-      {
-         get
-         {
-            return samples;
-         }
+      //public IEnumerable<object> Samples
+      //{
+      //   get
+      //   {
+      //      return samples;
+      //   }
 
-         set
-         {
-            samples = value;
+      //   set
+      //   {
+      //      samples = value;
 
-            IEnumerable<IEnumerable<double>> doubles = Descriptor.Convert(value, false, false);
+      //      IEnumerable<IEnumerable<double>> doubles = Descriptor.Convert(value, false, false);
 
-            convertedSamples = doubles.ToMatrixParallel();
-         }
-      }
+      //      convertedSamples = doubles.ToMatrixParallel();
+      //   }
+      //}
 
       public int MinimumSampleCount { get; set; }
 
@@ -75,19 +72,6 @@
 
          labelsProperty.Dictionary = labelsList.ToArray();
 
-         if (Hint != UNKNOWN_CLASS_INDEX)
-         {
-            const string errorMessage = "Default class does not exists in descriptors.";
-
-            Should.NotThrow(() =>
-            {
-               object convertedHint = pakiraDescriptor.Label.Convert(Hint);
-
-               convertedHint.ShouldNotBeNull(errorMessage);
-            }, errorMessage
-            );
-         }
-
          pakiraModel.Tree.Root = BuildTree(pakiraModel, dataProvider, trainSamples, trainLabels, pakiraModel.Tree.Root);
       }
 
@@ -95,62 +79,51 @@
       /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
       /// <param name="examples">Example set.</param>
       /// <returns>Model.</returns>
-      public new PakiraModel Generate(IEnumerable<object> examples)
-      {
-         if (examples.Count() == 0) throw new InvalidOperationException("Empty example set.");
+      //public new PakiraModel Generate(IEnumerable<object> examples)
+      //{
+      //   if (examples.Count() == 0) throw new InvalidOperationException("Empty example set.");
 
-         if (Descriptor == null)
-            throw new InvalidOperationException("Descriptor is null");
+      //   return Generate(examples) as PakiraModel;
+      //}
 
-         return Generate(Descriptor, examples) as PakiraModel;
-      }
+      //public override BaseModel Generate(Matrix x, Vector y)
+      //{
+      //   StringProperty labelsProperty = Descriptor.Label as StringProperty;
+      //   List<string> labelsList = new List<string>(labelsProperty.Dictionary)
+      //   {
+      //      "Insufficient",
+      //      "Unknown"
+      //   };
 
-      public override BaseModel Generate(Matrix x, Vector y)
-      {
-         if (Descriptor == null)
-         {
-            throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
-         }
+      //   labelsProperty.Dictionary = labelsList.ToArray();
 
-         StringProperty labelsProperty = Descriptor.Label as StringProperty;
-         List<string> labelsList = new List<string>(labelsProperty.Dictionary)
-         {
-            "Insufficient",
-            "Unknown"
-         };
+      //   this.Preprocess(x);
 
-         labelsProperty.Dictionary = labelsList.ToArray();
+      //   Tree tree = new Tree();
 
-         if (Hint != UNKNOWN_CLASS_INDEX)
-         {
-            const string errorMessage = "Default class does not exists in descriptors.";
+      //   tree.Root = BuildTree(convertedSamples, x, y, tree);
 
-            Should.NotThrow(() =>
-            {
-               object convertedHint = Descriptor.Label.Convert(Hint);
-
-               convertedHint.ShouldNotBeNull(errorMessage);
-            }, errorMessage
-            );
-         }
-
-         this.Preprocess(x);
-
-         Tree tree = new Tree();
-
-         tree.Root = BuildTree(convertedSamples, x, y, Depth, tree);
-
-         return new PakiraModel
-         {
-            Descriptor = Descriptor,
-            Tree = tree,
-         };
-      }
+      //   return new PakiraModel
+      //   {
+      //      Descriptor = Descriptor,
+      //      Tree = tree,
+      //   };
+      //}
 
       private Node BuildTree(PakiraModel pakiraModel, IDataProvider dataProvider, Matrix<double> trainSamples, Vector<double> trainLabels, IVertex currentVertex)
       {
          Tree tree = pakiraModel.Tree;
          Matrix<double> dataDistributionSamples = null;
+
+         PakiraDescriptor Descriptor = pakiraModel.Descriptor;
+
+         if (Descriptor == null)
+            throw new InvalidOperationException("Cannot build decision tree without type knowledge!");
+         //if (Descriptor.Features == null || Descriptor.Features.Length == 0)
+         //   throw new InvalidOperationException("Invalid descriptor: Empty feature set!");
+         if (Descriptor.Label == null)
+            throw new InvalidOperationException("Invalid descriptor: Empty label!");
+
          int labelsCount = (Descriptor.Label as StringProperty).Dictionary.Length;
 
          Tuple<int, double, Range[]> tuple = GetBestSplit(dataDistributionSamples, trainSamples);
@@ -188,8 +161,8 @@
                Max = segment.Max
             };
 
-            IEnumerable<int> samplesSlice = null;
-            IEnumerable<int> slice = null;
+            //IEnumerable<int> samplesSlice = null;
+            //IEnumerable<int> slice = null;
 
             if (edge.Discrete)
             {
@@ -258,7 +231,7 @@
                else
                {
                   // We don't have any training data for this node
-                  Node child = BuildLeafNode(Hint < 0 ? labelsCount + Hint : Hint);
+                  Node child = BuildLeafNode(labelsCount + INSUFFICIENT_SAMPLES_CLASS_INDEX);
 
                   tree.AddVertex(child);
                   edge.ChildId = child.Id;
@@ -307,22 +280,10 @@
       /// <param name="y">The Vector to process.</param>
       /// <param name="depth">The depth.</param>
       /// <returns>A Node.</returns>
-      private Node BuildTree(Matrix samples, Matrix x, Vector y, int depth, Tree tree)
+      /*
+      private Node BuildTree(Matrix samples, Matrix x, Vector y, Tree tree)
       {
          int labelsCount = (Descriptor.Label as StringProperty).Dictionary.Length;
-
-         if (depth < 0)
-         {
-            if (Hint < 0)
-            {
-               // We already reached the maximum allowed depth. Create an indecisive node at -1
-               return BuildLeafNode(labelsCount + Hint);
-            }
-            else
-            {
-               return BuildLeafNode(Hint);
-            }
-         }
 
          Tuple<int, double, Range[]> tuple = GetBestSplit(samples, x);
          int col = tuple.Item1;
@@ -406,9 +367,7 @@
                   // otherwise continue to build tree
                   else
                   {
-                     int nextDepth = depth == int.MaxValue ? depth : depth - 1;
-
-                     Node child = BuildTree(samples.Slice(samplesSlice), x.Slice(slice), ySlice, nextDepth, tree);
+                     Node child = BuildTree(samples.Slice(samplesSlice), x.Slice(slice), ySlice, tree);
 
                      tree.AddVertex(child);
                      edge.ChildId = child.Id;
@@ -419,7 +378,7 @@
                else
                {
                   // We don't have any training data for this node
-                  Node child = BuildLeafNode(Hint < 0 ? labelsCount + Hint : Hint);
+                  Node child = BuildLeafNode(labelsCount + INSUFFICIENT_SAMPLES_CLASS_INDEX);
 
                   tree.AddVertex(child);
                   edge.ChildId = child.Id;
@@ -462,6 +421,7 @@
 
          return node;
       }
+      */
 
       private Tuple<int, double, Range[]> GetBestSplit(Matrix<double> samples, Matrix<double> x)
       {
@@ -484,31 +444,17 @@
          {
             double gain = 0;
 
-            // get appropriate feature at index i
-            // (important on because of multivalued
-            // cols)
-            Property property = Descriptor.At(col);
+            double average = featureProperties.Average[col];
+            double standardDeviation = featureProperties.StandardDeviation[col];
 
-            // if discrete, calculate full relative gain
-            if (property.Discrete)
+            if (standardDeviation > double.Epsilon)
             {
-               Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
-            }
-            // otherwise segment based on width
-            else
-            {
-               double average = featureProperties.Average[col];
-               double standardDeviation = featureProperties.StandardDeviation[col];
-
-               if (standardDeviation > double.Epsilon)
+               for (int row = 0; row < x.RowCount; row++)
                {
-                  for (int row = 0; row < x.RowCount; row++)
-                  {
-                     double rowValue = x.At(row, col);
-                     double rowValueSigma = (rowValue - average) / standardDeviation;
+                  double rowValue = x.At(row, col);
+                  double rowValueSigma = (rowValue - average) / standardDeviation;
 
-                     gain = Math.Max(gain, Math.Abs(rowValueSigma));
-                  }
+                  gain = Math.Max(gain, Math.Abs(rowValueSigma));
                }
             }
 
@@ -564,37 +510,23 @@
             double gain = 0;
             //Range[] segments = null;
 
-            // get appropriate feature at index i
-            // (important on because of multivalued
-            // cols)
-            Property property = Descriptor.At(col);
+            double average = featureProperties.Average[col];
+            double standardDeviation = featureProperties.StandardDeviation[col];
+            //double minimumValue = featureProperties.Minimum[i];
+            //double maximumValue = featureProperties.Maximum[i];
 
-            // if discrete, calculate full relative gain
-            if (property.Discrete)
+            if (standardDeviation > double.Epsilon)
             {
-               Debug.Assert(false, "Need to debug this and see if I want to do anything special here.");
-            }
-            // otherwise segment based on width
-            else
-            {
-               double average = featureProperties.Average[col];
-               double standardDeviation = featureProperties.StandardDeviation[col];
-               //double minimumValue = featureProperties.Minimum[i];
-               //double maximumValue = featureProperties.Maximum[i];
+               //double minimumValueSigma = minimumValue - average / standardDeviation;
+               //double maximumValueSigma = maximumValue - average / standardDeviation;
 
-               if (standardDeviation > double.Epsilon)
+               for (int row = 0; row < x.Rows; row++)
                {
-                  //double minimumValueSigma = minimumValue - average / standardDeviation;
-                  //double maximumValueSigma = maximumValue - average / standardDeviation;
+                  double rowValue = x[row][col];
+                  double rowValueSigma = (rowValue - average) / standardDeviation;
 
-                  for (int row = 0; row < x.Rows; row++)
-                  {
-                     double rowValue = x[row][col];
-                     double rowValueSigma = (rowValue - average) / standardDeviation;
-
-                     gain = Math.Max(gain, Math.Abs(rowValueSigma));
-                     //segments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
-                  }
+                  gain = Math.Max(gain, Math.Abs(rowValueSigma));
+                  //segments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
                }
             }
 

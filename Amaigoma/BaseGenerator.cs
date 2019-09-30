@@ -11,8 +11,6 @@
    /// <summary>A generator.</summary>
    public abstract class BaseGenerator
    {
-      private PakiraDescriptor _Descriptor;
-
       /// <summary>Event queue for all listeners interested in ModelChanged events.</summary>
       public event EventHandler<ModelEventArgs> ModelChanged;
       /// <summary>Raises the model event.</summary>
@@ -23,22 +21,6 @@
          EventHandler<ModelEventArgs> handler = ModelChanged;
          if (handler != null)
             handler(sender, e);
-      }
-
-      /// <summary>Gets or sets the descriptor.</summary>
-      /// <value>The descriptor.</value>
-      public PakiraDescriptor Descriptor
-      {
-         get { return this._Descriptor; }
-         set
-         {
-            this._Descriptor = value;
-
-            if (this._Descriptor != null)
-            {
-               this.IsDiscrete = this._Descriptor.Label.Discrete;
-            }
-         }
       }
 
       /// <summary>
@@ -126,38 +108,29 @@
       /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
       /// <param name="examples">Example set.</param>
       /// <returns>Model.</returns>
-      public BaseModel Generate(IEnumerable<object> examples)
-      {
-         if (examples.Count() == 0) throw new InvalidOperationException("Empty example set.");
+      //public BaseModel Generate(IEnumerable<object> examples)
+      //{
+      //   if (examples.Count() == 0) throw new InvalidOperationException("Empty example set.");
 
-         if (Descriptor == null)
-            throw new InvalidOperationException("Descriptor is null");
-
-         return Generate(Descriptor, examples);
-      }
+      //   return Generate(examples);
+      //}
 
       /// <summary>Generate model based on a set of examples.</summary>
       /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
       /// <param name="description">The description.</param>
       /// <param name="examples">Example set.</param>
       /// <returns>Model.</returns>
-      public BaseModel Generate(PakiraDescriptor description, IEnumerable<object> examples)
-      {
-         if (examples.Count() == 0) throw new InvalidOperationException("Empty example set.");
+      //public BaseModel Generate(IEnumerable<object> examples)
+      //{
+      //   if (examples.Count() == 0) throw new InvalidOperationException("Empty example set.");
 
-         Descriptor = description;
-         if (Descriptor.Features == null || Descriptor.Features.Length == 0)
-            throw new InvalidOperationException("Invalid descriptor: Empty feature set!");
-         if (Descriptor.Label == null)
-            throw new InvalidOperationException("Invalid descriptor: Empty label!");
+      //   var dataset = (this.PreserveOrder ? examples : examples.Shuffle());
 
-         var dataset = (this.PreserveOrder ? examples : examples.Shuffle());
+      //   var doubles = Descriptor.Convert(dataset);
+      //   var (X, Y) = doubles.ToExamples();
 
-         var doubles = Descriptor.Convert(dataset);
-         var (X, Y) = doubles.ToExamples();
-
-         return Generate(X, Y);
-      }
+      //   return Generate(X, Y);
+      //}
 
       /// <summary>
       /// Generate model from descriptor and examples
@@ -175,7 +148,7 @@
       /// <param name="x">The Matrix to process.</param>
       /// <param name="y">The Vector to process.</param>
       /// <returns>Model.</returns>
-      public abstract BaseModel Generate(Matrix x, Vector y);
+      //public abstract BaseModel Generate(Matrix x, Vector y);
 
 
    }
