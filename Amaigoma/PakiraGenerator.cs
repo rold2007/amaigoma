@@ -1,6 +1,7 @@
 ﻿namespace Amaigoma
 {
    using ExtensionMethods;
+   using MathNet.Numerics.Distributions;
    using MathNet.Numerics.LinearAlgebra;
    using numl.Data;
    using numl.Math;
@@ -125,6 +126,22 @@
             throw new InvalidOperationException("Invalid descriptor: Empty label!");
 
          int labelsCount = (Descriptor.Label as StringProperty).Dictionary.Length;
+
+         ContinuousUniform continuousUniform = new ContinuousUniform(0, 256);
+         //dataDistributionSamples = dataDistributionSamples.Stack();
+         double[] samples = new double[2];
+
+         continuousUniform.Samples(samples);
+
+         Matrix<double> samplesMatrix = Matrix<double>.Build.DenseOfRowMajor(1, 2, samples);
+         //samplesMatrix.Map<double>();
+
+         if (dataDistributionSamples == null)
+         {
+            dataDistributionSamples = Matrix<double>.Build.Dense(3, 2);
+         }
+
+         dataDistributionSamples = dataDistributionSamples.Stack(samplesMatrix);
 
          Tuple<int, double, Range[]> tuple = GetBestSplit(dataDistributionSamples, trainSamples);
          int col = tuple.Item1;
