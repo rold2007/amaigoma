@@ -3,3 +3,12 @@
 ################################################################################
 
 /Amaigoma/.vs/Amaigoma
+/Amaigoma/bin/Debug/netstandard2.0
+/Amaigoma/obj
+/Amaigoma/_NCrunch_Amaigoma
+*.user
+/AmaigomaConsole/bin/Debug/netcoreapp2.2
+/AmaigomaConsole/obj/Debug/netcoreapp2.2
+/AmaigomaTests/bin/Debug/netcoreapp2.2
+/AmaigomaConsole/obj
+/AmaigomaTests/obj
