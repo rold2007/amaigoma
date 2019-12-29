@@ -1,16 +1,12 @@
 ﻿namespace Amaigoma
 {
-   using ExtensionMethods;
    using MathNet.Numerics.Distributions;
    using MathNet.Numerics.LinearAlgebra;
    using numl.Data;
    using numl.Math;
    using numl.Math.LinearAlgebra;
    using numl.Model;
-   using numl.Supervised;
    using numl.Supervised.DecisionTree;
-   using numl.Utils;
-   using Shouldly;
    using System;
    using System.Collections.Generic;
    using System.Diagnostics;
@@ -143,10 +139,10 @@
 
          dataDistributionSamples = dataDistributionSamples.Stack(samplesMatrix);
 
-         Tuple<int, double, Range[]> tuple = GetBestSplit(dataDistributionSamples, trainSamples);
+         Tuple<int, double, numl.Math.Range[]> tuple = GetBestSplit(dataDistributionSamples, trainSamples);
          int col = tuple.Item1;
          double gain = tuple.Item2;
-         Range[] segments = tuple.Item3;
+         numl.Math.Range[] segments = tuple.Item3;
 
          // Cannot find a split in the samples.
          // Not enough samples or all samples are identical.
@@ -169,7 +165,7 @@
          for (int i = 0; i < segments.Length; i++)
          {
             // working set
-            Range segment = segments[i];
+            numl.Math.Range segment = segments[i];
             Edge edge = new Edge()
             {
                ParentId = node.Id,
@@ -440,9 +436,9 @@
       }
       */
 
-      private Tuple<int, double, Range[]> GetBestSplit(Matrix<double> samples, Matrix<double> x)
+      private Tuple<int, double, numl.Math.Range[]> GetBestSplit(Matrix<double> samples, Matrix<double> x)
       {
-         Range[] bestSegments = null;
+         numl.Math.Range[] bestSegments = null;
 
          Debug.Fail("Need to convert this code.");
          Summary featureProperties = new Summary()
@@ -496,10 +492,10 @@
          {
             double average = featureProperties.Average[bestFeature];
 
-            bestSegments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
+            bestSegments = new numl.Math.Range[] { new numl.Math.Range(double.MinValue, average), new numl.Math.Range(average, double.MaxValue) };
          }
 
-         return new Tuple<int, double, Range[]>(bestFeature, bestGain, bestSegments);
+         return new Tuple<int, double, numl.Math.Range[]>(bestFeature, bestGain, bestSegments);
       }
 
       /// <summary>Gets best split.</summary>
@@ -507,9 +503,9 @@
       /// <param name="y">The Vector to process.</param>
       /// <param name="used">The used.</param>
       /// <returns>The best split.</returns>
-      private Tuple<int, double, Range[]> GetBestSplit(Matrix samples, Matrix x)
+      private Tuple<int, double, numl.Math.Range[]> GetBestSplit(Matrix samples, Matrix x)
       {
-         Range[] bestSegments = null;
+         numl.Math.Range[] bestSegments = null;
 
          Summary featureProperties = new Summary()
          {
@@ -576,10 +572,10 @@
          {
             double average = featureProperties.Average[bestFeature];
 
-            bestSegments = new Range[] { new Range(double.MinValue, average), new Range(average, double.MaxValue) };
+            bestSegments = new numl.Math.Range[] { new numl.Math.Range(double.MinValue, average), new numl.Math.Range(average, double.MaxValue) };
          }
 
-         return new Tuple<int, double, Range[]>(bestFeature, bestGain, bestSegments);
+         return new Tuple<int, double, numl.Math.Range[]>(bestFeature, bestGain, bestSegments);
       }
 
       private Node BuildLeafNode(double val)
