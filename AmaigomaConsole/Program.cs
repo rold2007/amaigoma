@@ -131,9 +131,9 @@
 
             for (int swapRootNode = 0; swapRootNode < 2; swapRootNode++)
             {
-               int labelCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Count();
-               ConfusionMatrix trainingSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
-               ConfusionMatrix testSamplesConfusionMatrix = new ConfusionMatrix(labelCount);
+               // int labelCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Count();
+               ConfusionMatrix trainingSamplesConfusionMatrix = new ConfusionMatrix(0/*labelCount*/);
+               ConfusionMatrix testSamplesConfusionMatrix = new ConfusionMatrix(0/*labelCount*/);
 
                for (int i = 0; i < trainingSamples.Count(); i++)
                {

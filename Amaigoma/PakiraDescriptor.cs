@@ -24,7 +24,6 @@
       public PakiraDescriptor()
       {
          Name = "";
-         Features = new Property[] { };
       }
 
       /// <summary>Descriptor name.</summary>
@@ -38,45 +37,6 @@
       /// <summary>Target property that is the target of machine learning.</summary>
       /// <value>The label.</value>
       public Property Label { get; set; }
-      /// <summary>Index into features (for convenience)</summary>
-      /// <param name="i">Feature index.</param>
-      /// <returns>Feature Property.</returns>
-      public Property this[int i]
-      {
-         get
-         {
-            if (i >= Features.Length) throw new IndexOutOfRangeException();
-            else return Features[i];
-         }
-      }
-      /// <summary>Index into features (for convenience)</summary>
-      /// <param name="name">Feature name.</param>
-      /// <returns>Feature Property.</returns>
-      public Property this[string name]
-      {
-         get
-         {
-            if (Features.Where(p => p.Name == name).Count() == 1)
-               return Features.Where(p => p.Name == name).First();
-            else
-               return null;
-         }
-      }
-      /// <summary>
-      /// Available column names used to discriminate or learn about <see cref="Label"/>. The number of
-      /// columns does not necessarily equal the number of <see cref="Features"/> given that there
-      /// might exist multi-valued features.
-      /// </summary>
-      /// <returns>
-      /// An enumerator that allows foreach to be used to process the columns in this collection.
-      /// </returns>
-      public IEnumerable<string> GetColumns()
-      {
-         foreach (var p in Features)
-            foreach (var s in p.GetColumns())
-               yield return s;
-      }
-
       /// <summary>Length of the vector.</summary>
       private int _vectorLength = -1;
       /// <summary>
@@ -88,9 +48,6 @@
       {
          get
          {
-            if (_vectorLength < 0)
-               _vectorLength = Features.Select(f => f.Length).Sum();
-
             return _vectorLength;
          }
       }
@@ -112,16 +69,6 @@
                   select p);
 
          return q.First();
-      }
-      /// <summary>
-      /// Returns the raw value from the object for the supplied property.
-      /// </summary>
-      /// <param name="o">Object to process.</param>
-      /// <param name="property">Property value of the object to return.</param>
-      /// <returns></returns>
-      public object GetValue(object o, Property property)
-      {
-         return Ject.Get(o, property.Name);
       }
       /// <summary>
       /// Gets related property column name given its offset within the vector representation.
@@ -210,29 +157,6 @@
          if (Label != null && updateLabels)
             Label.PostProcess(items);
       }
-      /// <summary>Converts a list of examples into a Matrix/Vector tuple.</summary>
-      /// <param name="examples">Examples.</param>
-      /// <returns>Tuple containing Matrix and Vector.</returns>
-      public (Matrix X, Vector Y) ToExamples(IEnumerable<object> examples, bool updateLabels = true)
-      {
-         return Convert(examples, true, updateLabels).ToExamples();
-      }
-      /// <summary>Converts a list of examples into a Matrix.</summary>
-      /// <param name="examples">Examples.</param>
-      /// <returns>Matrix representation.</returns>
-      public Matrix ToMatrix(IEnumerable<object> examples)
-      {
-         return Convert(examples).ToMatrix();
-      }
-      /// <summary>
-      /// Convert an object to its vector representation based on the descriptor properties.
-      /// </summary>
-      /// <param name="item">object to convert.</param>
-      /// <returns>Vector representation.</returns>
-      public Vector ToVector(object item)
-      {
-         return Convert(item).ToVector();
-      }
       /// <summary>Pretty printed descriptor.</summary>
       /// <returns>Pretty printed string.</returns>
       public override string ToString()
@@ -301,7 +225,6 @@
 
          return new PakiraDescriptor
          {
-            Features = features.ToArray(),
             Label = label,
             Type = t,
          };
@@ -320,35 +243,12 @@
       /// Creates a new descriptor using a fluent approach. This initial descriptor is worthless
       /// without adding features.
       /// </summary>
-      /// <param name="name">Desired name.</param>
-      /// <returns>Empty Named Descriptor.</returns>
-      public static PakiraDescriptor New(string name)
-      {
-         return new PakiraDescriptor() { Name = name, Features = new Property[] { } };
-      }
-      /// <summary>
-      /// Creates a new descriptor using a fluent approach. This initial descriptor is worthless
-      /// without adding features.
-      /// </summary>
       /// <param name="type">Type mapping.</param>
       /// <returns>A Descriptor.</returns>
       public static PakiraDescriptor New(Type type)
       {
          return new PakiraDescriptor() { Type = type, Features = new Property[] { } };
       }
-
-      /// <summary>
-      /// Creates a new descriptor using a strongly typed fluent approach. This initial descriptor is
-      /// worthless without adding features.
-      /// </summary>
-      /// <typeparam name="T">Source Object Type</typeparam>
-      /// <returns>Empty descriptor</returns>
-      public static Descriptor<T> For<T>()
-      {
-         return new Descriptor<T>() { Type = typeof(T), Features = new Property[] { } };
-      }
-
-
 
       /// <summary>
       /// Creates a new descriptor using a strongly typed fluent approach. This initial descriptor is

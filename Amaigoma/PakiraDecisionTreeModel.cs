@@ -4,7 +4,6 @@
    using System.Linq;
    using System.Text;
    using numl.Math.LinearAlgebra;
-   using System.Collections.Generic;
    using numl.Data;
    using numl.Supervised.DecisionTree;
 
@@ -50,7 +49,7 @@
                return WalkNode(v, (Node)Tree.GetVertex(edge.ChildId));
          }
 
-         throw new InvalidOperationException(String.Format("Unable to match split value {0} for feature {1}[2]\nConsider setting a Hint in order to avoid this error.", v[col], Descriptor.At(col), col));
+         throw new InvalidOperationException(String.Format("Unable to match split value {0} for feature index {1}\nConsider setting a Hint in order to avoid this error.", v[col], col));
       }
 
       /// <summary>Returns a string that represents the current object.</summary>
@@ -67,7 +66,7 @@
       private string PrintNode(Node n, string pre)
       {
          if (n.IsLeaf)
-            return String.Format("{0} +({1}, {2})\n", pre, Descriptor.Label.Convert(n.Value), n.Value);
+            return String.Format("{0} +({1})\n", pre, n.Value);
          else
          {
             StringBuilder sb = new StringBuilder();

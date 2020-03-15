@@ -32,7 +32,7 @@
             "args": [
                 "watch",
                 "run",
-                "${workspaceFolder}/AmaigomaConsole/AmaigomaConsole.csproj",
+                "${workspaceFolder}/AmaigomaTests/AmaigomaTests.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],

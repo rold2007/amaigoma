@@ -48,7 +48,7 @@
                return WalkNode(v, (Node)Tree.GetVertex(edge.ChildId));
          }
 
-         throw new InvalidOperationException(String.Format("Unable to match split value {0} for feature {1}[2]\nConsider setting a Hint in order to avoid this error.", v[col], Descriptor.At(col), col));
+         throw new InvalidOperationException(String.Format("Unable to match split value {0} for feature {1}\nConsider setting a Hint in order to avoid this error.", v[col],col));
       }
    }
 }

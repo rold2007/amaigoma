@@ -1,10 +1,9 @@
 ﻿namespace AmaigomaTests
 {
    using Amaigoma;
+   using MathNet.Numerics.Distributions;
    using MathNet.Numerics.LinearAlgebra;
-   using numl.Model;
    using Shouldly;
-   using System.Collections.Generic;
    using Xunit;
 
    public class PakiraGeneratorTests
@@ -20,26 +19,28 @@
       {
          PakiraGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          PakiraModel pakiraModel = new PakiraModel();
-         PakiraDescriptor pakiraDescriptor = new PakiraDescriptor();
-         TestDataDistributionProvider testDataDistributionProvider = new TestDataDistributionProvider();
-         Matrix<double> samples = Matrix<double>.Build.Dense(2, 2);
-         Vector<double> labels = Vector<double>.Build.Dense(2);
-         StringProperty labelsProperty = new StringProperty();
+         const int featureCount = 2;
+         const int sampleCount = 3;
+         Matrix<double> samples = Matrix<double>.Build.Dense(featureCount, sampleCount);
+         Vector<double> labels = Vector<double>.Build.Dense(sampleCount);
 
-         labelsProperty.Dictionary = new string[] { "Label1", "Label2" };
-         pakiraDescriptor.Label = labelsProperty;
+         // Sample 0
+         samples.At(0, 0, 2.0);
+         samples.At(1, 0, 3.0);
 
-         pakiraModel.Descriptor = pakiraDescriptor;
+         // Sample 1
+         samples.At(0, 1, 128.0);
+         samples.At(1, 1, 140.0);
 
-         // Row 0
-         samples.At(0, 0, 0.0);
-         samples.At(0, 1, 0.0);
+         // Sample 2
+         samples.At(0, 2, 33.0);
+         samples.At(1, 2, 200.0);
 
-         // Row 1
-         samples.At(1, 0, 1.0);
-         samples.At(1, 1, 1.0);
+         labels.At(0, 42);
+         labels.At(1, 54);
+         labels.At(2, 42);
 
-         pakiraGenerator.Generate(pakiraModel, testDataDistributionProvider, samples, labels);
+         pakiraGenerator.Generate(pakiraModel, samples, labels);
 
          pakiraModel.Tree.Root.ShouldNotBeNull();
       }
@@ -48,9 +49,5 @@
       {
          return new PakiraGenerator();
       }
-   }
-
-   internal class TestDataDistributionProvider : IDataProvider
-   {
    }
 }
