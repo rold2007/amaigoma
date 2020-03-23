@@ -1,7 +1,6 @@
 ﻿namespace AmaigomaTests
 {
    using Amaigoma;
-   using MathNet.Numerics.Distributions;
    using MathNet.Numerics.LinearAlgebra;
    using Shouldly;
    using Xunit;

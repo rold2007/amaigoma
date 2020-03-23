@@ -4,7 +4,6 @@
    using ExtensionMethods;
    using numl;
    using numl.Data;
-   using numl.Math.LinearAlgebra;
    using numl.Model;
    using numl.Supervised;
    using numl.Supervised.DecisionTree;

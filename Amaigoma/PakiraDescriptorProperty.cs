@@ -1,21 +1,14 @@
 ﻿namespace Amaigoma
 {
    using System;
-   using System.IO;
    using numl.Utils;
-   using System.Linq;
-   using System.Reflection;
    using System.Collections.Generic;
-   using numl.Math.LinearAlgebra;
-   using System.Text;
-   using System.Linq.Expressions;
-   using System.Collections;
-    using numl.Model;
+   using numl.Model;
 
-    /// <summary>
-    /// Fluent API addition for simplifying the process of adding features and labels to a descriptor.
-    /// </summary>
-    public class PakiraDescriptorProperty
+   /// <summary>
+   /// Fluent API addition for simplifying the process of adding features and labels to a descriptor.
+   /// </summary>
+   public class PakiraDescriptorProperty
    {
       /// <summary>The descriptor.</summary>
       private readonly PakiraDescriptor _descriptor;

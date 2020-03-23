@@ -3,9 +3,7 @@
    using numl.Math.LinearAlgebra;
    using numl.Supervised.DecisionTree;
    using System;
-   using System.Collections.Generic;
    using System.Linq;
-   using System.Text;
 
    public class PakiraModel : PakiraDecisionTreeModel
    {
@@ -13,14 +11,6 @@
       public PakiraModel() : base()
       {
          Tree = new numl.Data.Tree();
-      }
-
-      /// <summary>Predicts the given y coordinate.</summary>
-      /// <param name="y">The Vector to process.</param>
-      /// <returns>A double.</returns>
-      public new Node Predict(Vector y)
-      {
-         return WalkNode(y, (Node)Tree.Root);
       }
 
       /// <summary>Walk node.</summary>

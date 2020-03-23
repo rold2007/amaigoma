@@ -1,7 +1,7 @@
 namespace Amaigoma
 {
-    using ExtensionMethods;
-    using numl.Model;
+   using ExtensionMethods;
+   using numl.Model;
    using numl.Utils;
    using System;
    using System.Collections.Generic;

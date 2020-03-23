@@ -1,18 +1,11 @@
 ﻿namespace Amaigoma
 {
-   using numl.Data;
    using numl.Math.Information;
-   using numl.Math.LinearAlgebra;
-   using numl.Model;
-   using numl.Supervised;
-    using numl.Supervised.DecisionTree;
-    using numl.Utils;
+   using numl.Supervised.DecisionTree;
    using System;
-   using System.Collections.Generic;
-   using System.Linq;
 
    /// <summary>A decision tree generator.</summary>
-   public class PakiraDecisionTreeGenerator : BaseGenerator
+   public class PakiraDecisionTreeGenerator
    {
       /// <summary>Gets or sets the width.</summary>
       /// <value>The width.</value>
