@@ -3,12 +3,12 @@
    using System;
    using System.Linq;
    using System.Text;
-   using numl.Math.LinearAlgebra;
    using numl.Data;
    using numl.Supervised.DecisionTree;
+   using MathNet.Numerics.LinearAlgebra;
 
    /// <summary>A data Model for the decision tree.</summary>
-   public class PakiraDecisionTreeModel : BaseModel
+   public class PakiraDecisionTreeModel
    {
       public Tree Tree { get; set; }
 
@@ -19,7 +19,7 @@
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>
       /// <returns>A double.</returns>
-      public override double Predict(Vector y)
+      public double Predict(Vector<double> y)
       {
          return WalkNode(y, (Node)Tree.Root);
       }
@@ -29,7 +29,7 @@
       /// <param name="v">The Vector to process.</param>
       /// <param name="node">The node.</param>
       /// <returns>A double.</returns>
-      private double WalkNode(Vector v, Node node)
+      private double WalkNode(Vector<double> v, Node node)
       {
          if (node.IsLeaf)
             return node.Value;

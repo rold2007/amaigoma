@@ -22,48 +22,48 @@
 
          for (int i = 0; i < 3; i++)
          {
-            SumFeature sumFeature = new SumFeature(i, i + 1)
-            {
-               Name = "Sum" + i.ToString(),
-               Type = typeof(System.Double)
-            };
+            //SumFeature sumFeature = new SumFeature(i, i + 1)
+            //{
+            //   Name = "Sum" + i.ToString(),
+            //   Type = typeof(System.Double)
+            //};
 
-            features.Add(sumFeature);
+            //features.Add(sumFeature);
 
-            ProductFeature productFeature = new ProductFeature(i, i + 1)
-            {
-               Name = "Product" + i.ToString(),
-               Type = typeof(System.Double)
-            };
+            //ProductFeature productFeature = new ProductFeature(i, i + 1)
+            //{
+            //   Name = "Product" + i.ToString(),
+            //   Type = typeof(System.Double)
+            //};
 
-            features.Add(productFeature);
+            //features.Add(productFeature);
          }
 
          for (int i = 0; i < 1; i++)
          {
-            RandomFeature randomFeature = new RandomFeature()
-            {
-               Name = "Random" + i.ToString(),
-               Type = typeof(System.Double)
-            };
+            //RandomFeature randomFeature = new RandomFeature()
+            //{
+            //   Name = "Random" + i.ToString(),
+            //   Type = typeof(System.Double)
+            //};
 
-            features.Add(randomFeature);
+            //features.Add(randomFeature);
          }
 
-         PakiraDescriptor description = PakiraDescriptor.Create<Iris>();
-         PakiraDescriptor fluentDescriptor = PakiraDescriptor.New(typeof(Iris))
-                                                   .With("SepalLength").As(typeof(decimal))
-                                                   .With("SepalWidth").As(typeof(double))
-                                                   .With("PetalLength").As(typeof(decimal))
-                                                   .With("PetalWidth").As(typeof(int))
-                                                   .Learn("Class").As(typeof(string));
+         //PakiraDescriptor description = PakiraDescriptor.Create<Iris>();
+         //PakiraDescriptor fluentDescriptor = PakiraDescriptor.New(typeof(Iris))
+         //                                          .With("SepalLength").As(typeof(decimal))
+         //                                          .With("SepalWidth").As(typeof(double))
+         //                                          .With("PetalLength").As(typeof(decimal))
+         //                                          .With("PetalWidth").As(typeof(int))
+         //                                          .Learn("Class").As(typeof(string));
 
-         features.AddRange(fluentDescriptor.Features);
+         //features.AddRange(fluentDescriptor.Features);
 
-         fluentDescriptor.Features = features.ToArray();
+         //fluentDescriptor.Features = features.ToArray();
 
-         Console.WriteLine(description);
-         Console.WriteLine(fluentDescriptor);
+         //Console.WriteLine(description);
+         //Console.WriteLine(fluentDescriptor);
 
          Iris[] data = Iris.Load();
          List<Generator> generators = new List<Generator>();

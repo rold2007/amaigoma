@@ -4,7 +4,6 @@
    using MathNet.Numerics.LinearAlgebra;
    using MathNet.Numerics.Statistics;
    using numl.Data;
-   using numl.Math.LinearAlgebra;
    using numl.Supervised.DecisionTree;
    using System;
    using System.Collections.Generic;
@@ -23,8 +22,6 @@
 
       public PakiraGenerator(IEnumerable<object> samples, int minimumSampleCount) : this()
       {
-         //Samples = samples;
-         ImpurityType = typeof(DispersionError);
          MinimumSampleCount = minimumSampleCount;
       }
 
