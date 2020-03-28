@@ -1,18 +1,18 @@
-﻿using numl.Model;
+﻿//using numl.Model;
 
 namespace numl.Tests.Data
 {
    public class Iris
    {
-      [Feature]
+      //[Feature]
       public decimal SepalLength { get; set; }
-      [Feature]
+      //[Feature]
       public decimal SepalWidth { get; set; }
-      [Feature]
+      //[Feature]
       public decimal PetalLength { get; set; }
-      [Feature]
+      //[Feature]
       public decimal PetalWidth { get; set; }
-      [StringLabel]
+      //[StringLabel]
       public string Class { get; set; }
 
       public double[] this[string key]

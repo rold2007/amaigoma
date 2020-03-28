@@ -3,8 +3,8 @@
    using MathNet.Numerics.Distributions;
    using MathNet.Numerics.LinearAlgebra;
    using MathNet.Numerics.Statistics;
-   using numl.Data;
-   using numl.Supervised.DecisionTree;
+   //using numl.Data;
+   //using numl.Supervised.DecisionTree;
    using System;
    using System.Collections.Generic;
    using System.Diagnostics;
@@ -36,16 +36,16 @@
          pakiraModel.Tree.Root = BuildTree(pakiraModel, trainSamples.EnumerateColumns(), trainLabels.Enumerate(), dataDistributionSamples.EnumerateColumns());
       }
 
-      private Node BuildTree(PakiraModel pakiraModel, IEnumerable<Vector<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<Vector<double>> dataDistributionSamples)
+      private PakiraNode BuildTree(PakiraModel pakiraModel, IEnumerable<Vector<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<Vector<double>> dataDistributionSamples)
       {
-         Tree tree = pakiraModel.Tree;
+         PakiraTree tree = pakiraModel.Tree;
          Matrix<double> dataDistributionSamplesMatrix = Matrix<double>.Build.DenseOfColumns(dataDistributionSamples.Take(1000));
          Matrix<double> trainSamplesMatrix = Matrix<double>.Build.DenseOfColumns(trainSamples);
 
-         Tuple<int, double, numl.Math.Range[]> tuple = GetBestSplit(dataDistributionSamplesMatrix, trainSamplesMatrix);
+         Tuple<int, double, PakiraRange[]> tuple = GetBestSplit(dataDistributionSamplesMatrix, trainSamplesMatrix);
          int bestFeatureIndex = tuple.Item1;
          double gain = tuple.Item2;
-         numl.Math.Range[] segments = tuple.Item3;
+         PakiraRange[] segments = tuple.Item3;
 
          // Cannot find a split in the samples.
          // Not enough samples or all samples are identical.
@@ -54,7 +54,7 @@
             return BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
          }
 
-         Node node = new Node
+         PakiraNode node = new PakiraNode
          {
             Column = bestFeatureIndex,
             Gain = gain,
@@ -62,13 +62,13 @@
          };
 
          // populate edges
-         List<Edge> edges = new List<Edge>(segments.Length);
+         List<PakiraEdge> edges = new List<PakiraEdge>(segments.Length);
 
          for (int i = 0; i < segments.Length; i++)
          {
             // working set
-            numl.Math.Range segment = segments[i];
-            Edge edge = new Edge()
+            PakiraRange segment = segments[i];
+            PakiraEdge edge = new PakiraEdge()
             {
                ParentId = node.Id,
                Discrete = false,
@@ -105,7 +105,7 @@
                   // only one answer, set leaf
                   if (labelCount == 1)
                   {
-                     Node child = BuildLeafNode(ySlice.First());
+                     PakiraNode child = BuildLeafNode(ySlice.First());
 
                      tree.AddVertex(child);
                      edge.ChildId = child.Id;
@@ -113,7 +113,7 @@
                   // otherwise continue to build tree
                   else
                   {
-                     Node child = BuildTree(pakiraModel, slice, ySlice, sampleSlice);
+                     PakiraNode child = BuildTree(pakiraModel, slice, ySlice, sampleSlice);
 
                      tree.AddVertex(child);
                      edge.ChildId = child.Id;
@@ -124,7 +124,7 @@
                else
                {
                   // We don't have any training data for this node
-                  Node child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
+                  PakiraNode child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
 
                   tree.AddVertex(child);
                   edge.ChildId = child.Id;
@@ -134,7 +134,7 @@
             else
             {
                // We don't have enough sample data for this node
-               Node child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
+               PakiraNode child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
 
                tree.AddVertex(child);
                edge.ChildId = child.Id;
@@ -159,7 +159,7 @@
 
          if (edges.Count > 1)
          {
-            foreach (Edge edge in edges)
+            foreach (PakiraEdge edge in edges)
             {
                tree.AddEdge(edge);
             }
@@ -168,9 +168,9 @@
          return node;
       }
 
-      private Tuple<int, double, numl.Math.Range[]> GetBestSplit(Matrix<double> samples, Matrix<double> x)
+      private Tuple<int, double, PakiraRange[]> GetBestSplit(Matrix<double> samples, Matrix<double> x)
       {
-         numl.Math.Range[] bestSegments = null;
+         PakiraRange[] bestSegments = null;
          double[] gains = new double[samples.RowCount];
 
          Parallel.For(0, samples.RowCount, featureIndex =>
@@ -206,14 +206,14 @@
 
          double bestFeatureAverage = samples.Row(bestFeature).Mean();
 
-         bestSegments = new numl.Math.Range[] { new numl.Math.Range(double.MinValue, bestFeatureAverage), new numl.Math.Range(bestFeatureAverage, double.MaxValue) };
+         bestSegments = new PakiraRange[] { new PakiraRange(double.MinValue, bestFeatureAverage), new PakiraRange(bestFeatureAverage, double.MaxValue) };
 
-         return new Tuple<int, double, numl.Math.Range[]>(bestFeature, bestGain, bestSegments);
+         return new Tuple<int, double, PakiraRange[]>(bestFeature, bestGain, bestSegments);
       }
 
-      private Node BuildLeafNode(double val)
+      private PakiraNode BuildLeafNode(double val)
       {
-         return new Node()
+         return new PakiraNode()
          {
             IsLeaf = true,
             Value = val
@@ -224,7 +224,7 @@
 
 namespace ExtensionMethods
 {
-   using numl.Math.LinearAlgebra;
+   //using numl.Math.LinearAlgebra;
    using System;
    using System.Collections.Generic;
    using System.Linq;
@@ -240,62 +240,8 @@ namespace ExtensionMethods
       /// <returns></returns>
       public static double GetUniform(double min = 0d, double max = 1.0d)
       {
-         return (min + (numl.Math.Probability.Sampling.GetUniform() * ((max - min))));
-      }
-   }
-
-   public static class MyConversions
-   {
-      private static Matrix Build(double[][] x)
-      {
-         // rows
-         int n = x.Length;
-         if (n == 0)
-            throw new InvalidOperationException("Empty matrix (n)");
-
-         // cols (being nice here...)
-         var cols = x.Select(v => v.Length);
-         int d = cols.Max();
-
-         if (d == 0)
-            throw new InvalidOperationException("Empty matrix (d)");
-
-         // total zeros in matrix
-         var zeros = (from v in x select v.Count(i => i == 0)).Sum();
-
-         // if irregularities in jagged matrix, need to 
-         // pad rows with less columns with additional
-         // zeros by subtracting max width with each
-         // individual row and getting the sum
-         var pad = cols.Select(c => d - c).Sum();
-
-         // check sparsity
-         //var percent = (decimal)(zeros + pad) / (decimal)(n * d);
-
-         Matrix m = Matrix.Zeros(n, d);
-
-         return m;
-      }
-
-      public static Matrix ToMatrixParallel(this IEnumerable<IEnumerable<double>> matrix)
-      {
-         // materialize
-         //double[][] x = (from v in matrix select v.ToArray()).ToArray();
-         double[][] x = (from v in matrix.AsParallel() select v.ToArray()).ToArray();
-
-         // determine matrix
-         // size and type
-         var m = Build(x);
-
-         // fill 'er up!
-         for (int i = 0; i < m.Rows; i++)
-            for (int j = 0; j < m.Cols; j++)
-               if (j >= x[i].Length)  // over bound limits
-                  m[i, j] = 0;       // pad overflow to 0
-               else
-                  m[i, j] = x[i][j];
-
-         return m;
+         return -1;
+         //return (min + (numl.Math.Probability.Sampling.GetUniform() * ((max - min))));
       }
    }
 }

@@ -1,6 +1,5 @@
 ﻿namespace Amaigoma
 {
-   using numl.Supervised.DecisionTree;
    using System;
 
    /// <summary>A decision tree generator.</summary>
@@ -31,9 +30,9 @@
          Width = width;
       }
 
-      private Node BuildLeafNode(double val)
+      private PakiraNode BuildLeafNode(double val)
       {
-         return new Node()
+         return new PakiraNode()
          {
             IsLeaf = true,
             Value = val

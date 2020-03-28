@@ -11,12 +11,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="CustomFeature.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Amaigoma.v3.ncrunchsolution" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MathNet.Numerics" Version="4.9.0" />
-    <PackageReference Include="numl" Version="0.9.20-beta" />
     <PackageReference Include="Shouldly" Version="3.0.2" />
   </ItemGroup>
 

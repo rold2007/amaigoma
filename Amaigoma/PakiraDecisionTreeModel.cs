@@ -3,14 +3,14 @@
    using System;
    using System.Linq;
    using System.Text;
-   using numl.Data;
-   using numl.Supervised.DecisionTree;
+   //using numl.Data;
+   //using numl.Supervised.DecisionTree;
    using MathNet.Numerics.LinearAlgebra;
 
    /// <summary>A data Model for the decision tree.</summary>
    public class PakiraDecisionTreeModel
    {
-      public Tree Tree { get; set; }
+      public PakiraTree Tree { get; set; }
 
       /// <summary>Default constructor.</summary>
       public PakiraDecisionTreeModel()
@@ -21,7 +21,7 @@
       /// <returns>A double.</returns>
       public double Predict(Vector<double> y)
       {
-         return WalkNode(y, (Node)Tree.Root);
+         return WalkNode(y, (PakiraNode)Tree.Root);
       }
 
       /// <summary>Walk node.</summary>
@@ -29,7 +29,7 @@
       /// <param name="v">The Vector to process.</param>
       /// <param name="node">The node.</param>
       /// <returns>A double.</returns>
-      private double WalkNode(Vector<double> v, Node node)
+      private double WalkNode(Vector<double> v, PakiraNode node)
       {
          if (node.IsLeaf)
             return node.Value;
@@ -42,11 +42,11 @@
          var edges = Tree.GetOutEdges(node).ToArray();
          for (int i = 0; i < edges.Length; i++)
          {
-            Edge edge = (Edge)edges[i];
+            PakiraEdge edge = (PakiraEdge)edges[i];
             if (edge.Discrete && v[col] == edge.Min)
-               return WalkNode(v, (Node)Tree.GetVertex(edge.ChildId));
+               return WalkNode(v, (PakiraNode)Tree.GetVertex(edge.ChildId));
             if (!edge.Discrete && v[col] >= edge.Min && v[col] < edge.Max)
-               return WalkNode(v, (Node)Tree.GetVertex(edge.ChildId));
+               return WalkNode(v, (PakiraNode)Tree.GetVertex(edge.ChildId));
          }
 
          throw new InvalidOperationException(String.Format("Unable to match split value {0} for feature index {1}\nConsider setting a Hint in order to avoid this error.", v[col], col));
@@ -56,14 +56,14 @@
       /// <returns>A string that represents the current object.</returns>
       public override string ToString()
       {
-         return PrintNode((Node)Tree.Root, "\t");
+         return PrintNode((PakiraNode)Tree.Root, "\t");
       }
 
       /// <summary>Print node.</summary>
       /// <param name="n">The Node to process.</param>
       /// <param name="pre">The pre.</param>
       /// <returns>A string.</returns>
-      private string PrintNode(Node n, string pre)
+      private string PrintNode(PakiraNode n, string pre)
       {
          if (n.IsLeaf)
             return String.Format("{0} +({1})\n", pre, n.Value);
@@ -71,10 +71,10 @@
          {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(String.Format("{0}[{1}, {2:0.0000}]", pre, n.Name, n.Gain));
-            foreach (Edge edge in Tree.GetOutEdges(n))
+            foreach (PakiraEdge edge in Tree.GetOutEdges(n))
             {
                sb.AppendLine(String.Format("{0} |- {1}", pre, edge.Label));
-               sb.Append(PrintNode((Node)Tree.GetVertex(edge.ChildId), String.Format("{0} |\t", pre)));
+               sb.Append(PrintNode((PakiraNode)Tree.GetVertex(edge.ChildId), String.Format("{0} |\t", pre)));
             }
 
             return sb.ToString();
