@@ -1,10 +1,5 @@
 ﻿namespace Amaigoma
 {
-   using System;
-   using System.Collections.Generic;
-   using System.Text;
-   using System.Runtime.Serialization;
-
    public class PakiraNode
    {
       static int _id = 0;
@@ -33,30 +28,6 @@
       /// <summary>Gets or sets the gain.</summary>
       /// <value>The gain.</value>
       public double Gain { get; set; }
-
-      public override int GetHashCode()
-      {
-         return base.GetHashCode();
-      }
-      /// <summary>
-      /// Determines whether the specified <see cref="System.Object" /> is equal to this instance.
-      /// </summary>
-      /// <param name="obj">The object to compare with the current object.</param>
-      /// <returns><c>true</c> if the specified <see cref="System.Object" /> is equal to this instance; otherwise, <c>false</c>.</returns>
-      public override bool Equals(object obj)
-      {
-         if (obj is PakiraNode)
-         {
-            return ((PakiraNode)obj).Column == Column &&
-                   ((PakiraNode)obj).Gain == Gain &&
-                   ((PakiraNode)obj).Id == Id &&
-                   ((PakiraNode)obj).IsLeaf == IsLeaf &&
-                   ((PakiraNode)obj).Name == Name &&
-                   ((PakiraNode)obj).Value == Value;
-         }
-         else
-            return false;
-      }
    }
 
    public class PakiraEdge

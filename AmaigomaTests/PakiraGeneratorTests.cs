@@ -10,14 +10,14 @@
       [Fact]
       public void Constructor()
       {
-         PakiraGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
       }
 
       [Fact]
       public void Generate()
       {
-         PakiraGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         PakiraModel pakiraModel = new PakiraModel();
+         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
          const int featureCount = 2;
          const int sampleCount = 3;
          Matrix<double> samples = Matrix<double>.Build.Dense(featureCount, sampleCount);
@@ -39,14 +39,18 @@
          labels.At(1, 54);
          labels.At(2, 42);
 
-         pakiraGenerator.Generate(pakiraModel, samples, labels);
+         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples, labels);
 
-         pakiraModel.Tree.Root.ShouldNotBeNull();
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+
+         pakiraDecisionTreeModel.Predict(samples.Column(0)).ShouldBe(labels.At(0));
+         pakiraDecisionTreeModel.Predict(samples.Column(1)).ShouldBe(labels.At(1));
+         pakiraDecisionTreeModel.Predict(samples.Column(2)).ShouldBe(labels.At(2));
       }
 
-      static public PakiraGenerator CreatePakiraGeneratorInstance()
+      static public PakiraDecisionTreeGenerator CreatePakiraGeneratorInstance()
       {
-         return new PakiraGenerator();
+         return new PakiraDecisionTreeGenerator();
       }
    }
 }

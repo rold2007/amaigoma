@@ -3,8 +3,6 @@
    using System;
    using System.Linq;
    using System.Text;
-   //using numl.Data;
-   //using numl.Supervised.DecisionTree;
    using MathNet.Numerics.LinearAlgebra;
 
    /// <summary>A data Model for the decision tree.</summary>
@@ -15,6 +13,7 @@
       /// <summary>Default constructor.</summary>
       public PakiraDecisionTreeModel()
       {
+         Tree = new PakiraTree();
       }
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>

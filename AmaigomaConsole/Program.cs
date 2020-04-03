@@ -1,13 +1,5 @@
 ﻿namespace AmaigomaConsole
 {
-   using Amaigoma;
-   using ExtensionMethods;
-   //using numl;
-   //using numl.Data;
-   //using numl.Model;
-   //using numl.Supervised;
-   //using numl.Supervised.DecisionTree;
-   //using numl.Tests.Data;
    using Shouldly;
    using System;
    using System.Collections.Generic;
@@ -75,10 +67,10 @@
          Parallel.For(0, sampleCount, i =>
          //for (int i = 0; i < sampleCount; i++)
          {
-            decimal sepalLength = Convert.ToDecimal(MySampling.GetUniform(0.1, 10.0));
-            decimal sepalWidth = Convert.ToDecimal(MySampling.GetUniform(0.1, 6.0));
-            decimal petalLength = Convert.ToDecimal(MySampling.GetUniform(0.1, 8.0));
-            decimal petalWidth = Convert.ToDecimal(MySampling.GetUniform(0.1, 3.0));
+            //decimal sepalLength = Convert.ToDecimal(MySampling.GetUniform(0.1, 10.0));
+            //decimal sepalWidth = Convert.ToDecimal(MySampling.GetUniform(0.1, 6.0));
+            //decimal petalLength = Convert.ToDecimal(MySampling.GetUniform(0.1, 8.0));
+            //decimal petalWidth = Convert.ToDecimal(MySampling.GetUniform(0.1, 3.0));
 
             //System.Diagnostics.Debug.WriteLine(sepalLength.ToString() + ";" + sepalWidth.ToString());
 

@@ -190,51 +190,5 @@
             foreach (var e in edges.Value)
                yield return e.Value;
       }
-
-      /// <summary>
-      /// Returns the hash code for this Graph object.
-      /// </summary>
-      /// <returns></returns>
-      public override int GetHashCode()
-      {
-         return base.GetHashCode();
-      }
-
-      /// <summary>
-      /// Determines whether the current Graph is equal to the specified Graph object.
-      /// </summary>
-      /// <param name="obj">Graph object.</param>
-      /// <returns>Boolean</returns>
-      public override bool Equals(object obj)
-      {
-         if (obj is PakiraGraph)
-         {
-            var g = obj as PakiraGraph;
-            foreach (int id in _vertices.Keys)
-            {
-               if (!g._vertices.ContainsKey(id))
-                  return false;
-               if (!g._vertices[id].Equals(_vertices[id]))
-                  return false;
-            }
-
-            foreach (int from in _edges.Keys)
-            {
-               if (!g._edges.ContainsKey(from))
-                  return false;
-
-               foreach (var to in _edges[from].Keys)
-               {
-                  if (!g._edges[from].ContainsKey(to))
-                     return false;
-                  if (!g._edges[from][to].Equals(_edges[from][to]))
-                     return false;
-               }
-            }
-            return true;
-         }
-         else
-            return false;
-      }
    }
 }

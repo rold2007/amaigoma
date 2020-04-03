@@ -11,10 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="CustomFeature.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Remove="Amaigoma.v3.ncrunchsolution" />
   </ItemGroup>
 

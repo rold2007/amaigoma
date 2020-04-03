@@ -1,6 +1,4 @@
-﻿//using numl.Model;
-
-namespace numl.Tests.Data
+﻿namespace numl.Tests.Data
 {
    public class Iris
    {
