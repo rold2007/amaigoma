@@ -13,14 +13,11 @@
    {
       static public int UNKNOWN_CLASS_INDEX = -1;
       static public int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
+      static private int MINIMUM_SAMPLE_COUNT = 1000;
 
       public PakiraDecisionTreeGenerator()
       {
-      }
-
-      public PakiraDecisionTreeGenerator(IEnumerable<object> samples, int minimumSampleCount) : this()
-      {
-         MinimumSampleCount = minimumSampleCount;
+         MinimumSampleCount = MINIMUM_SAMPLE_COUNT;
       }
 
       public int MinimumSampleCount { get; set; }
@@ -69,7 +66,6 @@
             PakiraEdge edge = new PakiraEdge()
             {
                ParentId = node.Id,
-               Discrete = false,
                Min = segment.Min,
                Max = segment.Max
             };

@@ -44,9 +44,6 @@
       /// <summary>Gets or sets the maximum.</summary>
       /// <value>The maximum value.</value>
       public double Max { get; set; }
-      /// <summary>Gets or sets a value indicating whether the discrete.</summary>
-      /// <value>true if discrete, false if not.</value>
-      public bool Discrete { get; set; }
       /// <summary>Gets or sets the label.</summary>
       /// <value>The label.</value>
       public string Label { get; set; }
