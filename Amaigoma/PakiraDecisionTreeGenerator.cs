@@ -26,9 +26,22 @@
       {
          ContinuousUniform continuousUniform = new ContinuousUniform(0, 256);
          int featureCount = trainSamples.RowCount;
-         Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(featureCount, 1000, (i, j) => continuousUniform.Sample());
+         bool generateMoreData = true;
+         int dataDistributionSamplesCount = MINIMUM_SAMPLE_COUNT * 2;
 
-         pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, trainSamples.EnumerateColumns(), trainLabels.Enumerate(), dataDistributionSamples.EnumerateColumns());
+         while (generateMoreData)
+         {
+            Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(featureCount, dataDistributionSamplesCount, (i, j) => continuousUniform.Sample());
+
+            generateMoreData = false;
+            pakiraDecisionTreeModel.Tree.Clear();
+
+            pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, trainSamples.EnumerateColumns(), trainLabels.Enumerate(), dataDistributionSamples.EnumerateColumns());
+
+            generateMoreData = pakiraDecisionTreeModel.Tree.GetVertices().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == -2));
+
+            dataDistributionSamplesCount *= 2;
+         }
       }
 
       private PakiraNode BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<Vector<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<Vector<double>> dataDistributionSamples)

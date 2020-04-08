@@ -10,5 +10,9 @@
       /// </summary>
       /// <value>The root.</value>
       public PakiraNode Root { get; set; }
+
+      public PakiraTree() : base()
+      {
+      }
    }
 }

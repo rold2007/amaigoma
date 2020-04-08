@@ -1,7 +1,6 @@
 ﻿namespace Amaigoma
 {
    using System;
-   using System.Linq;
    using System.Collections.Generic;
 
    public class PakiraGraph
@@ -189,6 +188,12 @@
          foreach (var edges in _edges)
             foreach (var e in edges.Value)
                yield return e.Value;
+      }
+
+      public void Clear()
+      {
+         _vertices.Clear();
+         _edges.Clear();
       }
    }
 }
