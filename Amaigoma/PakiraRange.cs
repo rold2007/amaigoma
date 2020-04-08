@@ -32,9 +32,11 @@
 
       /// <summary>Returns a string that represents the current object.</summary>
       /// <returns>A string that represents the current object.</returns>
+      // ncrunch: no coverage start
       public override string ToString()
       {
          return string.Format("[{0}, {1})", Min, Max);
       }
+      // ncrunch: no coverage end
    }
 }

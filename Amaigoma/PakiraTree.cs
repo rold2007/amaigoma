@@ -14,16 +14,16 @@
       /// <value>The root.</value>
       public PakiraNode Root { get; set; }
 
-      private readonly Dictionary<int, PakiraNode> _vertices;
-      private readonly Dictionary<int, Dictionary<int, PakiraEdge>> _edges;
+      private readonly Dictionary<int, PakiraNode> vertices;
+      private readonly Dictionary<int, Dictionary<int, PakiraEdge>> edges;
 
       /// <summary>
       /// Initializes a new PakiraTree.
       /// </summary>
       public PakiraTree()
       {
-         _vertices = new Dictionary<int, PakiraNode>();
-         _edges = new Dictionary<int, Dictionary<int, PakiraEdge>>();
+         vertices = new Dictionary<int, PakiraNode>();
+         edges = new Dictionary<int, Dictionary<int, PakiraEdge>>();
       }
 
       /// <summary>
@@ -32,7 +32,7 @@
       /// <param name="v">PakiraNode object to add.</param>
       public void AddVertex(PakiraNode v)
       {
-         _vertices[v.Id] = v;
+         vertices[v.Id] = v;
       }
 
       /// <summary>
@@ -62,7 +62,7 @@
       /// <returns></returns>
       public bool ContainsVertex(PakiraNode v)
       {
-         return _vertices.ContainsKey(v.Id);
+         return vertices.ContainsKey(v.Id);
       }
 
       /// <summary>
@@ -74,8 +74,8 @@
       {
          get
          {
-            if (_vertices.ContainsKey(id))
-               return _vertices[id];
+            if (vertices.ContainsKey(id))
+               return vertices[id];
             else
                throw new InvalidOperationException($"Vertex {id} does not exist!");
          }
@@ -88,15 +88,15 @@
       public void RemoveVertex(PakiraNode v)
       {
          // remove vertex
-         _vertices.Remove(v.Id);
+         vertices.Remove(v.Id);
 
          // remove associated edges
-         if (_edges.ContainsKey(v.Id))
-            _edges.Remove(v.Id);
+         if (edges.ContainsKey(v.Id))
+            edges.Remove(v.Id);
 
-         foreach (var key in _edges.Keys)
-            if (_edges[key].ContainsKey(v.Id))
-               _edges[key].Remove(v.Id);
+         foreach (var key in edges.Keys)
+            if (edges[key].ContainsKey(v.Id))
+               edges[key].Remove(v.Id);
       }
 
       /// <summary>
@@ -106,8 +106,8 @@
       /// <param name="edge">PakiraEdge object to add.</param>
       public void AddEdge(PakiraEdge edge)
       {
-         if (_vertices.ContainsKey(edge.ParentId) && _vertices.ContainsKey(edge.ChildId))
-            _edges.AddOrUpdate(edge.ParentId, edge.ChildId, edge);
+         if (vertices.ContainsKey(edge.ParentId) && vertices.ContainsKey(edge.ChildId))
+            edges.AddOrUpdate(edge.ParentId, edge.ChildId, edge);
          else
             throw new InvalidOperationException("Invalid vertex index specified in edge");
       }
@@ -129,7 +129,7 @@
       /// <param name="edge">PakiraEdge object to remove.</param>
       public void RemoveEdge(PakiraEdge edge)
       {
-         _edges[edge.ParentId].Remove(edge.ChildId);
+         edges[edge.ParentId].Remove(edge.ChildId);
       }
 
       /// <summary>
@@ -139,7 +139,7 @@
       /// <returns>IEnumerable&lt;PakiraEdge&gt;</returns>
       public IEnumerable<PakiraEdge> GetOutEdges(PakiraNode v)
       {
-         foreach (var edges in _edges[v.Id])
+         foreach (var edges in edges[v.Id])
             yield return edges.Value;
       }
 
@@ -150,7 +150,7 @@
       /// <returns>IEnumerable&lt;PakiraEdge&gt;</returns>
       public IEnumerable<PakiraEdge> GetInEdges(PakiraNode v)
       {
-         foreach (var edges in _edges)
+         foreach (var edges in edges)
             foreach (var e in edges.Value)
                if (e.Value.ChildId == v.Id)
                   yield return e.Value;
@@ -164,7 +164,7 @@
       public IEnumerable<PakiraNode> GetChildren(PakiraNode v)
       {
          foreach (var edges in GetOutEdges(v))
-            yield return _vertices[edges.ChildId];
+            yield return vertices[edges.ChildId];
       }
 
       /// <summary>
@@ -175,7 +175,7 @@
       public IEnumerable<PakiraNode> GetParents(PakiraNode v)
       {
          foreach (var edges in GetInEdges(v))
-            yield return _vertices[edges.ParentId];
+            yield return vertices[edges.ParentId];
       }
 
       /// <summary>
@@ -184,7 +184,7 @@
       /// <returns></returns>
       public IEnumerable<PakiraNode> GetVertices()
       {
-         foreach (var vertices in _vertices)
+         foreach (var vertices in vertices)
             yield return vertices.Value;
       }
 
@@ -194,15 +194,15 @@
       /// <returns></returns>
       public IEnumerable<PakiraEdge> GetEdges()
       {
-         foreach (var edges in _edges)
+         foreach (var edges in edges)
             foreach (var e in edges.Value)
                yield return e.Value;
       }
 
       public void Clear()
       {
-         _vertices.Clear();
-         _edges.Clear();
+         vertices.Clear();
+         edges.Clear();
       }
    }
 }

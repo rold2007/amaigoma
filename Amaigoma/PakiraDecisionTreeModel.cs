@@ -52,15 +52,18 @@
 
       /// <summary>Returns a string that represents the current object.</summary>
       /// <returns>A string that represents the current object.</returns>
+      // ncrunch: no coverage start
       public override string ToString()
       {
          return PrintNode((PakiraNode)Tree.Root, "\t");
       }
+      // ncrunch: no coverage end
 
       /// <summary>Print node.</summary>
       /// <param name="n">The Node to process.</param>
       /// <param name="pre">The pre.</param>
       /// <returns>A string.</returns>
+      // ncrunch: no coverage start
       private string PrintNode(PakiraNode n, string pre)
       {
          if (n.IsLeaf)
@@ -78,5 +81,6 @@
             return sb.ToString();
          }
       }
+      // ncrunch: no coverage end
    }
 }
