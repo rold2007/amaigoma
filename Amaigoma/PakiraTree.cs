@@ -14,7 +14,7 @@
       /// <value>The root.</value>
       public PakiraNode Root { get; set; }
 
-      private readonly Dictionary<int, PakiraNode> vertices;
+      private readonly Dictionary<int, PakiraNode> nodes;
       private readonly Dictionary<int, Dictionary<int, PakiraEdge>> edges;
 
       /// <summary>
@@ -22,27 +22,27 @@
       /// </summary>
       public PakiraTree()
       {
-         vertices = new Dictionary<int, PakiraNode>();
+         nodes = new Dictionary<int, PakiraNode>();
          edges = new Dictionary<int, Dictionary<int, PakiraEdge>>();
       }
 
       /// <summary>
       /// Adds the specified PakiraNode to the current Graph.
       /// </summary>
-      /// <param name="v">PakiraNode object to add.</param>
-      public void AddVertex(PakiraNode v)
+      /// <param name="node">PakiraNode object to add.</param>
+      public void AddNode(PakiraNode node)
       {
-         vertices[v.Id] = v;
+         nodes[node.Id] = node;
       }
 
       /// <summary>
       /// Adds the enumerable of PakiraNode objects to the current Graph.
       /// </summary>
-      /// <param name="vertices">Collection of PakiraNode objects to add.</param>
-      public void AddVertices(IEnumerable<PakiraNode> vertices)
+      /// <param name="nodes">Collection of PakiraNode objects to add.</param>
+      public void AddNodes(IEnumerable<PakiraNode> nodes)
       {
-         foreach (var vertex in vertices)
-            this.AddVertex(vertex);
+         foreach (var node in nodes)
+            this.AddNode(node);
       }
 
       /// <summary>
@@ -50,19 +50,19 @@
       /// </summary>
       /// <param name="id">Identifier of the PakiraNode to return.</param>
       /// <returns>PakiraNode</returns>
-      public PakiraNode GetVertex(int id)
+      public PakiraNode GetNode(int id)
       {
          return this[id];
       }
 
       /// <summary>
-      /// Returns True if the specified vertex exists in the graph.
+      /// Returns True if the specified node exists in the graph.
       /// </summary>
-      /// <param name="v">PakiraNode to check exists.</param>
+      /// <param name="node">PakiraNode to check exists.</param>
       /// <returns></returns>
-      public bool ContainsVertex(PakiraNode v)
+      public bool ContainsNode(PakiraNode node)
       {
-         return vertices.ContainsKey(v.Id);
+         return nodes.ContainsKey(node.Id);
       }
 
       /// <summary>
@@ -74,29 +74,29 @@
       {
          get
          {
-            if (vertices.ContainsKey(id))
-               return vertices[id];
+            if (nodes.ContainsKey(id))
+               return nodes[id];
             else
-               throw new InvalidOperationException($"Vertex {id} does not exist!");
+               throw new InvalidOperationException($"Node {id} does not exist!");
          }
       }
 
       /// <summary>
-      /// Removes the specified Vertex and its associated edges from the Graph.
+      /// Removes the specified node and its associated edges from the Graph.
       /// </summary>
-      /// <param name="v">PakiraNode to remove.</param>
-      public void RemoveVertex(PakiraNode v)
+      /// <param name="node">PakiraNode to remove.</param>
+      public void RemoveNode(PakiraNode node)
       {
-         // remove vertex
-         vertices.Remove(v.Id);
+         // remove node
+         nodes.Remove(node.Id);
 
          // remove associated edges
-         if (edges.ContainsKey(v.Id))
-            edges.Remove(v.Id);
+         if (edges.ContainsKey(node.Id))
+            edges.Remove(node.Id);
 
          foreach (var key in edges.Keys)
-            if (edges[key].ContainsKey(v.Id))
-               edges[key].Remove(v.Id);
+            if (edges[key].ContainsKey(node.Id))
+               edges[key].Remove(node.Id);
       }
 
       /// <summary>
@@ -106,10 +106,10 @@
       /// <param name="edge">PakiraEdge object to add.</param>
       public void AddEdge(PakiraEdge edge)
       {
-         if (vertices.ContainsKey(edge.ParentId) && vertices.ContainsKey(edge.ChildId))
+         if (nodes.ContainsKey(edge.ParentId) && nodes.ContainsKey(edge.ChildId))
             edges.AddOrUpdate(edge.ParentId, edge.ChildId, edge);
          else
-            throw new InvalidOperationException("Invalid vertex index specified in edge");
+            throw new InvalidOperationException("Invalid node index specified in edge");
       }
 
       /// <summary>
@@ -144,48 +144,48 @@
       }
 
       /// <summary>
-      /// Gets the afferent or inbound connections for the specified PakiraNode object. 
+      /// Gets the afferent or inbound connections for the specified PakiraNode object.
       /// </summary>
-      /// <param name="v">PakiraNode object to return edges for.</param>
+      /// <param name="node">PakiraNode object to return edges for.</param>
       /// <returns>IEnumerable&lt;PakiraEdge&gt;</returns>
-      public IEnumerable<PakiraEdge> GetInEdges(PakiraNode v)
+      public IEnumerable<PakiraEdge> GetInEdges(PakiraNode node)
       {
          foreach (var edges in edges)
             foreach (var e in edges.Value)
-               if (e.Value.ChildId == v.Id)
+               if (e.Value.ChildId == node.Id)
                   yield return e.Value;
       }
 
       /// <summary>
-      /// Gets the child vertices for the specified PakiraNode object. 
+      /// Gets the child nodes for the specified PakiraNode object.
       /// </summary>
-      /// <param name="v">PakiraNode object to return child vertices for.</param>
+      /// <param name="node">PakiraNode object to return child nodes for.</param>
       /// <returns>IEnumerable&lt;PakiraNode&gt;</returns>
-      public IEnumerable<PakiraNode> GetChildren(PakiraNode v)
+      public IEnumerable<PakiraNode> GetChildren(PakiraNode node)
       {
-         foreach (var edges in GetOutEdges(v))
-            yield return vertices[edges.ChildId];
+         foreach (var edges in GetOutEdges(node))
+            yield return nodes[edges.ChildId];
       }
 
       /// <summary>
-      /// Gets the parent vertices for the specified PakiraNode object. 
+      /// Gets the parent nodes for the specified PakiraNode object.
       /// </summary>
-      /// <param name="v">PakiraNode object to return parent vertices for.</param>
+      /// <param name="node">PakiraNode object to return parent nodes for.</param>
       /// <returns>IEnumerable&lt;PakiraNode&gt;</returns>
-      public IEnumerable<PakiraNode> GetParents(PakiraNode v)
+      public IEnumerable<PakiraNode> GetParents(PakiraNode node)
       {
-         foreach (var edges in GetInEdges(v))
-            yield return vertices[edges.ParentId];
+         foreach (var edges in GetInEdges(node))
+            yield return nodes[edges.ParentId];
       }
 
       /// <summary>
       /// Returns all PakiraNode objects in the current graph.
       /// </summary>
       /// <returns></returns>
-      public IEnumerable<PakiraNode> GetVertices()
+      public IEnumerable<PakiraNode> GetNodes()
       {
-         foreach (var vertices in vertices)
-            yield return vertices.Value;
+         foreach (var node in nodes)
+            yield return node.Value;
       }
 
       /// <summary>
@@ -201,7 +201,7 @@
 
       public void Clear()
       {
-         vertices.Clear();
+         nodes.Clear();
          edges.Clear();
       }
    }

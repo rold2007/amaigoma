@@ -3,6 +3,7 @@
    using MathNet.Numerics.Distributions;
    using MathNet.Numerics.LinearAlgebra;
    using MathNet.Numerics.Statistics;
+   using Shouldly;
    using System;
    using System.Collections.Generic;
    using System.Diagnostics;
@@ -27,7 +28,7 @@
          ContinuousUniform continuousUniform = new ContinuousUniform(0, 256);
          int featureCount = trainSamples.RowCount;
          bool generateMoreData = true;
-         int dataDistributionSamplesCount = MINIMUM_SAMPLE_COUNT * 2;
+         int dataDistributionSamplesCount = MINIMUM_SAMPLE_COUNT * 3;
 
          while (generateMoreData)
          {
@@ -38,7 +39,7 @@
 
             pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, trainSamples.EnumerateColumns(), trainLabels.Enumerate(), dataDistributionSamples.EnumerateColumns());
 
-            generateMoreData = pakiraDecisionTreeModel.Tree.GetVertices().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == -2));
+            generateMoreData = pakiraDecisionTreeModel.Tree.GetNodes().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX));
 
             dataDistributionSamplesCount *= 2;
          }
@@ -47,20 +48,23 @@
       private PakiraNode BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<Vector<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<Vector<double>> dataDistributionSamples)
       {
          PakiraTree tree = pakiraDecisionTreeModel.Tree;
-         Matrix<double> dataDistributionSamplesMatrix = Matrix<double>.Build.DenseOfColumns(dataDistributionSamples.Take(1000));
+         Matrix<double> dataDistributionSamplesMatrix = Matrix<double>.Build.DenseOfColumns(dataDistributionSamples.Take(MINIMUM_SAMPLE_COUNT));
+
+         if (dataDistributionSamplesMatrix.ColumnCount < MINIMUM_SAMPLE_COUNT)
+         {
+            PakiraNode child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
+
+            tree.AddNode(child);
+
+            return child;
+         }
+
          Matrix<double> trainSamplesMatrix = Matrix<double>.Build.DenseOfColumns(trainSamples);
 
          Tuple<int, double, PakiraRange[]> tuple = GetBestSplit(dataDistributionSamplesMatrix, trainSamplesMatrix);
          int bestFeatureIndex = tuple.Item1;
          double gain = tuple.Item2;
          PakiraRange[] segments = tuple.Item3;
-
-         // Cannot find a split in the samples.
-         // Not enough samples or all samples are identical.
-         if (bestFeatureIndex == -1)
-         {
-            return BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
-         }
 
          PakiraNode node = new PakiraNode
          {
@@ -80,73 +84,50 @@
             {
                ParentId = node.Id,
                Min = segment.Min,
-               Max = segment.Max
+               Max = segment.Max,
+               Label = string.Format("{0} <= x < {1}", segment.Min, segment.Max)
             };
-
-            // get range label
-            edge.Label = string.Format("{0} <= x < {1}", segment.Min, segment.Max);
 
             IEnumerable<Vector<double>> sampleSlice = dataDistributionSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
 
             int sampleSliceCount = sampleSlice.Count();
+            IEnumerable<Vector<double>> slice = trainSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
+            PakiraNode child;
 
-            if (sampleSliceCount >= MinimumSampleCount)
+            if (slice.Count() > 0)
             {
-               IEnumerable<Vector<double>> slice = trainSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
-
-               int sliceCount = slice.Count();
-
-               if (sliceCount > 0)
+               IEnumerable<double> ySlice = trainLabels.Where(
+               (trainLabel, trainLabelIndex) =>
                {
-                  IEnumerable<double> ySlice = trainLabels.Where(
-                  (trainLabel, trainLabelIndex) =>
-                  {
-                     double trainSample = trainSamples.ElementAt(trainLabelIndex).At(bestFeatureIndex);
+                  double trainSample = trainSamples.ElementAt(trainLabelIndex).At(bestFeatureIndex);
 
-                     return trainSample >= segment.Min && trainSample < segment.Max;
-                  }
-                  );
-
-                  int labelCount = ySlice.Distinct().Count();
-
-                  // only one answer, set leaf
-                  if (labelCount == 1)
-                  {
-                     PakiraNode child = BuildLeafNode(ySlice.First());
-
-                     tree.AddVertex(child);
-                     edge.ChildId = child.Id;
-                  }
-                  // otherwise continue to build tree
-                  else
-                  {
-                     PakiraNode child = BuildTree(pakiraDecisionTreeModel, slice, ySlice, sampleSlice);
-
-                     tree.AddVertex(child);
-                     edge.ChildId = child.Id;
-                  }
-
-                  edges.Add(edge);
+                  return trainSample >= segment.Min && trainSample < segment.Max;
                }
+               );
+
+               int labelCount = ySlice.Distinct().Count();
+
+               // only one answer, set leaf
+               if (labelCount == 1)
+               {
+                  child = BuildLeafNode(ySlice.First());
+               }
+               // otherwise continue to build tree
                else
                {
-                  // We don't have any training data for this node
-                  PakiraNode child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
-
-                  tree.AddVertex(child);
-                  edge.ChildId = child.Id;
-                  edges.Add(edge);
+                  child = BuildTree(pakiraDecisionTreeModel, slice, ySlice, sampleSlice);
                }
             }
             else
             {
-               // We don't have enough sample data for this node
-               PakiraNode child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
-
-               tree.AddVertex(child);
-               edge.ChildId = child.Id;
-               edges.Add(edge);
+               // We don't have any training data for this node
+               child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
             }
+
+            tree.AddNode(child);
+            edge.ChildId = child.Id;
+
+            edges.Add(edge);
          }
 
          // problem, need to convert
@@ -162,7 +143,7 @@
             //node.Value = val;
          }
 
-         tree.AddVertex(node);
+         tree.AddNode(node);
 
          if (edges.Count > 1)
          {
@@ -210,6 +191,8 @@
                bestFeature = featureIndex;
             }
          }
+
+         bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
          double bestFeatureAverage = samples.Row(bestFeature).Mean();
 

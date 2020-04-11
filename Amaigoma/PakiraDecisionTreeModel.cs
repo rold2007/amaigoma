@@ -43,7 +43,7 @@
 
             if (v[col] >= edge.Min && v[col] < edge.Max)
             {
-               return WalkNode(v, (PakiraNode)Tree.GetVertex(edge.ChildId));
+               return WalkNode(v, (PakiraNode)Tree.GetNode(edge.ChildId));
             }
          }
 
@@ -75,7 +75,7 @@
             foreach (PakiraEdge edge in Tree.GetOutEdges(n))
             {
                sb.AppendLine(String.Format("{0} |- {1}", pre, edge.Label));
-               sb.Append(PrintNode((PakiraNode)Tree.GetVertex(edge.ChildId), String.Format("{0} |\t", pre)));
+               sb.Append(PrintNode((PakiraNode)Tree.GetNode(edge.ChildId), String.Format("{0} |\t", pre)));
             }
 
             return sb.ToString();
