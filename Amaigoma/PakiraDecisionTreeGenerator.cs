@@ -28,7 +28,7 @@
          ContinuousUniform continuousUniform = new ContinuousUniform(0, 256);
          int featureCount = trainSamples.RowCount;
          bool generateMoreData = true;
-         int dataDistributionSamplesCount = MINIMUM_SAMPLE_COUNT * 3;
+         int dataDistributionSamplesCount = MinimumSampleCount * 3;
 
          while (generateMoreData)
          {
@@ -48,9 +48,9 @@
       private PakiraNode BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<Vector<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<Vector<double>> dataDistributionSamples)
       {
          PakiraTree tree = pakiraDecisionTreeModel.Tree;
-         Matrix<double> dataDistributionSamplesMatrix = Matrix<double>.Build.DenseOfColumns(dataDistributionSamples.Take(MINIMUM_SAMPLE_COUNT));
+         Matrix<double> dataDistributionSamplesMatrix = Matrix<double>.Build.DenseOfColumns(dataDistributionSamples.Take(MinimumSampleCount));
 
-         if (dataDistributionSamplesMatrix.ColumnCount < MINIMUM_SAMPLE_COUNT)
+         if (dataDistributionSamplesMatrix.ColumnCount < MinimumSampleCount)
          {
             PakiraNode child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
 
@@ -72,6 +72,8 @@
             Gain = gain,
             IsLeaf = false,
          };
+
+         segments.Length.ShouldBe(2);
 
          // populate edges
          List<PakiraEdge> edges = new List<PakiraEdge>(segments.Length);
@@ -121,26 +123,13 @@
             else
             {
                // We don't have any training data for this node
-               child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
+               child = BuildLeafNode(UNKNOWN_CLASS_INDEX);
             }
 
             tree.AddNode(child);
             edge.ChildId = child.Id;
 
             edges.Add(edge);
-         }
-
-         // problem, need to convert
-         // parent to terminal node
-         // with mode
-         if (edges.Count <= 1)
-         {
-            Debug.Fail("Need to decide how to replace this.");
-
-            //double val = y.Mode();
-
-            //node.IsLeaf = true;
-            //node.Value = val;
          }
 
          tree.AddNode(node);

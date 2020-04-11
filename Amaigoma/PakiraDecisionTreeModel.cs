@@ -47,7 +47,9 @@
             }
          }
 
+         // ncrunch: no coverage start
          throw new InvalidOperationException(String.Format("Unable to match split value {0} for feature index {1}\nConsider setting a Hint in order to avoid this error.", v[col], col));
+         // ncrunch: no coverage end
       }
 
       /// <summary>Returns a string that represents the current object.</summary>
