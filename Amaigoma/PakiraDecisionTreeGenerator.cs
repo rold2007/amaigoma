@@ -6,7 +6,6 @@
    using Shouldly;
    using System;
    using System.Collections.Generic;
-   using System.Diagnostics;
    using System.Linq;
    using System.Threading.Tasks;
 
@@ -26,18 +25,18 @@
       public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, Matrix<double> trainSamples, Vector<double> trainLabels)
       {
          ContinuousUniform continuousUniform = new ContinuousUniform(0, 256);
-         int featureCount = trainSamples.RowCount;
+         int featureCount = trainSamples.ColumnCount;
          bool generateMoreData = true;
          int dataDistributionSamplesCount = MinimumSampleCount * 3;
 
          while (generateMoreData)
          {
-            Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(featureCount, dataDistributionSamplesCount, (i, j) => continuousUniform.Sample());
+            Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount, featureCount, (i, j) => continuousUniform.Sample());
 
             generateMoreData = false;
             pakiraDecisionTreeModel.Tree.Clear();
 
-            pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, trainSamples.EnumerateColumns(), trainLabels.Enumerate(), dataDistributionSamples.EnumerateColumns());
+            pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, trainSamples.EnumerateRows(), trainLabels.Enumerate(), dataDistributionSamples.EnumerateRows());
 
             generateMoreData = pakiraDecisionTreeModel.Tree.GetNodes().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX));
 
@@ -45,12 +44,14 @@
          }
       }
 
-      private PakiraNode BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<Vector<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<Vector<double>> dataDistributionSamples)
+      private PakiraNode BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<IList<double>> dataDistributionSamples)
       {
          PakiraTree tree = pakiraDecisionTreeModel.Tree;
-         Matrix<double> dataDistributionSamplesMatrix = Matrix<double>.Build.DenseOfColumns(dataDistributionSamples.Take(MinimumSampleCount));
+         IEnumerable<IList<double>> extractedDataDistributionSamples = dataDistributionSamples.Take(MinimumSampleCount);
 
-         if (dataDistributionSamplesMatrix.ColumnCount < MinimumSampleCount)
+         int extractedDataDistributionSamplesCount = extractedDataDistributionSamples.Count();
+
+         if (extractedDataDistributionSamplesCount < MinimumSampleCount)
          {
             PakiraNode child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
 
@@ -59,9 +60,7 @@
             return child;
          }
 
-         Matrix<double> trainSamplesMatrix = Matrix<double>.Build.DenseOfColumns(trainSamples);
-
-         Tuple<int, double, PakiraRange[]> tuple = GetBestSplit(dataDistributionSamplesMatrix, trainSamplesMatrix);
+         Tuple<int, double, PakiraRange[]> tuple = GetBestSplit(extractedDataDistributionSamples, trainSamples);
          int bestFeatureIndex = tuple.Item1;
          double gain = tuple.Item2;
          PakiraRange[] segments = tuple.Item3;
@@ -90,10 +89,10 @@
                Label = string.Format("{0} <= x < {1}", segment.Min, segment.Max)
             };
 
-            IEnumerable<Vector<double>> sampleSlice = dataDistributionSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
+            IEnumerable<IList<double>> sampleSlice = dataDistributionSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
 
             int sampleSliceCount = sampleSlice.Count();
-            IEnumerable<Vector<double>> slice = trainSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
+            IEnumerable<IList<double>> slice = trainSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
             PakiraNode child;
 
             if (slice.Count() > 0)
@@ -101,7 +100,7 @@
                IEnumerable<double> ySlice = trainLabels.Where(
                (trainLabel, trainLabelIndex) =>
                {
-                  double trainSample = trainSamples.ElementAt(trainLabelIndex).At(bestFeatureIndex);
+                  double trainSample = trainSamples.ElementAt(trainLabelIndex)[bestFeatureIndex];
 
                   return trainSample >= segment.Min && trainSample < segment.Max;
                }
@@ -145,19 +144,22 @@
          return node;
       }
 
-      private Tuple<int, double, PakiraRange[]> GetBestSplit(Matrix<double> samples, Matrix<double> x)
+      private Tuple<int, double, PakiraRange[]> GetBestSplit(IEnumerable<IList<double>> dataDistributionSamples, IEnumerable<IList<double>> trainSamples)
       {
+         // Transpose the matrix to access one feature at a time
+         Matrix<double> dataDistributionSamplesMatrix = Matrix<double>.Build.DenseOfColumns(dataDistributionSamples);
          PakiraRange[] bestSegments = null;
-         double[] gains = new double[samples.RowCount];
+         int featureCount = dataDistributionSamplesMatrix.RowCount;
+         double[] gains = new double[featureCount];
 
-         Parallel.For(0, samples.RowCount, featureIndex =>
+         Parallel.For(0, featureCount, featureIndex =>
          {
             double gain = 1.0;
 
-            for (int sampleIndex = 0; sampleIndex < x.ColumnCount; sampleIndex++)
+            foreach(IList<double> trainSample in trainSamples)
             {
-               double rowValue = x.At(sampleIndex, featureIndex);
-               double quantileRank = samples.Row(featureIndex).QuantileRank(rowValue, RankDefinition.Default);
+               double trainSampleValue = trainSample[featureIndex];
+               double quantileRank = dataDistributionSamplesMatrix.Row(featureIndex).QuantileRank(trainSampleValue, RankDefinition.Default);
 
                // Keep the sample farthest in the data distribution
                gain = Math.Min(gain, Math.Min(quantileRank, 1.0 - quantileRank));
@@ -170,7 +172,7 @@
          double bestGain = 1.0;
          int bestFeature = -1;
 
-         for (int featureIndex = 0; featureIndex < samples.RowCount; featureIndex++)
+         for (int featureIndex = 0; featureIndex < featureCount; featureIndex++)
          {
             double gain = gains[featureIndex];
 
@@ -183,7 +185,7 @@
 
          bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
-         double bestFeatureAverage = samples.Row(bestFeature).Mean();
+         double bestFeatureAverage = dataDistributionSamplesMatrix.Row(bestFeature).Mean();
 
          bestSegments = new PakiraRange[] { new PakiraRange(double.MinValue, bestFeatureAverage), new PakiraRange(bestFeatureAverage, double.MaxValue) };
 
