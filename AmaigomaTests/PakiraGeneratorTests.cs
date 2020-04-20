@@ -39,7 +39,7 @@
          labels.At(1, 54);
          labels.At(2, 42);
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples, labels);
+         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -74,7 +74,7 @@
          labels.At(1, 54);
          labels.At(2, 42);
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples, labels);
+         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 

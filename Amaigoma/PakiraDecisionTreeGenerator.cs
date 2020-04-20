@@ -22,10 +22,10 @@
 
       public int MinimumSampleCount { get; set; }
 
-      public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, Matrix<double> trainSamples, Vector<double> trainLabels)
+      public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IList<double> trainLabels)
       {
          ContinuousUniform continuousUniform = new ContinuousUniform(0, 256);
-         int featureCount = trainSamples.ColumnCount;
+         int featureCount = trainSamples.ElementAt(0).Count();
          bool generateMoreData = true;
          int dataDistributionSamplesCount = MinimumSampleCount * 3;
 
@@ -36,7 +36,7 @@
             generateMoreData = false;
             pakiraDecisionTreeModel.Tree.Clear();
 
-            pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, trainSamples.EnumerateRows(), trainLabels.Enumerate(), dataDistributionSamples.EnumerateRows());
+            pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, trainSamples, trainLabels, dataDistributionSamples.EnumerateRows());
 
             generateMoreData = pakiraDecisionTreeModel.Tree.GetNodes().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX));
 
