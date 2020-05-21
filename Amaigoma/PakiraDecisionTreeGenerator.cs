@@ -14,6 +14,7 @@
       static public int UNKNOWN_CLASS_INDEX = -1;
       static public int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
       static private int MINIMUM_SAMPLE_COUNT = 1000;
+      private PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
 
       public PakiraDecisionTreeGenerator()
       {
@@ -24,24 +25,33 @@
 
       public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IList<double> trainLabels)
       {
+         Generate(pakiraDecisionTreeModel, trainSamples, trainLabels, DefaultDataTransformer.ConvertAll);
+      }
+
+      public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IList<double> trainLabels, Converter<IList<double>, IList<double>> dataTransformers)
+      {
          ContinuousUniform continuousUniform = new ContinuousUniform(0, 256);
          int featureCount = trainSamples.ElementAt(0).Count();
          bool generateMoreData = true;
          int dataDistributionSamplesCount = MinimumSampleCount * 3;
+         List<IList<double>> transformedTrainSamples = trainSamples.Select(d => dataTransformers(d)).ToList();
 
          while (generateMoreData)
          {
             Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount, featureCount, (i, j) => continuousUniform.Sample());
+            List<IList<double>> transformedDataDistributionSamples = dataDistributionSamples.EnumerateRows().Select(d => dataTransformers(d)).ToList();
 
             generateMoreData = false;
             pakiraDecisionTreeModel.Tree.Clear();
 
-            pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, trainSamples, trainLabels, dataDistributionSamples.EnumerateRows());
+            pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, transformedTrainSamples, trainLabels, transformedDataDistributionSamples);
 
             generateMoreData = pakiraDecisionTreeModel.Tree.GetNodes().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX));
 
             dataDistributionSamplesCount *= 2;
          }
+
+         pakiraDecisionTreeModel.DataTransformers = dataTransformers;
       }
 
       private PakiraNode BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<IList<double>> dataDistributionSamples)

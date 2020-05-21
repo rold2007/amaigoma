@@ -1,6 +1,7 @@
 ﻿namespace Amaigoma
 {
    using System;
+   using System.Collections.Generic;
    using System.Linq;
    using System.Text;
    using MathNet.Numerics.LinearAlgebra;
@@ -9,6 +10,7 @@
    public class PakiraDecisionTreeModel
    {
       public PakiraTree Tree { get; set; }
+      public Converter<IList<double>, IList<double>> DataTransformers { get; set; }
 
       /// <summary>Default constructor.</summary>
       public PakiraDecisionTreeModel()
@@ -20,7 +22,7 @@
       /// <returns>A double.</returns>
       public double Predict(Vector<double> y)
       {
-         return WalkNode(y, (PakiraNode)Tree.Root);
+         return WalkNode(DataTransformers(y), (PakiraNode)Tree.Root);
       }
 
       /// <summary>Walk node.</summary>
@@ -28,7 +30,7 @@
       /// <param name="v">The Vector to process.</param>
       /// <param name="node">The node.</param>
       /// <returns>A double.</returns>
-      private double WalkNode(Vector<double> v, PakiraNode node)
+      private double WalkNode(IList<double> v, PakiraNode node)
       {
          if (node.IsLeaf)
             return node.Value;
