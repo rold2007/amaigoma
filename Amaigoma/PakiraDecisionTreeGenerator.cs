@@ -80,24 +80,15 @@
             Column = bestFeatureIndex,
             Gain = gain,
             IsLeaf = false,
+            Threshold = segments[0].Max
          };
 
          segments.Length.ShouldBe(2);
-
-         // populate edges
-         List<PakiraEdge> edges = new List<PakiraEdge>(segments.Length);
 
          for (int i = 0; i < segments.Length; i++)
          {
             // working set
             PakiraRange segment = segments[i];
-            PakiraEdge edge = new PakiraEdge()
-            {
-               ParentId = node.Id,
-               Min = segment.Min,
-               Max = segment.Max,
-               Label = string.Format("{0} <= x < {1}", segment.Min, segment.Max)
-            };
 
             IEnumerable<IList<double>> sampleSlice = dataDistributionSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
 
@@ -136,20 +127,11 @@
             }
 
             tree.AddNode(child);
-            edge.ChildId = child.Id;
 
-            edges.Add(edge);
+            node.ChildId[i] = child.Id;
          }
 
          tree.AddNode(node);
-
-         if (edges.Count > 1)
-         {
-            foreach (PakiraEdge edge in edges)
-            {
-               tree.AddEdge(edge);
-            }
-         }
 
          return node;
       }

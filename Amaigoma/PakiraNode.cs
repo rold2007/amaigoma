@@ -6,13 +6,12 @@
       /// <summary>
       /// Initializes a new instance of the <see cref="PakiraNode"/> class.
       /// </summary>
-      public PakiraNode() { Id = ++_id; }
+      public PakiraNode() { Id = ++_id; ChildId = new int[2]; }
       /// <summary>
       /// Gets or sets the identifier.
       /// </summary>
       /// <value>The identifier.</value>
-      public int Id { get; set; }
-
+      public int Id { get; private set; }
       /// <summary>if is a leaf.</summary>
       /// <value>true if this object is leaf, false if not.</value>
       public bool IsLeaf { get; set; }
@@ -28,24 +27,11 @@
       /// <summary>Gets or sets the gain.</summary>
       /// <value>The gain.</value>
       public double Gain { get; set; }
-   }
-
-   public class PakiraEdge
-   {
-      /// <summary>Gets or sets the child identifier.</summary>
-      /// <value>The child identifier.</value>
-      public int ChildId { get; set; }
-      /// <summary> Gets or sets the parent identifier.</summary>
-      /// <value>The parent identifier.</value>
-      public int ParentId { get; set; }
-      /// <summary>Gets or sets the minimum.</summary>
-      /// <value>The minimum value.</value>
-      public double Min { get; set; }
-      /// <summary>Gets or sets the maximum.</summary>
-      /// <value>The maximum value.</value>
-      public double Max { get; set; }
-      /// <summary>Gets or sets the label.</summary>
-      /// <value>The label.</value>
-      public string Label { get; set; }
+      /// <summary>Gets or sets the threshold.</summary>
+      /// <value>The threshold.</value>
+      public double Threshold { get; set; }
+      /// <summary>Gets or sets the child ids.</summary>
+      /// <value>The child ids.</value>
+      public int[] ChildId { get; private set; }
    }
 }

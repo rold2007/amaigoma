@@ -37,54 +37,10 @@
 
          // Get the index of the feature for this node.
          var col = node.Column;
-         var edges = Tree.GetOutEdges(node).ToArray();
 
-         for (int i = 0; i < edges.Length; i++)
-         {
-            PakiraEdge edge = (PakiraEdge)edges[i];
+         int childIndex = (v[col] < node.Threshold) ? 0 : 1;
 
-            if (v[col] >= edge.Min && v[col] < edge.Max)
-            {
-               return WalkNode(v, (PakiraNode)Tree.GetNode(edge.ChildId));
-            }
-         }
-
-         // ncrunch: no coverage start
-         throw new InvalidOperationException(String.Format("Unable to match split value {0} for feature index {1}\nConsider setting a Hint in order to avoid this error.", v[col], col));
-         // ncrunch: no coverage end
+         return WalkNode(v, (PakiraNode)Tree.GetNode(node.ChildId[childIndex]));
       }
-
-      /// <summary>Returns a string that represents the current object.</summary>
-      /// <returns>A string that represents the current object.</returns>
-      // ncrunch: no coverage start
-      public override string ToString()
-      {
-         return PrintNode((PakiraNode)Tree.Root, "\t");
-      }
-      // ncrunch: no coverage end
-
-      /// <summary>Print node.</summary>
-      /// <param name="n">The Node to process.</param>
-      /// <param name="pre">The pre.</param>
-      /// <returns>A string.</returns>
-      // ncrunch: no coverage start
-      private string PrintNode(PakiraNode n, string pre)
-      {
-         if (n.IsLeaf)
-            return String.Format("{0} +({1})\n", pre, n.Value);
-         else
-         {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine(String.Format("{0}[{1}, {2:0.0000}]", pre, n.Name, n.Gain));
-            foreach (PakiraEdge edge in Tree.GetOutEdges(n))
-            {
-               sb.AppendLine(String.Format("{0} |- {1}", pre, edge.Label));
-               sb.Append(PrintNode((PakiraNode)Tree.GetNode(edge.ChildId), String.Format("{0} |\t", pre)));
-            }
-
-            return sb.ToString();
-         }
-      }
-      // ncrunch: no coverage end
    }
 }
