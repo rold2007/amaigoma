@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <None Remove="Amaigoma.v3.ncrunchsolution" />
+    <None Remove="PakiraDecisionTreeGenerator.cs.bak" />
   </ItemGroup>
 
   <ItemGroup>

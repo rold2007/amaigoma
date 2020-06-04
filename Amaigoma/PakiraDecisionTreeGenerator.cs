@@ -54,6 +54,16 @@
          pakiraDecisionTreeModel.DataTransformers = dataTransformers;
       }
 
+      static private bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)
+      {
+         return inputValue <= threshold;
+      }
+
+      static private bool ThresholdCompareGreater(double inputValue, double threshold)
+      {
+         return inputValue > threshold;
+      }
+
       private PakiraNode BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<IList<double>> dataDistributionSamples)
       {
          PakiraTree tree = pakiraDecisionTreeModel.Tree;
@@ -70,30 +80,27 @@
             return child;
          }
 
-         Tuple<int, double, PakiraRange[]> tuple = GetBestSplit(extractedDataDistributionSamples, trainSamples);
+         Tuple<int, double, double> tuple = GetBestSplit(extractedDataDistributionSamples, trainSamples);
          int bestFeatureIndex = tuple.Item1;
          double gain = tuple.Item2;
-         PakiraRange[] segments = tuple.Item3;
+         double threshold = tuple.Item3;
 
          PakiraNode node = new PakiraNode
          {
             Column = bestFeatureIndex,
             Gain = gain,
             IsLeaf = false,
-            Threshold = segments[0].Max
+            Threshold = threshold
          };
 
-         segments.Length.ShouldBe(2);
+         Func<double, double, bool>[] compareFunctions = { ThresholdCompareLessThanOrEqual, ThresholdCompareGreater };
 
-         for (int i = 0; i < segments.Length; i++)
+         for (int i = 0; i < compareFunctions.Length; i++)
          {
-            // working set
-            PakiraRange segment = segments[i];
-
-            IEnumerable<IList<double>> sampleSlice = dataDistributionSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
+            IEnumerable<IList<double>> sampleSlice = dataDistributionSamples.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold));
 
             int sampleSliceCount = sampleSlice.Count();
-            IEnumerable<IList<double>> slice = trainSamples.Where(column => column[bestFeatureIndex] >= segment.Min && column[bestFeatureIndex] < segment.Max);
+            IEnumerable<IList<double>> slice = trainSamples.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold));
             PakiraNode child;
 
             if (slice.Count() > 0)
@@ -103,7 +110,7 @@
                {
                   double trainSample = trainSamples.ElementAt(trainLabelIndex)[bestFeatureIndex];
 
-                  return trainSample >= segment.Min && trainSample < segment.Max;
+                  return compareFunctions[i](trainSample, threshold);
                }
                );
 
@@ -136,11 +143,10 @@
          return node;
       }
 
-      private Tuple<int, double, PakiraRange[]> GetBestSplit(IEnumerable<IList<double>> dataDistributionSamples, IEnumerable<IList<double>> trainSamples)
+      private Tuple<int, double, double> GetBestSplit(IEnumerable<IList<double>> dataDistributionSamples, IEnumerable<IList<double>> trainSamples)
       {
          // Transpose the matrix to access one feature at a time
          Matrix<double> dataDistributionSamplesMatrix = Matrix<double>.Build.DenseOfColumns(dataDistributionSamples);
-         PakiraRange[] bestSegments = null;
          int featureCount = dataDistributionSamplesMatrix.RowCount;
          double[] gains = new double[featureCount];
 
@@ -148,7 +154,7 @@
          {
             double gain = 1.0;
 
-            foreach(IList<double> trainSample in trainSamples)
+            foreach (IList<double> trainSample in trainSamples)
             {
                double trainSampleValue = trainSample[featureIndex];
                double quantileRank = dataDistributionSamplesMatrix.Row(featureIndex).QuantileRank(trainSampleValue, RankDefinition.Default);
@@ -179,9 +185,7 @@
 
          double bestFeatureAverage = dataDistributionSamplesMatrix.Row(bestFeature).Mean();
 
-         bestSegments = new PakiraRange[] { new PakiraRange(double.MinValue, bestFeatureAverage), new PakiraRange(bestFeatureAverage, double.MaxValue) };
-
-         return new Tuple<int, double, PakiraRange[]>(bestFeature, bestGain, bestSegments);
+         return new Tuple<int, double, double>(bestFeature, bestGain, bestFeatureAverage);
       }
 
       private PakiraNode BuildLeafNode(double val)
