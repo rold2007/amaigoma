@@ -16,8 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MathNet.Numerics" Version="4.9.1" />
+    <PackageReference Include="MathNet.Numerics" Version="4.11.0" />
     <PackageReference Include="Shouldly" Version="3.0.2" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.7.1" />
   </ItemGroup>
 
 </Project>

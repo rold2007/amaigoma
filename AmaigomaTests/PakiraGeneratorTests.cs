@@ -120,9 +120,6 @@
          dataTransformers += passThroughTransformer.ConvertAll;
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
 
-         //We call the transforms too many time
-         pakiraGenerator.MinimumSampleCount = 1;
-
          pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels, dataTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
