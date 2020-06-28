@@ -42,9 +42,8 @@
             List<IList<double>> transformedDataDistributionSamples = dataDistributionSamples.EnumerateRows().Select(d => dataTransformers(d)).ToList();
 
             generateMoreData = false;
-            pakiraDecisionTreeModel.Tree.Clear();
 
-            pakiraDecisionTreeModel.Tree.Root = BuildTree(pakiraDecisionTreeModel, transformedTrainSamples, trainLabels, transformedDataDistributionSamples);
+            pakiraDecisionTreeModel.Tree = BuildTree(transformedTrainSamples, trainLabels, transformedDataDistributionSamples);
 
             generateMoreData = pakiraDecisionTreeModel.Tree.GetNodes().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX));
 
@@ -64,20 +63,15 @@
          return inputValue > threshold;
       }
 
-      private PakiraNode BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<IList<double>> dataDistributionSamples)
+      private PakiraTree BuildTree(IEnumerable<IList<double>> trainSamples, IEnumerable<double> trainLabels, IEnumerable<IList<double>> dataDistributionSamples)
       {
-         PakiraTree tree = pakiraDecisionTreeModel.Tree;
          IEnumerable<IList<double>> extractedDataDistributionSamples = dataDistributionSamples.Take(MinimumSampleCount);
 
          int extractedDataDistributionSamplesCount = extractedDataDistributionSamples.Count();
 
          if (extractedDataDistributionSamplesCount < MinimumSampleCount)
          {
-            PakiraNode child = BuildLeafNode(INSUFFICIENT_SAMPLES_CLASS_INDEX);
-
-            tree.AddNode(child);
-
-            return child;
+            return PakiraTree.Empty.AddLeaf(new PakiraLeaf(INSUFFICIENT_SAMPLES_CLASS_INDEX));
          }
 
          Tuple<int, double, double> tuple = GetBestSplit(extractedDataDistributionSamples, trainSamples);
@@ -85,15 +79,9 @@
          double gain = tuple.Item2;
          double threshold = tuple.Item3;
 
-         PakiraNode node = new PakiraNode
-         {
-            Column = bestFeatureIndex,
-            Gain = gain,
-            IsLeaf = false,
-            Threshold = threshold
-         };
-
          Func<double, double, bool>[] compareFunctions = { ThresholdCompareLessThanOrEqual, ThresholdCompareGreater };
+
+         PakiraTree[] children = new PakiraTree[2];
 
          for (int i = 0; i < compareFunctions.Length; i++)
          {
@@ -101,7 +89,7 @@
 
             int sampleSliceCount = sampleSlice.Count();
             IEnumerable<IList<double>> slice = trainSamples.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold));
-            PakiraNode child;
+            PakiraTree child;
 
             if (slice.Count() > 0)
             {
@@ -119,28 +107,27 @@
                // only one answer, set leaf
                if (labelCount == 1)
                {
-                  child = BuildLeafNode(ySlice.First());
+                  child = PakiraTree.Empty.AddLeaf(new PakiraLeaf(ySlice.First()));
                }
                // otherwise continue to build tree
                else
                {
-                  child = BuildTree(pakiraDecisionTreeModel, slice, ySlice, sampleSlice);
+                  child = BuildTree(slice, ySlice, sampleSlice);
                }
             }
             else
             {
                // We don't have any training data for this node
-               child = BuildLeafNode(UNKNOWN_CLASS_INDEX);
+               child = PakiraTree.Empty.AddLeaf(new PakiraLeaf(UNKNOWN_CLASS_INDEX));
             }
 
-            tree.AddNode(child);
-
-            node.ChildId[i] = child.Id;
+            children[i] = child;
          }
 
-         tree.AddNode(node);
+         PakiraNode node = new PakiraNode(bestFeatureIndex, threshold);
+         PakiraTree tree = PakiraTree.Empty.AddNode(node, children[0], children[1]);
 
-         return node;
+         return tree;
       }
 
       private Tuple<int, double, double> GetBestSplit(IEnumerable<IList<double>> dataDistributionSamples, IEnumerable<IList<double>> trainSamples)
@@ -186,15 +173,6 @@
          double bestFeatureAverage = dataDistributionSamplesMatrix.Row(bestFeature).Mean();
 
          return new Tuple<int, double, double>(bestFeature, bestGain, bestFeatureAverage);
-      }
-
-      private PakiraNode BuildLeafNode(double val)
-      {
-         return new PakiraNode()
-         {
-            IsLeaf = true,
-            Value = val
-         };
       }
    }
 }

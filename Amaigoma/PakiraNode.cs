@@ -1,37 +1,85 @@
-﻿namespace Amaigoma
+﻿using Shouldly;
+using System;
+
+namespace Amaigoma
 {
-   public class PakiraNode
+   public interface IPakiraNode
    {
-      static int _id = 0;
+      bool IsLeaf { get; }
+      double Value { get; }
+      int Column { get; }
+      double Threshold { get; }
+   }
+
+   public sealed class PakiraNode : IPakiraNode
+   {
       /// <summary>
       /// Initializes a new instance of the <see cref="PakiraNode"/> class.
       /// </summary>
-      public PakiraNode() { Id = ++_id; ChildId = new int[2]; }
-      /// <summary>
-      /// Gets or sets the identifier.
-      /// </summary>
-      /// <value>The identifier.</value>
-      public int Id { get; private set; }
-      /// <summary>if is a leaf.</summary>
-      /// <value>true if this object is leaf, false if not.</value>
-      public bool IsLeaf { get; set; }
+      public PakiraNode(int column, double threshold)
+      {
+         column.ShouldBeGreaterThanOrEqualTo(0);
+
+         this.Column = column;
+         this.Threshold = threshold;
+      }
+
+      public bool IsLeaf
+      {
+         get
+         {
+            return false;
+         }
+      }
+
       /// <summary>Gets or sets the value.</summary>
       /// <value>The value.</value>
-      public double Value { get; set; }
+      public double Value
+      {
+         get
+         {
+            throw new InvalidOperationException();
+         }
+      }
       /// <summary>Gets or sets the column.</summary>
       /// <value>The column.</value>
-      public int Column { get; set; }
-      /// <summary>Gets or sets the name.</summary>
-      /// <value>The name.</value>
-      public string Name { get; set; }
-      /// <summary>Gets or sets the gain.</summary>
-      /// <value>The gain.</value>
-      public double Gain { get; set; }
+      public int Column { get; }
       /// <summary>Gets or sets the threshold.</summary>
       /// <value>The threshold.</value>
-      public double Threshold { get; set; }
-      /// <summary>Gets or sets the child ids.</summary>
-      /// <value>The child ids.</value>
-      public int[] ChildId { get; private set; }
+      public double Threshold { get; }
+   }
+
+   public sealed class PakiraLeaf : IPakiraNode
+   {
+      public PakiraLeaf(double value)
+      {
+         this.Value = value;
+      }
+
+      public bool IsLeaf
+      {
+         get
+         {
+            return true;
+         }
+      }
+
+      public double Value { get; }
+
+      public int Column
+      {
+         get
+         {
+            throw new InvalidOperationException();
+         }
+      }
+
+      public double Threshold
+      {
+         get
+         {
+            throw new InvalidOperationException();
+         }
+      }
    }
 }

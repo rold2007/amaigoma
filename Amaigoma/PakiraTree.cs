@@ -1,97 +1,74 @@
 ﻿namespace Amaigoma
 {
-   using System;
+   using Shouldly;
    using System.Collections.Generic;
+   using System.Collections.Immutable;
 
-   /// <summary>
-   /// Class Tree.
-   /// </summary>
-   public class PakiraTree
+   public sealed class PakiraTree
    {
-      /// <summary>
-      /// Gets or sets the root.
-      /// </summary>
-      /// <value>The root.</value>
-      public PakiraNode Root { get; set; }
+      private static readonly PakiraTree empty = new PakiraTree();
 
-      private readonly Dictionary<int, PakiraNode> nodes;
+      private readonly ImmutableDictionary<IPakiraNode, IPakiraNode> leftNodes;
+      private readonly ImmutableDictionary<IPakiraNode, IPakiraNode> rightNodes;
 
-      /// <summary>
-      /// Initializes a new PakiraTree.
-      /// </summary>
-      public PakiraTree()
+      private PakiraTree()
       {
-         nodes = new Dictionary<int, PakiraNode>();
+         leftNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty;
+         rightNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty;
       }
 
-      /// <summary>
-      /// Adds the specified PakiraNode to the current Graph.
-      /// </summary>
-      /// <param name="node">PakiraNode object to add.</param>
-      public void AddNode(PakiraNode node)
+      private PakiraTree(IPakiraNode root, ImmutableDictionary<IPakiraNode, IPakiraNode> leftNodes, ImmutableDictionary<IPakiraNode, IPakiraNode> rightNodes)
       {
-         nodes[node.Id] = node;
+         Root = root;
+         this.leftNodes = leftNodes;
+         this.rightNodes = rightNodes;
       }
 
-      /// <summary>
-      /// Adds the enumerable of PakiraNode objects to the current Graph.
-      /// </summary>
-      /// <param name="nodes">Collection of PakiraNode objects to add.</param>
-      public void AddNodes(IEnumerable<PakiraNode> nodes)
-      {
-         foreach (var node in nodes)
-            this.AddNode(node);
-      }
+      public IPakiraNode Root { get; }
 
-      /// <summary>
-      /// Gets the PakiraNode associated with the specified identifier.
-      /// </summary>
-      /// <param name="id">Identifier of the PakiraNode to return.</param>
-      /// <returns>PakiraNode</returns>
-      public PakiraNode GetNode(int id)
-      {
-         return this[id];
-      }
-
-      /// <summary>
-      /// Returns True if the specified node exists in the graph.
-      /// </summary>
-      /// <param name="node">PakiraNode to check exists.</param>
-      /// <returns></returns>
-      public bool ContainsNode(PakiraNode node)
-      {
-         return nodes.ContainsKey(node.Id);
-      }
-
-      /// <summary>
-      /// Gets the PakiraNode by the specified Id.
-      /// </summary>
-      /// <param name="id">The key of the specified PakiraNode to return.</param>
-      /// <returns>PakiraNode.</returns>
-      public PakiraNode this[int id]
+      public static PakiraTree Empty
       {
          get
          {
-            if (nodes.ContainsKey(id))
-               return nodes[id];
-            else
-               throw new InvalidOperationException($"Node {id} does not exist!");
+            return PakiraTree.empty;
          }
       }
 
-      /// <summary>
-      /// Returns all PakiraNode objects in the current graph.
-      /// </summary>
-      /// <returns></returns>
-      public IEnumerable<PakiraNode> GetNodes()
+      public PakiraTree AddNode(PakiraNode node, PakiraTree leftChildTree, PakiraTree rightChildTree)
       {
-         foreach (var node in nodes)
-            yield return node.Value;
+         this.ShouldBeSameAs(empty);
+
+         return new PakiraTree(node,
+            leftNodes.AddRange(leftChildTree.leftNodes).AddRange(rightChildTree.leftNodes).Add(node, leftChildTree.Root),
+            rightNodes.AddRange(leftChildTree.rightNodes).AddRange(rightChildTree.rightNodes).Add(node, rightChildTree.Root));
       }
 
-      public void Clear()
+      public PakiraTree AddLeaf(PakiraLeaf leaf)
       {
-         nodes.Clear();
+         this.ShouldBeSameAs(empty);
+
+         return new PakiraTree(leaf, ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty, ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty);
+      }
+
+      public IPakiraNode GetLeftNode(IPakiraNode node)
+      {
+         return leftNodes[node];
+      }
+
+      public IPakiraNode GetRightNode(IPakiraNode node)
+      {
+         return rightNodes[node];
+      }
+
+      public List<IPakiraNode> GetNodes()
+      {
+         List<IPakiraNode> allNodes = new List<IPakiraNode>();
+
+         allNodes.Add(Root);
+         allNodes.AddRange(leftNodes.Values);
+         allNodes.AddRange(rightNodes.Values);
+
+         return allNodes;
       }
    }
 }
