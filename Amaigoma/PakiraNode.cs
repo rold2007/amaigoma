@@ -1,8 +1,8 @@
-﻿using Shouldly;
-using System;
-
-namespace Amaigoma
+﻿namespace Amaigoma
 {
+   using Shouldly;
+   using System;
+
    public interface IPakiraNode
    {
       bool IsLeaf { get; }
