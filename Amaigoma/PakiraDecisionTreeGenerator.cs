@@ -6,6 +6,7 @@
    using Shouldly;
    using System;
    using System.Collections.Generic;
+   using System.Collections.Immutable;
    using System.Linq;
 
    public class PakiraDecisionTreeGenerator
@@ -139,18 +140,19 @@
       private Tuple<int, double, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> GetBestSplit(IEnumerable<SabotenCache> extractedDataDistributionSamplesCache, IEnumerable<SabotenCache> extractedTrainSamplesCache, TanukiTransformers theTransformers)
       {
          double[] gains = new double[theTransformers.TotalOutputSamples];
+         ImmutableList<SabotenCache> extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCache.ToImmutableList();
 
          for (int featureIndex = 0; featureIndex < theTransformers.TotalOutputSamples; featureIndex++)
          {
             double gain = 1.0;
 
-            extractedDataDistributionSamplesCache = extractedDataDistributionSamplesCache.Prefetch(featureIndex, theTransformers);
+            extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCacheList.Prefetch(featureIndex, theTransformers).ToImmutableList();
 
-            IEnumerable<double> featureDataDistributionSample = extractedDataDistributionSamplesCache.Select<SabotenCache, double>(sample =>
+            ImmutableList<double> featureDataDistributionSample = extractedDataDistributionSamplesCacheList.Select<SabotenCache, double>(sample =>
             {
                return sample[featureIndex];
             }
-            );
+            ).ToImmutableList();
 
             extractedTrainSamplesCache = extractedTrainSamplesCache.Prefetch(featureIndex, theTransformers);
 
@@ -182,9 +184,9 @@
 
          bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
-         double bestFeatureAverage = extractedDataDistributionSamplesCache.Select(qwe => qwe[bestFeature]).Mean();
+         double bestFeatureAverage = extractedDataDistributionSamplesCacheList.Select(sample => sample[bestFeature]).Mean();
 
-         return new Tuple<int, double, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>>(bestFeature, bestGain, bestFeatureAverage, extractedDataDistributionSamplesCache, extractedTrainSamplesCache);
+         return new Tuple<int, double, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>>(bestFeature, bestGain, bestFeatureAverage, extractedDataDistributionSamplesCacheList, extractedTrainSamplesCache);
       }
    }
 }
