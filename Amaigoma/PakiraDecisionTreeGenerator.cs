@@ -14,14 +14,18 @@
       static public int UNKNOWN_CLASS_INDEX = -1;
       static public int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
       static private int MINIMUM_SAMPLE_COUNT = 1000;
+      static private double DEFAULT_CERTAINTY_SCORE = 0.95;
       private PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
 
       public PakiraDecisionTreeGenerator()
       {
          MinimumSampleCount = MINIMUM_SAMPLE_COUNT;
+         CertaintyScore = DEFAULT_CERTAINTY_SCORE;
       }
 
       public int MinimumSampleCount { get; set; }
+
+      public double CertaintyScore { get; set; }
 
       public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IList<double> trainLabels)
       {
@@ -139,43 +143,56 @@
 
       private Tuple<int, double, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> GetBestSplit(IEnumerable<SabotenCache> extractedDataDistributionSamplesCache, IEnumerable<SabotenCache> extractedTrainSamplesCache, TanukiTransformers theTransformers)
       {
-         double[] gains = new double[theTransformers.TotalOutputSamples];
+         double[] scores = new double[theTransformers.TotalOutputSamples];
          ImmutableList<SabotenCache> extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCache.ToImmutableList();
+         int evaluatedScoreIndex = 0;
+         bool continueScoreEvaluation = evaluatedScoreIndex < theTransformers.TotalOutputSamples;
 
-         for (int featureIndex = 0; featureIndex < theTransformers.TotalOutputSamples; featureIndex++)
+         while (continueScoreEvaluation)
          {
-            double gain = 1.0;
+            double score = 0.0;
 
-            extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCacheList.Prefetch(featureIndex, theTransformers).ToImmutableList();
+            extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCacheList.Prefetch(evaluatedScoreIndex, theTransformers).ToImmutableList();
 
             ImmutableList<double> featureDataDistributionSample = extractedDataDistributionSamplesCacheList.Select<SabotenCache, double>(sample =>
             {
-               return sample[featureIndex];
+               return sample[evaluatedScoreIndex];
             }
             ).ToImmutableList();
 
-            extractedTrainSamplesCache = extractedTrainSamplesCache.Prefetch(featureIndex, theTransformers);
+            extractedTrainSamplesCache = extractedTrainSamplesCache.Prefetch(evaluatedScoreIndex, theTransformers);
 
             foreach (SabotenCache trainSample in extractedTrainSamplesCache)
             {
-               double trainSampleValue = trainSample[featureIndex];
+               double trainSampleValue = trainSample[evaluatedScoreIndex];
                double quantileRank = featureDataDistributionSample.QuantileRank(trainSampleValue, RankDefinition.Default);
 
                // Keep the sample farthest in the data distribution
-               gain = Math.Min(gain, Math.Min(quantileRank, 1.0 - quantileRank));
+               score = Math.Max(score, Math.Max(quantileRank, 1.0 - quantileRank));
             }
 
-            gains[featureIndex] = gain;
+            scores[evaluatedScoreIndex] = score;
+
+            evaluatedScoreIndex++;
+
+            if (score >= CertaintyScore)
+            {
+               continueScoreEvaluation = false;
+            }
+            else 
+            {
+               continueScoreEvaluation = evaluatedScoreIndex < theTransformers.TotalOutputSamples;
+            }
          }
 
-         double bestGain = 1.0;
+         double bestGain = 0.0;
          int bestFeature = -1;
 
-         for (int featureIndex = 0; featureIndex < theTransformers.TotalOutputSamples; featureIndex++)
+         for (int featureIndex = 0; featureIndex < evaluatedScoreIndex; featureIndex++)
          {
-            double gain = gains[featureIndex];
+            double gain = scores[featureIndex];
 
-            if (gain < bestGain)
+            if (gain > bestGain)
             {
                bestGain = gain;
                bestFeature = featureIndex;
