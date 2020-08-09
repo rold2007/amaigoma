@@ -42,12 +42,19 @@
          ImmutableList<SabotenCache> trainSamplesCache = trainSamples.Select(d => new SabotenCache(d)).ToImmutableList();
          TanukiTransformers theTransformers = new TanukiTransformers(dataTransformers, trainSample);
 
+         Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount, featureCount, (i, j) => continuousUniform.Sample());
+         ImmutableList<SabotenCache> dataDistributionSamplesCache = dataDistributionSamples.EnumerateRows().Select(d => new SabotenCache(d)).ToImmutableList();
+
          while (generateMoreData)
          {
-            Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount, featureCount, (i, j) => continuousUniform.Sample());
-            IEnumerable<SabotenCache> dataDistributionSamplesCache = dataDistributionSamples.EnumerateRows().Select(d => new SabotenCache(d));
-
             generateMoreData = false;
+
+            if(dataDistributionSamplesCache.Count() < dataDistributionSamplesCount)
+            {
+               dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount - dataDistributionSamplesCache.Count(), featureCount, (i, j) => continuousUniform.Sample());
+
+               dataDistributionSamplesCache = dataDistributionSamplesCache.AddRange(dataDistributionSamples.EnumerateRows().Select(d => new SabotenCache(d)));
+            }
 
             pakiraDecisionTreeModel.Tree = BuildTree(trainSamplesCache, trainLabels, dataDistributionSamplesCache, theTransformers);
 
