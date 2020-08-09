@@ -39,7 +39,7 @@
          int featureCount = trainSample.Count();
          bool generateMoreData = true;
          int dataDistributionSamplesCount = MinimumSampleCount * 3;
-         IEnumerable<SabotenCache> trainSamplesCache = trainSamples.Select(d => new SabotenCache(d));
+         ImmutableList<SabotenCache> trainSamplesCache = trainSamples.Select(d => new SabotenCache(d)).ToImmutableList();
          TanukiTransformers theTransformers = new TanukiTransformers(dataTransformers, trainSample);
 
          while (generateMoreData)
@@ -69,7 +69,7 @@
          return inputValue > threshold;
       }
 
-      private PakiraTree BuildTree(IEnumerable<SabotenCache> trainSamplesCache, IEnumerable<double> trainLabels, IEnumerable<SabotenCache> dataDistributionSamplesCache, TanukiTransformers theTransformers)
+      private PakiraTree BuildTree(ImmutableList<SabotenCache> trainSamplesCache, IEnumerable<double> trainLabels, IEnumerable<SabotenCache> dataDistributionSamplesCache, TanukiTransformers theTransformers)
       {
          IEnumerable<SabotenCache> extractedDataDistributionSamplesCache = dataDistributionSamplesCache.Take(MinimumSampleCount);
 
@@ -87,7 +87,7 @@
          IEnumerable<SabotenCache> bestSplitDataDistributionSamplesCache = tuple.Item4;
          IEnumerable<SabotenCache> bestSplitTrainSamplesCache = tuple.Item5;
 
-         IEnumerable<SabotenCache> concatenatedDataDistributionSamples = bestSplitDataDistributionSamplesCache.Concat(dataDistributionSamplesCache.Skip(MinimumSampleCount));
+         ImmutableList<SabotenCache> concatenatedDataDistributionSamples = bestSplitDataDistributionSamplesCache.Concat(dataDistributionSamplesCache.Skip(MinimumSampleCount)).ToImmutableList();
 
          Func<double, double, bool>[] compareFunctions = { ThresholdCompareLessThanOrEqual, ThresholdCompareGreater };
 
@@ -95,11 +95,11 @@
 
          for (int i = 0; i < compareFunctions.Length; i++)
          {
-            concatenatedDataDistributionSamples = concatenatedDataDistributionSamples.Prefetch(bestFeatureIndex, theTransformers);
+            concatenatedDataDistributionSamples = concatenatedDataDistributionSamples.Prefetch(bestFeatureIndex, theTransformers).ToImmutableList();
 
             IEnumerable<SabotenCache> sampleSliceCache = concatenatedDataDistributionSamples.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold));
 
-            IEnumerable<SabotenCache> slice = bestSplitTrainSamplesCache.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold));
+            ImmutableList<SabotenCache> slice = bestSplitTrainSamplesCache.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold)).ToImmutableList();
             PakiraTree child;
 
             if (slice.Count() > 0)
@@ -141,7 +141,7 @@
          return tree;
       }
 
-      private Tuple<int, double, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> GetBestSplit(IEnumerable<SabotenCache> extractedDataDistributionSamplesCache, IEnumerable<SabotenCache> extractedTrainSamplesCache, TanukiTransformers theTransformers)
+      private Tuple<int, double, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> GetBestSplit(IEnumerable<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, TanukiTransformers theTransformers)
       {
          double[] scores = new double[theTransformers.TotalOutputSamples];
          ImmutableList<SabotenCache> extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCache.ToImmutableList();
@@ -160,7 +160,7 @@
             }
             ).ToImmutableList();
 
-            extractedTrainSamplesCache = extractedTrainSamplesCache.Prefetch(evaluatedScoreIndex, theTransformers);
+            extractedTrainSamplesCache = extractedTrainSamplesCache.Prefetch(evaluatedScoreIndex, theTransformers).ToImmutableList();
 
             foreach (SabotenCache trainSample in extractedTrainSamplesCache)
             {
