@@ -3,6 +3,7 @@
    using Shouldly;
    using System.Collections.Generic;
    using System.Collections.Immutable;
+   using System.Linq;
 
    public sealed class PakiraTree
    {
@@ -10,11 +11,13 @@
 
       private readonly ImmutableDictionary<IPakiraNode, IPakiraNode> leftNodes;
       private readonly ImmutableDictionary<IPakiraNode, IPakiraNode> rightNodes;
+      private readonly ImmutableDictionary<IPakiraNode, IPakiraNode> parentNodes;
 
       private PakiraTree()
       {
          leftNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty;
          rightNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty;
+         parentNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty;
       }
 
       private PakiraTree(IPakiraNode root, ImmutableDictionary<IPakiraNode, IPakiraNode> leftNodes, ImmutableDictionary<IPakiraNode, IPakiraNode> rightNodes)
@@ -22,6 +25,9 @@
          Root = root;
          this.leftNodes = leftNodes;
          this.rightNodes = rightNodes;
+
+         parentNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty.AddRange(this.leftNodes.Select(node => new KeyValuePair<IPakiraNode, IPakiraNode>(node.Value, node.Key)));
+         parentNodes = parentNodes.AddRange(this.rightNodes.Select(node => new KeyValuePair<IPakiraNode, IPakiraNode>(node.Value, node.Key)));
       }
 
       public IPakiraNode Root { get; }
@@ -69,6 +75,11 @@
          allNodes.AddRange(rightNodes.Values);
 
          return allNodes;
+      }
+
+      public IPakiraNode GetParentNode(IPakiraNode node)
+      {
+         return parentNodes[node];
       }
    }
 }

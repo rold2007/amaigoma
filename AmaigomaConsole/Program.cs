@@ -1,14 +1,149 @@
-﻿namespace AmaigomaConsole
+﻿using Amaigoma;
+using MathNet.Numerics.LinearAlgebra;
+using Shouldly;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace AmaigomaConsole
 {
-   using Shouldly;
-   using System;
-   using System.Collections.Generic;
-   using System.Linq;
-   using System.Threading.Tasks;
+   internal class TempDataTransformer
+   {
+      public TempDataTransformer()
+      {
+      }
+
+      public IList<double> ConvertAll(IList<double> list)
+      {
+         List<double> features = new List<double>();
+
+         const int sizeX = 24;
+         const int sizeY = 24;
+         const int windowSize = 3;
+
+         for (int y = 0; y < sizeY - windowSize; y += windowSize)
+         {
+            for (int x = 0; x < sizeX - windowSize; x += windowSize)
+            {
+               double sum = 0;
+
+               for (int j = 0; j < windowSize; j++)
+               {
+                  int offsetStart = x + ((y + j) * sizeX);
+
+                  for (int i = 0; i < windowSize; i++)
+                  {
+                     sum += list[offsetStart + i];
+                  }
+               }
+
+               features.Add(sum / (windowSize * windowSize));
+            }
+         }
+
+         return features;
+      }
+   }
 
    class Program
    {
       static void Main()
+      {
+         List<Image<L8>> sourceImages = new List<Image<L8>>();
+
+         sourceImages.Add(Image.Load<L8>(@"a.png"));
+
+         foreach (string filename in Directory.EnumerateFiles(@"Noise\"))
+         {
+            sourceImages.Add(Image.Load<L8>(filename));
+         }
+
+         sourceImages.Add(Image.Load<L8>(@"arrived.png"));
+
+         PakiraDecisionTreeGenerator pakiraGenerator = new PakiraDecisionTreeGenerator();
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
+         const int featureCount = 24 * 24;
+         int sampleCount = sourceImages.Count;
+         Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
+         Vector<double> labels = Vector<double>.Build.Dense(sampleCount);
+
+         labels[0] = 42;
+
+         for (int i = 1; i < sampleCount; i++)
+         {
+            labels[i] = -1;
+         }
+
+         labels[labels.Count - 1] = 2;
+
+         int sampleIndex = 0;
+         Span<L8> imagePixels;
+
+         foreach (Image<L8> image in sourceImages)
+         {
+            image.TryGetSinglePixelSpan(out imagePixels).ShouldBeTrue();
+
+            for (int pixelIndex = 0; pixelIndex < imagePixels.Length; pixelIndex++)
+            {
+               samples.At(sampleIndex, pixelIndex, imagePixels[pixelIndex].PackedValue);
+            }
+
+            sampleIndex++;
+         }
+
+         PassThroughTransformer passThroughTransformer = new PassThroughTransformer();
+         TempDataTransformer tempDataTransformer = new TempDataTransformer();
+
+         Converter<IList<double>, IList<double>> dataTransformers = null;
+
+         dataTransformers += passThroughTransformer.ConvertAll;
+         dataTransformers += tempDataTransformer.ConvertAll;
+         dataTransformers += passThroughTransformer.ConvertAll;
+
+         //pakiraGenerator.MinimumSampleCount = 10;
+         pakiraGenerator.MinimumSampleCount = 100;
+         pakiraGenerator.MinimumSampleCount = 200;
+         pakiraGenerator.MinimumSampleCount = 500;
+         //pakiraGenerator.MinimumSampleCount = 1000;
+         //pakiraGenerator.MinimumSampleCount = 10000;
+
+         pakiraGenerator.CertaintyScore = 0.95;
+         pakiraGenerator.CertaintyScore = 1.0;
+         pakiraGenerator.CertaintyScore = 1.1;
+         //pakiraGenerator.CertaintyScore = 10000.1;
+
+         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels, dataTransformers);
+
+         double resultClass;
+
+         foreach (SabotenCache dataDistributionSampleCache in pakiraDecisionTreeModel.DataDistributionSamplesCache)
+         {
+            resultClass = pakiraDecisionTreeModel.Predict(dataDistributionSampleCache);
+
+            if (resultClass == 42)
+            {
+               string resultClassString = resultClass.ToString();
+
+               byte[] grayscaleBytes = Array.ConvertAll<double, byte>(dataDistributionSampleCache.Data.ToArray(), x => Convert.ToByte(x));
+
+               using (Image<L8> image = Image.LoadPixelData<L8>(grayscaleBytes, 24, 24))
+               {
+                  string folder = "c:\\!\\" + resultClassString;
+                  string path = folder + "\\" + System.IO.Path.GetRandomFileName() + ".png";
+
+                  System.IO.Directory.CreateDirectory(folder);
+
+                  image.SaveAsPng(path);
+               }
+            }
+         }
+      }
+
+      static void MainOld()
       {
          //List<Property> features = new List<Property>();
 
@@ -205,7 +340,7 @@
 
                Console.WriteLine();
 
-               if(swapRootNode == 0)
+               if (swapRootNode == 0)
                {
                   //IEdge[] edges = pakiraModel.Tree.GetOutEdges(pakiraModel.Tree.Root).ToArray();
 
