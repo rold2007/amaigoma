@@ -9,6 +9,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
+using DataTransformer = System.Converter<System.Collections.Generic.IList<double>, System.Collections.Generic.IList<double>>;
+
 namespace AmaigomaConsole
 {
    internal class TempDataTransformer
@@ -98,7 +100,7 @@ namespace AmaigomaConsole
          PassThroughTransformer passThroughTransformer = new PassThroughTransformer();
          TempDataTransformer tempDataTransformer = new TempDataTransformer();
 
-         Converter<IList<double>, IList<double>> dataTransformers = null;
+         DataTransformer dataTransformers = null;
 
          dataTransformers += passThroughTransformer.ConvertAll;
          dataTransformers += tempDataTransformer.ConvertAll;
@@ -116,7 +118,9 @@ namespace AmaigomaConsole
          pakiraGenerator.CertaintyScore = 1.1;
          //pakiraGenerator.CertaintyScore = 10000.1;
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels, dataTransformers);
+         pakiraGenerator.DataTransformers = dataTransformers;
+
+         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          double resultClass;
 

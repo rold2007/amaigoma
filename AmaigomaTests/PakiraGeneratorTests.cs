@@ -127,8 +127,9 @@
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
 
          pakiraGenerator.CertaintyScore = 1.0;
+         pakiraGenerator.DataTransformers = dataTransformers;
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels, dataTransformers);
+         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -178,7 +179,9 @@
             dataTransformers += passThroughTransformer.ConvertAll;
          }
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels, dataTransformers);
+         pakiraGenerator.DataTransformers = dataTransformers;
+
+         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -223,8 +226,9 @@
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
 
          pakiraGenerator.CertaintyScore = 1.0;
+         pakiraGenerator.DataTransformers = dataTransformers;
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels, dataTransformers);
+         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 

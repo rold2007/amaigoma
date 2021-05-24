@@ -11,6 +11,8 @@
    using System.Collections.Immutable;
    using System.Linq;
 
+   using DataTransformer = System.Converter<System.Collections.Generic.IList<double>, System.Collections.Generic.IList<double>>;
+
    // Create a separate source file for this
    public static class IEnumerableExtensions
    {
@@ -36,25 +38,23 @@
       static public int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
       static private int MINIMUM_SAMPLE_COUNT = 1000;
       static private double DEFAULT_CERTAINTY_SCORE = 0.95;
-      private PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
+      static private PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
       private Random RandomSource = new Random();
 
       public PakiraDecisionTreeGenerator()
       {
          MinimumSampleCount = MINIMUM_SAMPLE_COUNT;
          CertaintyScore = DEFAULT_CERTAINTY_SCORE;
+         DataTransformers += DefaultDataTransformer.ConvertAll;
       }
 
       public int MinimumSampleCount { get; set; }
 
       public double CertaintyScore { get; set; }
 
-      public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IList<double> trainLabels)
-      {
-         Generate(pakiraDecisionTreeModel, trainSamples, trainLabels, DefaultDataTransformer.ConvertAll);
-      }
+      public DataTransformer DataTransformers { get; set; }
 
-      public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IList<double> trainLabels, Converter<IList<double>, IList<double>> dataTransformers)
+      public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IList<double> trainLabels)
       {
          DiscreteUniform discreteUniform = new DiscreteUniform(0, 255, RandomSource);
          IList<double> trainSample = trainSamples.ElementAt(0);
@@ -62,7 +62,7 @@
          bool generateMoreData = true;
          int dataDistributionSamplesCount = MinimumSampleCount;
          ImmutableList<SabotenCache> trainSamplesCache = trainSamples.Select(d => new SabotenCache(d)).ToImmutableList();
-         TanukiTransformers theTransformers = new TanukiTransformers(dataTransformers, trainSample);
+         TanukiTransformers theTransformers = new TanukiTransformers(DataTransformers, trainSample);
 
          Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount, featureCount, (i, j) => discreteUniform.Sample());
          ImmutableList<SabotenCache> dataDistributionSamplesCache = dataDistributionSamples.EnumerateRows().Select(d => new SabotenCache(d)).ToImmutableList();
@@ -161,12 +161,11 @@
             return PakiraTree.Empty.AddLeaf(new PakiraLeaf(INSUFFICIENT_SAMPLES_CLASS_INDEX));
          }
 
-         Tuple<int, double, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> tuple = GetBestSplit(extractedDataDistributionSamplesCache, trainSamplesCache, theTransformers);
+         Tuple<int, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> tuple = GetBestSplit(extractedDataDistributionSamplesCache, trainSamplesCache, theTransformers);
          int bestFeatureIndex = tuple.Item1;
-         double gain = tuple.Item2;
-         double threshold = tuple.Item3;
-         IEnumerable<SabotenCache> bestSplitDataDistributionSamplesCache = tuple.Item4;
-         IEnumerable<SabotenCache> bestSplitTrainSamplesCache = tuple.Item5;
+         double threshold = tuple.Item2;
+         IEnumerable<SabotenCache> bestSplitDataDistributionSamplesCache = tuple.Item3;
+         IEnumerable<SabotenCache> bestSplitTrainSamplesCache = tuple.Item4;
 
          ImmutableList<SabotenCache> concatenatedDataDistributionSamples = bestSplitDataDistributionSamplesCache.Concat(dataDistributionSamplesCache.Skip(MinimumSampleCount)).ToImmutableList();
 
@@ -222,7 +221,7 @@
          return tree;
       }
 
-      private Tuple<int, double, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> GetBestSplit(IEnumerable<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, TanukiTransformers theTransformers)
+      private Tuple<int, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> GetBestSplit(IEnumerable<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, TanukiTransformers theTransformers)
       {
          ImmutableList<SabotenCache> extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCache.ToImmutableList();
          IEnumerable<int> randomFeatureIndices =  Enumerable.Range(0, theTransformers.TotalOutputSamples).Shuffle(RandomSource);
@@ -293,7 +292,7 @@
 
          double bestFeatureAverage = extractedDataDistributionSamplesCacheList.Select(sample => sample[bestFeature]).Mean();
 
-         return new Tuple<int, double, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>>(bestFeature, bestScore, bestFeatureAverage, extractedDataDistributionSamplesCacheList, extractedTrainSamplesCache);
+         return new Tuple<int, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>>(bestFeature, bestFeatureAverage, extractedDataDistributionSamplesCacheList, extractedTrainSamplesCache);
       }
    }
 }
