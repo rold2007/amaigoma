@@ -253,7 +253,7 @@
             {
                double add = list[i] + list[i + 1];
 
-               add = 256 - add;
+               add = 255 - add;
                add = Math.Abs(add);
 
                result.Add(add);
