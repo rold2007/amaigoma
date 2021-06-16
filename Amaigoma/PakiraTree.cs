@@ -26,6 +26,7 @@
          this.leftNodes = leftNodes;
          this.rightNodes = rightNodes;
 
+         // Swap key and value to insert in parent nodes
          parentNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty.AddRange(this.leftNodes.Select(node => new KeyValuePair<IPakiraNode, IPakiraNode>(node.Value, node.Key)));
          parentNodes = parentNodes.AddRange(this.rightNodes.Select(node => new KeyValuePair<IPakiraNode, IPakiraNode>(node.Value, node.Key)));
       }
@@ -43,6 +44,8 @@
       public PakiraTree AddNode(PakiraNode node, PakiraTree leftChildTree, PakiraTree rightChildTree)
       {
          this.ShouldBeSameAs(empty);
+         leftChildTree.ShouldNotBe(PakiraTree.Empty);
+         rightChildTree.ShouldNotBe(PakiraTree.Empty);
 
          return new PakiraTree(node,
             leftNodes.AddRange(leftChildTree.leftNodes).AddRange(rightChildTree.leftNodes).Add(node, leftChildTree.Root),
@@ -79,7 +82,14 @@
 
       public IPakiraNode GetParentNode(IPakiraNode node)
       {
-         return parentNodes[node];
+         IPakiraNode parentNode = null;
+
+         if (parentNodes.TryGetValue(node, out parentNode))
+         {
+            return parentNode;
+         }
+
+         return null;
       }
    }
 }
