@@ -1,12 +1,6 @@
 ﻿namespace AmaigomaTests
 {
-   using System;
-   using System.Collections.Generic;
-   using System.Linq;
-   using System.Text;
-   using System.Threading.Tasks;
    using Amaigoma;
-   using MathNet.Numerics.LinearAlgebra;
    using Shouldly;
    using Xunit;
 
@@ -48,6 +42,31 @@
          pakiraTree.GetNodes().Count.ShouldBe(7);
          pakiraTree.GetParentNode(left.Root).ShouldBe(root);
          pakiraTree.GetParentNode(right.Root).ShouldBe(root);
+      }
+
+      [Fact]
+      public void AddNodeTopBottom()
+      {
+         PakiraNode rootNode = new PakiraNode(6, 7);
+         PakiraLeaf leftLeaf = new PakiraLeaf(8);
+         PakiraLeaf rightLeaf = new PakiraLeaf(9);
+         PakiraTree pakiraTree = PakiraTree.Empty.AddNode(rootNode, leftLeaf, rightLeaf);
+
+         PakiraNode subNode = new PakiraNode(10, 11);
+
+         PakiraLeaf newLeftLeaf = new PakiraLeaf(12);
+         PakiraLeaf newRightLeaf = new PakiraLeaf(13);
+
+         pakiraTree = pakiraTree.ReplaceLeaf(rightLeaf, PakiraTree.Empty.AddNode(subNode, newLeftLeaf, newRightLeaf));
+
+         subNode = new PakiraNode(14, 15);
+         newLeftLeaf = new PakiraLeaf(16);
+         newRightLeaf = new PakiraLeaf(17);
+
+         pakiraTree = pakiraTree.ReplaceLeaf(leftLeaf, PakiraTree.Empty.AddNode(subNode, newLeftLeaf, newRightLeaf));
+
+         pakiraTree.Root.ShouldBe(rootNode);
+         pakiraTree.GetNodes().Count.ShouldBe(7);
       }
    }
 }

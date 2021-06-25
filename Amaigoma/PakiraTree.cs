@@ -1,6 +1,7 @@
 ﻿namespace Amaigoma
 {
    using Shouldly;
+   using System;
    using System.Collections.Generic;
    using System.Collections.Immutable;
    using System.Linq;
@@ -52,6 +53,44 @@
             rightNodes.AddRange(leftChildTree.rightNodes).AddRange(rightChildTree.rightNodes).Add(node, rightChildTree.Root));
       }
 
+      public PakiraTree ReplaceLeaf(PakiraLeaf leaf, PakiraTree pakiraTree)
+      {
+         ImmutableDictionary<IPakiraNode, IPakiraNode> updatedLeftNodes;
+         ImmutableDictionary<IPakiraNode, IPakiraNode> updatedRightNodes;
+         IPakiraNode leafParent = GetParentNode(leaf);
+
+         if (leftNodes.Contains(leafParent, leaf))
+         {
+            updatedLeftNodes = leftNodes.Remove(leafParent);
+            updatedRightNodes = rightNodes;
+            updatedLeftNodes = updatedLeftNodes.Add(leafParent, pakiraTree.Root);
+         }
+         else
+         {
+            rightNodes.ShouldContainKey(leafParent);
+
+            updatedLeftNodes = leftNodes;
+            updatedRightNodes = rightNodes.Remove(leafParent);
+            updatedRightNodes = updatedRightNodes.Add(leafParent, pakiraTree.Root);
+         }
+
+         updatedLeftNodes = updatedLeftNodes.AddRange(pakiraTree.leftNodes);
+         updatedRightNodes = updatedRightNodes.AddRange(pakiraTree.rightNodes);
+
+         return new PakiraTree(Root, updatedLeftNodes, updatedRightNodes);
+      }
+
+      public PakiraTree AddNode(PakiraNode node, PakiraLeaf leftChildLeaf, PakiraLeaf rightChildLeaf)
+      {
+         this.ShouldBeSameAs(empty);
+         leftChildLeaf.ShouldNotBeNull();
+         rightChildLeaf.ShouldNotBeNull();
+
+         return new PakiraTree(node,
+            leftNodes.Add(node, leftChildLeaf),
+            rightNodes.Add(node, rightChildLeaf));
+      }
+
       public PakiraTree AddLeaf(PakiraLeaf leaf)
       {
          this.ShouldBeSameAs(empty);
@@ -71,7 +110,7 @@
 
       public List<IPakiraNode> GetNodes()
       {
-         List<IPakiraNode> allNodes = new List<IPakiraNode>();
+         List<IPakiraNode> allNodes = new List<IPakiraNode>(1 + leftNodes.Count + rightNodes.Count);
 
          allNodes.Add(Root);
          allNodes.AddRange(leftNodes.Values);
