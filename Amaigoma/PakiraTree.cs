@@ -58,26 +58,37 @@
          ImmutableDictionary<IPakiraNode, IPakiraNode> updatedLeftNodes;
          ImmutableDictionary<IPakiraNode, IPakiraNode> updatedRightNodes;
          IPakiraNode leafParent = GetParentNode(leaf);
+         IPakiraNode root = Root;
 
-         if (leftNodes.Contains(leafParent, leaf))
+         // The current pakira tree only has a leaf as root
+         if (leafParent == null)
          {
-            updatedLeftNodes = leftNodes.Remove(leafParent);
-            updatedRightNodes = rightNodes;
-            updatedLeftNodes = updatedLeftNodes.Add(leafParent, pakiraTree.Root);
+            leaf.ShouldBe(Root);
+
+            return pakiraTree;
          }
          else
          {
-            rightNodes.ShouldContainKey(leafParent);
+            if (leftNodes.Contains(leafParent, leaf))
+            {
+               updatedLeftNodes = leftNodes.Remove(leafParent);
+               updatedRightNodes = rightNodes;
+               updatedLeftNodes = updatedLeftNodes.Add(leafParent, pakiraTree.Root);
+            }
+            else
+            {
+               rightNodes.ShouldContainKey(leafParent);
 
-            updatedLeftNodes = leftNodes;
-            updatedRightNodes = rightNodes.Remove(leafParent);
-            updatedRightNodes = updatedRightNodes.Add(leafParent, pakiraTree.Root);
+               updatedLeftNodes = leftNodes;
+               updatedRightNodes = rightNodes.Remove(leafParent);
+               updatedRightNodes = updatedRightNodes.Add(leafParent, pakiraTree.Root);
+            }
+
+            updatedLeftNodes = updatedLeftNodes.AddRange(pakiraTree.leftNodes);
+            updatedRightNodes = updatedRightNodes.AddRange(pakiraTree.rightNodes);
+
+            return new PakiraTree(root, updatedLeftNodes, updatedRightNodes);
          }
-
-         updatedLeftNodes = updatedLeftNodes.AddRange(pakiraTree.leftNodes);
-         updatedRightNodes = updatedRightNodes.AddRange(pakiraTree.rightNodes);
-
-         return new PakiraTree(Root, updatedLeftNodes, updatedRightNodes);
       }
 
       public PakiraTree AddNode(PakiraNode node, PakiraLeaf leftChildLeaf, PakiraLeaf rightChildLeaf)

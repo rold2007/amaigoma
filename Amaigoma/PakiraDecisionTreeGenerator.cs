@@ -73,7 +73,7 @@
          {
             generateMoreData = false;
 
-            pakiraDecisionTreeModel.Tree = BuildTree(trainSamplesCache, trainLabels, dataDistributionSamplesCache, theTransformers);
+            pakiraDecisionTreeModel.Tree = BuildTree(trainSamplesCache, trainLabels.ToImmutableList(), dataDistributionSamplesCache, theTransformers);
 
             generateMoreData = pakiraDecisionTreeModel.Tree.GetNodes().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX));
 
@@ -150,81 +150,122 @@
          return inputValue > threshold;
       }
 
-      private PakiraTree BuildTree(ImmutableList<SabotenCache> trainSamplesCache, IEnumerable<double> trainLabels, IEnumerable<SabotenCache> dataDistributionSamplesCache, TanukiTransformers theTransformers)
+      private struct ProcessNode
       {
-         IEnumerable<SabotenCache> extractedDataDistributionSamplesCache = dataDistributionSamplesCache.Take(MinimumSampleCount);
-
-         int extractedDataDistributionSamplesCount = extractedDataDistributionSamplesCache.Count();
-
-         if (extractedDataDistributionSamplesCount < MinimumSampleCount)
+         public ProcessNode(IPakiraNode node, ImmutableList<SabotenCache> trainSamplesCache, ImmutableList<double> trainLabels, ImmutableList<SabotenCache> dataDistributionSamplesCache)
          {
-            return PakiraTree.Empty.AddLeaf(new PakiraLeaf(INSUFFICIENT_SAMPLES_CLASS_INDEX));
+            Node = node;
+            TrainSamplesCache = trainSamplesCache;
+            TrainLabels = trainLabels;
+            DataDistributionSamplesCache = dataDistributionSamplesCache;
          }
 
-         Tuple<int, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> tuple = GetBestSplit(extractedDataDistributionSamplesCache, trainSamplesCache, theTransformers);
-         int bestFeatureIndex = tuple.Item1;
-         double threshold = tuple.Item2;
-         IEnumerable<SabotenCache> bestSplitDataDistributionSamplesCache = tuple.Item3;
-         IEnumerable<SabotenCache> bestSplitTrainSamplesCache = tuple.Item4;
+         public IPakiraNode Node;
+         public ImmutableList<SabotenCache> TrainSamplesCache;
+         public ImmutableList<double> TrainLabels;
+         public ImmutableList<SabotenCache> DataDistributionSamplesCache;
+      };
 
-         ImmutableList<SabotenCache> concatenatedDataDistributionSamples = bestSplitDataDistributionSamplesCache.Concat(dataDistributionSamplesCache.Skip(MinimumSampleCount)).ToImmutableList();
+      private PakiraTree BuildTree(ImmutableList<SabotenCache> trainSamplesCache, ImmutableList<double> trainLabels, ImmutableList<SabotenCache> dataDistributionSamplesCache, TanukiTransformers theTransformers)
+      {
+         int distinctCount = trainLabels.Distinct().Take(2).Count();
 
-         Func<double, double, bool>[] compareFunctions = { ThresholdCompareLessThanOrEqual, ThresholdCompareGreater };
+         distinctCount.ShouldBeGreaterThanOrEqualTo(1);
 
-         PakiraTree[] children = new PakiraTree[2];
-
-         for (int i = 0; i < compareFunctions.Length; i++)
+         if (distinctCount == 1)
          {
-            concatenatedDataDistributionSamples = concatenatedDataDistributionSamples.Prefetch(bestFeatureIndex, theTransformers).ToImmutableList();
+            return PakiraTree.Empty;
+         }
 
-            IEnumerable<SabotenCache> sampleSliceCache = concatenatedDataDistributionSamples.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold));
+         PakiraLeaf[] leaves = new PakiraLeaf[2];
+         PakiraTree pakiraTree = PakiraTree.Empty.AddLeaf(new PakiraLeaf(UNKNOWN_CLASS_INDEX));
+         Stack<ProcessNode> processNodes = new Stack<ProcessNode>();
 
-            ImmutableList<SabotenCache> slice = bestSplitTrainSamplesCache.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold)).ToImmutableList();
-            PakiraTree child;
+         processNodes.Push(new ProcessNode(pakiraTree.Root, trainSamplesCache, trainLabels, dataDistributionSamplesCache));
 
-            if (slice.Count() > 0)
+         while (processNodes.Count > 0)
+         {
+            ProcessNode processNode = processNodes.Pop();
+
+            ImmutableList<SabotenCache> processNodeDataDistributionSamplesCache = processNode.DataDistributionSamplesCache;
+            ImmutableList<SabotenCache> extractedDataDistributionSamplesCache = processNodeDataDistributionSamplesCache.Take(MinimumSampleCount).ToImmutableList();
+            ImmutableList<SabotenCache> processNodeTrainSamplesCache = processNode.TrainSamplesCache;
+            ImmutableList<double> processNodeTrainLabels = processNode.TrainLabels;
+
+            int extractedDataDistributionSamplesCount = extractedDataDistributionSamplesCache.Count();
+
+            if (extractedDataDistributionSamplesCount >= MinimumSampleCount)
             {
-               IEnumerable<double> ySlice = trainLabels.Where(
-               (trainLabel, trainLabelIndex) =>
-               {
-                  double trainSample = bestSplitTrainSamplesCache.ElementAt(trainLabelIndex)[bestFeatureIndex];
+               Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> tuple = GetBestSplit(extractedDataDistributionSamplesCache, processNodeTrainSamplesCache, theTransformers);
+               int bestFeatureIndex = tuple.Item1;
+               double threshold = tuple.Item2;
+               ImmutableList<SabotenCache> bestSplitDataDistributionSamplesCache = tuple.Item3;
+               ImmutableList<SabotenCache> bestSplitTrainSamplesCache = tuple.Item4;
 
-                  return compareFunctions[i](trainSample, threshold);
-               }
-               );
+               ImmutableList<SabotenCache> concatenatedDataDistributionSamples = bestSplitDataDistributionSamplesCache.Concat(processNodeDataDistributionSamplesCache.Skip(MinimumSampleCount)).ToImmutableList();
 
-               int labelCount = ySlice.Distinct().Count();
+               PakiraNode node = new PakiraNode(bestFeatureIndex, threshold);
 
-               // only one answer, set leaf
-               if (labelCount == 1)
+               Func<double, double, bool>[] compareFunctions = { ThresholdCompareLessThanOrEqual, ThresholdCompareGreater };
+
+               concatenatedDataDistributionSamples = concatenatedDataDistributionSamples.Prefetch(bestFeatureIndex, theTransformers).ToImmutableList();
+
+               for (int i = 0; i < compareFunctions.Length; i++)
                {
-                  child = PakiraTree.Empty.AddLeaf(new PakiraLeaf(ySlice.First()));
+                  ImmutableList<SabotenCache> sampleSliceCache = concatenatedDataDistributionSamples.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold)).ToImmutableList();
+
+                  ImmutableList<SabotenCache> slice = bestSplitTrainSamplesCache.Where(column => compareFunctions[i](column[bestFeatureIndex], threshold)).ToImmutableList();
+
+                  if (slice.Count() > 0)
+                  {
+                     ImmutableList<double> ySlice = processNodeTrainLabels.Where(
+                     (trainLabel, trainLabelIndex) =>
+                     {
+                        double trainSample = bestSplitTrainSamplesCache.ElementAt(trainLabelIndex)[bestFeatureIndex];
+
+                        return compareFunctions[i](trainSample, threshold);
+                     }
+                     ).ToImmutableList();
+
+                     ImmutableList<double> distinctLabels = ySlice.Distinct().ToImmutableList();
+                     int distinctLabelsCount = distinctLabels.Count();
+
+                     // only one answer, set leaf
+                     if (distinctLabelsCount == 1)
+                     {
+                        double leafValue = ySlice.First();
+
+                        leaves[i] = new PakiraLeaf(leafValue);
+                     }
+                     // otherwise continue to build tree
+                     else
+                     {
+                        leaves[i] = new PakiraLeaf(UNKNOWN_CLASS_INDEX);
+                        processNodes.Push(new ProcessNode(leaves[i], slice, ySlice, sampleSliceCache));
+                     }
+                  }
+                  else
+                  {
+                     // We don't have any training data for this node
+                     leaves[i] = new PakiraLeaf(UNKNOWN_CLASS_INDEX);
+                  }
                }
-               // otherwise continue to build tree
-               else
-               {
-                  child = BuildTree(slice, ySlice, sampleSliceCache, theTransformers);
-               }
+
+               pakiraTree = pakiraTree.ReplaceLeaf(processNode.Node as PakiraLeaf, PakiraTree.Empty.AddNode(node, leaves[0], leaves[1]));
             }
             else
             {
-               // We don't have any training data for this node
-               child = PakiraTree.Empty.AddLeaf(new PakiraLeaf(UNKNOWN_CLASS_INDEX));
+               pakiraTree = pakiraTree.ReplaceLeaf(processNode.Node as PakiraLeaf, PakiraTree.Empty.AddLeaf(new PakiraLeaf(INSUFFICIENT_SAMPLES_CLASS_INDEX)));
             }
-
-            children[i] = child;
          }
 
-         PakiraNode node = new PakiraNode(bestFeatureIndex, threshold);
-         PakiraTree tree = PakiraTree.Empty.AddNode(node, children[0], children[1]);
-
-         return tree;
+         return pakiraTree;
       }
 
-      private Tuple<int, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>> GetBestSplit(IEnumerable<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, TanukiTransformers theTransformers)
+      private Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> GetBestSplit(ImmutableList<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, TanukiTransformers theTransformers)
       {
          ImmutableList<SabotenCache> extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCache.ToImmutableList();
-         IEnumerable<int> randomFeatureIndices =  Enumerable.Range(0, theTransformers.TotalOutputSamples).Shuffle(RandomSource);
+         ImmutableList<int> randomFeatureIndices = Enumerable.Range(0, theTransformers.TotalOutputSamples).Shuffle(RandomSource).ToImmutableList();
 
          double bestScore = -1.0;
          int bestFeature = -1;
@@ -276,7 +317,7 @@
 
             score /= count;
 
-            if(score > bestScore)
+            if (score > bestScore)
             {
                bestScore = score;
                bestFeature = featureIndex;
@@ -292,7 +333,7 @@
 
          double bestFeatureAverage = extractedDataDistributionSamplesCacheList.Select(sample => sample[bestFeature]).Mean();
 
-         return new Tuple<int, double, IEnumerable<SabotenCache>, IEnumerable<SabotenCache>>(bestFeature, bestFeatureAverage, extractedDataDistributionSamplesCacheList, extractedTrainSamplesCache);
+         return new Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>>(bestFeature, bestFeatureAverage, extractedDataDistributionSamplesCacheList, extractedTrainSamplesCache);
       }
    }
 }
