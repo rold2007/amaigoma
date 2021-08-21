@@ -239,6 +239,43 @@
          // The data transformers should allow to produce a very shallow tree
          pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(3);
       }
+
+      [Fact]
+      public void DeepTree()
+      {
+         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
+         const int featureCount = 2;
+         const int sampleCount = 3;
+         Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
+         Vector<double> labels = Vector<double>.Build.Dense(sampleCount);
+
+         // Sample 0
+         samples.At(0, 0, 2.0);
+         samples.At(0, 1, 3.0);
+
+         // Sample 1
+         samples.At(1, 0, 250.0);
+         samples.At(1, 1, 254.0);
+
+         // Sample 2
+         samples.At(2, 0, 250.0);
+         samples.At(2, 1, 255.0);
+
+         labels.At(0, 42);
+         labels.At(1, 54);
+         labels.At(2, 42);
+
+         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
+
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(25, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Inseatd, the tree depth could also be validated.");
+         pakiraDecisionTreeModel.Predict(samples.Row(0)).ShouldBe(labels.At(0));
+         pakiraDecisionTreeModel.Predict(samples.Row(1)).ShouldBe(labels.At(1));
+         pakiraDecisionTreeModel.Predict(samples.Row(2)).ShouldBe(labels.At(2));
+      }
+
       internal class MeanDistanceDataTransformer
       {
          public MeanDistanceDataTransformer()
@@ -265,7 +302,11 @@
 
       static public PakiraDecisionTreeGenerator CreatePakiraGeneratorInstance()
       {
-         return new PakiraDecisionTreeGenerator();
+         PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator = new PakiraDecisionTreeGenerator();
+
+         Console.WriteLine("PakiraDecisionTreeGenerator random seed: " + PakiraDecisionTreeGenerator.randomSeed.ToString());
+
+         return pakiraDecisionTreeGenerator;
       }
    }
 }

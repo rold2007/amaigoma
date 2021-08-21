@@ -74,7 +74,8 @@
       {
          get
          {
-            fetchedData[index].ShouldBeTrue();
+            fetchedData.Count().ShouldBeGreaterThan(index, "Need to call Prefect() first.");
+            fetchedData[index].ShouldBeTrue("Need to call Prefect() first.");
 
             return transformedData[index];
          }

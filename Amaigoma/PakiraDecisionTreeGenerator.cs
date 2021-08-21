@@ -36,10 +36,11 @@
    {
       static public int UNKNOWN_CLASS_INDEX = -1;
       static public int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
+      static public readonly int randomSeed = new Random().Next();
       static private int MINIMUM_SAMPLE_COUNT = 1000;
       static private double DEFAULT_CERTAINTY_SCORE = 0.95;
       static private PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
-      private Random RandomSource = new Random();
+      private Random RandomSource = new Random(randomSeed);
 
       public PakiraDecisionTreeGenerator()
       {
@@ -62,6 +63,7 @@
          bool generateMoreData = true;
          int dataDistributionSamplesCount = MinimumSampleCount;
          ImmutableList<SabotenCache> trainSamplesCache = trainSamples.Select(d => new SabotenCache(d)).ToImmutableList();
+         ImmutableList<double> immutableTrainLabels = trainLabels.ToImmutableList();
          TanukiTransformers theTransformers = new TanukiTransformers(DataTransformers, trainSample);
 
          Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount, featureCount, (i, j) => discreteUniform.Sample());
@@ -73,7 +75,7 @@
          {
             generateMoreData = false;
 
-            pakiraDecisionTreeModel.Tree = BuildTree(trainSamplesCache, trainLabels.ToImmutableList(), dataDistributionSamplesCache, theTransformers);
+            pakiraDecisionTreeModel.Tree = BuildTree(trainSamplesCache, immutableTrainLabels, dataDistributionSamplesCache, theTransformers);
 
             generateMoreData = pakiraDecisionTreeModel.Tree.GetNodes().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX));
 
@@ -89,51 +91,71 @@
                ImmutableList<SabotenCache> parentSamples = dataDistributionSamplesCache.Where(d => pakiraDecisionTreeModel.Tree.GetParentNode(pakiraDecisionTreeModel.PredictNode(d)) == parent).ToImmutableList();
 
                int parentSamplesCount = parentSamples.Count();
+
+               parentSamplesCount.ShouldBeGreaterThanOrEqualTo(MinimumSampleCount);
+
+               const int sampleSize = 100;
+               const int minimumValidSampleCount = (int)(0.20 * sampleSize);
                int newValidSampleCount = 0;
                int invalidSampleCount = 0;
+               double randomProportion = 100.0;
 
                while (newValidSampleCount < MinimumSampleCount)
                {
-                  Vector<double> filter1 = Vector<double>.Build.Dense(featureCount, (i) => discreteUniformBinary.Sample());
-                  Vector<double> filter2 = identity - filter1;
-
-                  int firstSampleIndex = RandomSource.Next(parentSamplesCount);
-                  int secondSampleIndex = RandomSource.Next(parentSamplesCount);
-
-                  while (firstSampleIndex == secondSampleIndex)
+                  for (int i = 0; i < sampleSize; i++)
                   {
-                     secondSampleIndex = RandomSource.Next(parentSamplesCount);
+                     SabotenCache newSampleCache;
+
+                     if (randomProportion < 100.0)
+                     {
+                        int dataSampleIndex = RandomSource.Next(parentSamplesCount);
+                        SabotenCache dataSample = parentSamples[dataSampleIndex];
+
+                        newSampleCache = new SabotenCache(DenseVector.Create(featureCount, (i) =>
+                        {
+                           if (RandomSource.NextDouble() * 100 < randomProportion)
+                           {
+                              return discreteUniform.Sample();
+                           }
+                           else
+                           {
+                              dataSample = dataSample.Prefetch(i, theTransformers);
+
+                              return dataSample[i];
+                           }
+                        }
+                        ));
+                     }
+                     else
+                     {
+                        newSampleCache = new SabotenCache(DenseVector.Create(featureCount, (i) => discreteUniform.Sample()));
+                     }
+
+                     IPakiraNode predictedNode = pakiraDecisionTreeModel.PredictNode(newSampleCache);
+                     double predictedValue = predictedNode.Value;
+
+                     if (predictedNode == node)
+                     {
+                        dataDistributionSamplesCache = dataDistributionSamplesCache.Add(newSampleCache);
+                        newValidSampleCount++;
+                     }
+                     else
+                     {
+                        invalidSampleCount++;
+                     }
                   }
 
-                  SabotenCache firstSample = parentSamples[firstSampleIndex];
-                  SabotenCache secondSample = parentSamples[secondSampleIndex];
-
-                  DenseVector newData1 = DenseVector.OfEnumerable(firstSample.Data);
-                  DenseVector newData2 = DenseVector.OfEnumerable(secondSample.Data);
-
-                  newData1.PointwiseMultiply(filter1, newData1);
-                  newData2.PointwiseMultiply(filter2, newData2);
-                  newData1 += newData2;
-
-
-                  SabotenCache newSample = new SabotenCache(newData1);
-
-                  IPakiraNode predictedNode = pakiraDecisionTreeModel.PredictNode(newSample);
-                  double predictedValue = predictedNode.Value;
-
-                  if (predictedNode == node)
+                  if (newValidSampleCount < minimumValidSampleCount)
                   {
-                     dataDistributionSamplesCache = dataDistributionSamplesCache.Add(newSample);
-                     newValidSampleCount++;
+                     randomProportion -= 10;
+
+                     // Don't let fully-unchanged new samples
+                     randomProportion = Math.Max(randomProportion, 10);
                   }
-                  else
-                  {
-                     invalidSampleCount++;
-                  }
+
+                  newValidSampleCount.ShouldNotBe(-1, "Just to put a breakpoint and see the values...");
                }
             }
-
-            dataDistributionSamplesCount *= 2;
          }
 
          pakiraDecisionTreeModel.DataDistributionSamples = dataDistributionSamples;
@@ -232,9 +254,14 @@
                      // otherwise continue to build tree
                      else
                      {
+                        leaves[leafIndex] = new PakiraLeaf(UNKNOWN_CLASS_INDEX);
+
+                        concatenatedDataDistributionSamples.Count().ShouldBeGreaterThan(0);
+
                         ImmutableList<SabotenCache> sampleSliceCache = concatenatedDataDistributionSamples.Where(column => ThresholdCompareLessThanOrEqual(column[bestFeatureIndex], threshold) == theKey).ToImmutableList();
 
-                        leaves[leafIndex] = new PakiraLeaf(UNKNOWN_CLASS_INDEX);
+                        sampleSliceCache.Count().ShouldNotBe(concatenatedDataDistributionSamples.Count());
+
                         processNodes.Push(new ProcessNode(leaves[leafIndex], slice, ySlice, sampleSliceCache));
                      }
                   }
