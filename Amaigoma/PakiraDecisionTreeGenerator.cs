@@ -68,7 +68,7 @@
          {
             generateMoreData = false;
 
-            PakiraTree tree = BuildTree(trainSamplesCache, immutableTrainLabels, dataDistributionSamplesCache, pakiraDecisionTreeModel.TanukiTransformers);
+            PakiraTree tree = BuildTree(trainSamplesCache, immutableTrainLabels, dataDistributionSamplesCache, pakiraDecisionTreeModel);
 
             pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(tree);
 
@@ -112,7 +112,7 @@
                            }
                            else
                            {
-                              dataSample = dataSample.Prefetch(i, pakiraDecisionTreeModel.TanukiTransformers);
+                              dataSample = pakiraDecisionTreeModel.Prefetch(dataSample, i);
 
                               return dataSample[i];
                            }
@@ -175,7 +175,7 @@
          public ImmutableList<SabotenCache> DataDistributionSamplesCache;
       };
 
-      private PakiraTree BuildTree(ImmutableList<SabotenCache> trainSamplesCache, ImmutableList<double> trainLabels, ImmutableList<SabotenCache> dataDistributionSamplesCache, TanukiTransformers theTransformers)
+      private PakiraTree BuildTree(ImmutableList<SabotenCache> trainSamplesCache, ImmutableList<double> trainLabels, ImmutableList<SabotenCache> dataDistributionSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)
       {
          int distinctCount = trainLabels.Distinct().Take(2).Count();
 
@@ -205,7 +205,7 @@
 
             if (extractedDataDistributionSamplesCount >= MinimumSampleCount)
             {
-               Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> tuple = GetBestSplit(extractedDataDistributionSamplesCache, processNodeTrainSamplesCache, theTransformers);
+               Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> tuple = GetBestSplit(extractedDataDistributionSamplesCache, processNodeTrainSamplesCache, pakiraDecisionTreeModel);
                int bestFeatureIndex = tuple.Item1;
                double threshold = tuple.Item2;
                ImmutableList<SabotenCache> bestSplitDataDistributionSamplesCache = tuple.Item3;
@@ -215,7 +215,7 @@
 
                PakiraNode node = new PakiraNode(bestFeatureIndex, threshold);
 
-               concatenatedDataDistributionSamples = concatenatedDataDistributionSamples.Prefetch(bestFeatureIndex, theTransformers).ToImmutableList();
+               concatenatedDataDistributionSamples = pakiraDecisionTreeModel.Prefetch(concatenatedDataDistributionSamples, bestFeatureIndex);
 
                for (int leafIndex = 0; leafIndex < 2; leafIndex++)
                {
@@ -275,10 +275,10 @@
          return pakiraTree;
       }
 
-      private Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> GetBestSplit(ImmutableList<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, TanukiTransformers theTransformers)
+      private Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> GetBestSplit(ImmutableList<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)
       {
          ImmutableList<SabotenCache> extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCache.ToImmutableList();
-         ImmutableList<int> randomFeatureIndices = Enumerable.Range(0, theTransformers.TotalOutputSamples).Shuffle(RandomSource).ToImmutableList();
+         ImmutableList<int> randomFeatureIndices = pakiraDecisionTreeModel.FeatureIndices().Shuffle(RandomSource).ToImmutableList();
 
          double bestScore = -1.0;
          int bestFeature = -1;
@@ -287,7 +287,7 @@
          {
             double score = 0.0;
 
-            extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCacheList.Prefetch(featureIndex, theTransformers).ToImmutableList();
+            extractedDataDistributionSamplesCacheList = pakiraDecisionTreeModel.Prefetch(extractedDataDistributionSamplesCacheList, featureIndex);
 
             ImmutableList<double> featureDataDistributionSample = extractedDataDistributionSamplesCacheList.Select<SabotenCache, double>(sample =>
             {
@@ -303,7 +303,7 @@
             histogram.LowerBound.ShouldBeGreaterThanOrEqualTo((0.0).Decrement());
             histogram.UpperBound.ShouldBeLessThanOrEqualTo(255.0);
 
-            extractedTrainSamplesCache = extractedTrainSamplesCache.Prefetch(featureIndex, theTransformers).ToImmutableList();
+            extractedTrainSamplesCache = pakiraDecisionTreeModel.Prefetch(extractedTrainSamplesCache, featureIndex);
 
             score = extractedTrainSamplesCache.Max((SabotenCache trainSample) =>
             {

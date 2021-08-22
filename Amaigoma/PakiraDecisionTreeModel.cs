@@ -3,6 +3,7 @@
    using System;
    using System.Collections.Generic;
    using System.Collections.Immutable;
+   using System.Linq;
 
    using DataTransformer = System.Converter<System.Collections.Generic.IList<double>, System.Collections.Generic.IList<double>>;
 
@@ -13,9 +14,9 @@
 
       public PakiraTree Tree { get; } = PakiraTree.Empty;
 
-      public TanukiTransformers TanukiTransformers { get; }
+      private TanukiTransformers TanukiTransformers { get; }
 
-      public ImmutableList<SabotenCache> DataDistributionSamplesCache { get; }
+      private ImmutableList<SabotenCache> DataDistributionSamplesCache { get; }
 
       /// <summary>Default constructor.</summary>
       public PakiraDecisionTreeModel() : this(new List<double>() { 0.0 })
@@ -55,6 +56,21 @@
       public PakiraDecisionTreeModel UpdateDataDistributionSamplesCache(ImmutableList<SabotenCache> dataDistributionSamplesCache)
       {
          return new PakiraDecisionTreeModel(Tree, TanukiTransformers, dataDistributionSamplesCache);
+      }
+
+      public IEnumerable<int> FeatureIndices()
+      {
+         return Enumerable.Range(0, TanukiTransformers.TotalOutputSamples);
+      }
+
+      public SabotenCache Prefetch(SabotenCache dataSample, int featureIndex)
+      {
+         return dataSample.Prefetch(featureIndex, TanukiTransformers);
+      }
+
+      public ImmutableList<SabotenCache> Prefetch(ImmutableList<SabotenCache> dataSamples, int featureIndex)
+      {
+         return dataSamples.Prefetch(featureIndex, TanukiTransformers).ToImmutableList();
       }
 
       /// <summary>Predicts the given y coordinate.</summary>
