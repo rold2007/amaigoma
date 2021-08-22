@@ -3,6 +3,8 @@ using MathNet.Numerics.LinearAlgebra;
 using Shouldly;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing.Processors;
+using SixLabors.ImageSharp.Processing.Processors.Transforms;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -57,18 +59,23 @@ namespace AmaigomaConsole
       {
          List<Image<L8>> sourceImages = new List<Image<L8>>();
 
-         sourceImages.Add(Image.Load<L8>(@"a.png"));
+         sourceImages.Add(Image.Load<L8>(@"Images\FS18800114.2.11-a2-427w-c32\a\a.png"));
 
-         foreach (string filename in Directory.EnumerateFiles(@"Noise\"))
+         foreach (string filename in Directory.EnumerateFiles(@"Images\FS18800114.2.11-a2-427w-c32\Noise\"))
          {
             sourceImages.Add(Image.Load<L8>(filename));
          }
 
-         sourceImages.Add(Image.Load<L8>(@"arrived.png"));
+         foreach (string filename in Directory.EnumerateFiles(@"Images\FS18800114.2.11-a2-427w-c32\NotA\"))
+         {
+            sourceImages.Add(Image.Load<L8>(filename));
+         }
+
+         sourceImages.Add(Image.Load<L8>(@"Images\FS18800114.2.11-a2-427w-c32\r\arrived.png"));
 
          PakiraDecisionTreeGenerator pakiraGenerator = new PakiraDecisionTreeGenerator();
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
-         const int featureCount = 24 * 24;
+         const int featureWindowSize = 24;
+         const int featureCount = featureWindowSize * featureWindowSize;
          int sampleCount = sourceImages.Count;
          Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
          Vector<double> labels = Vector<double>.Build.Dense(sampleCount);
@@ -104,25 +111,70 @@ namespace AmaigomaConsole
 
          dataTransformers += passThroughTransformer.ConvertAll;
          dataTransformers += tempDataTransformer.ConvertAll;
-         dataTransformers += passThroughTransformer.ConvertAll;
+         //dataTransformers += passThroughTransformer.ConvertAll;
 
-         //pakiraGenerator.MinimumSampleCount = 10;
-         pakiraGenerator.MinimumSampleCount = 100;
-         pakiraGenerator.MinimumSampleCount = 200;
-         pakiraGenerator.MinimumSampleCount = 500;
+         pakiraGenerator.MinimumSampleCount = 10;
+         //pakiraGenerator.MinimumSampleCount = 50;
+         //pakiraGenerator.MinimumSampleCount = 100;
+         //pakiraGenerator.MinimumSampleCount = 200;
+         //pakiraGenerator.MinimumSampleCount = 500;
          //pakiraGenerator.MinimumSampleCount = 1000;
          //pakiraGenerator.MinimumSampleCount = 10000;
 
-         pakiraGenerator.CertaintyScore = 0.95;
-         pakiraGenerator.CertaintyScore = 1.0;
-         pakiraGenerator.CertaintyScore = 1.1;
+         pakiraGenerator.CertaintyScore = 0.50;
+         //pakiraGenerator.CertaintyScore = 0.75;
+         //pakiraGenerator.CertaintyScore = 0.95;
+         //pakiraGenerator.CertaintyScore = 1.0;
+         //pakiraGenerator.CertaintyScore = 1.1;
          //pakiraGenerator.CertaintyScore = 10000.1;
 
-         pakiraGenerator.DataTransformers = dataTransformers;
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(PakiraTree.Empty, dataTransformers, samples.Row(0));
+
+         //pakiraGenerator.DataTransformers = dataTransformers;
 
          pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          double resultClass;
+
+         Image<L8> fullTextImage = Image.Load<L8>(@"Images\FS18800114.2.11-a2-427w-c32.png");
+         CropProcessor cropProcessor;
+         string folder;
+
+         for (int y = 0; y < fullTextImage.Height - featureWindowSize; y++)
+         {
+            for (int x = 0; x < fullTextImage.Width - featureWindowSize; x++)
+            {
+               cropProcessor = new CropProcessor(new Rectangle(x, y, featureWindowSize, featureWindowSize), fullTextImage.Size());
+
+               ICloningImageProcessor<L8> cloningImageProcessor = cropProcessor.CreatePixelSpecificCloningProcessor(Configuration.Default, fullTextImage, new Rectangle(x, y, featureWindowSize, featureWindowSize));
+
+               Image<L8> croppedImage = cloningImageProcessor.CloneAndExecute();
+
+               croppedImage.TryGetSinglePixelSpan(out imagePixels).ShouldBeTrue();
+
+               Vector<double> croppedSample = Vector<double>.Build.Dense(imagePixels.Length);
+
+               for (int pixelIndex = 0; pixelIndex < imagePixels.Length; pixelIndex++)
+               {
+                  croppedSample.At(pixelIndex, imagePixels[pixelIndex].PackedValue);
+               }
+
+               SabotenCache croppedSampleCache = new SabotenCache(croppedSample);
+
+               resultClass = pakiraDecisionTreeModel.Predict(croppedSampleCache);
+
+               if (resultClass == 42)
+               {
+                  string resultClassString = resultClass.ToString();
+
+                  folder = "c:\\!\\argh\\" + resultClassString;
+                  System.IO.Directory.CreateDirectory(folder);
+                  string path = folder + "\\" + x.ToString() + "x" + y.ToString() + ".png";
+
+                  croppedImage.SaveAsPng(path);
+               }
+            }
+         }
 
          foreach (SabotenCache dataDistributionSampleCache in pakiraDecisionTreeModel.DataDistributionSamplesCache)
          {
@@ -136,7 +188,7 @@ namespace AmaigomaConsole
 
                using (Image<L8> image = Image.LoadPixelData<L8>(grayscaleBytes, 24, 24))
                {
-                  string folder = "c:\\!\\" + resultClassString;
+                  folder = "c:\\!\\" + resultClassString;
                   string path = folder + "\\" + System.IO.Path.GetRandomFileName() + ".png";
 
                   System.IO.Directory.CreateDirectory(folder);

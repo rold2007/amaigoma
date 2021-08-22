@@ -11,8 +11,6 @@
    using System.Collections.Immutable;
    using System.Linq;
 
-   using DataTransformer = System.Converter<System.Collections.Generic.IList<double>, System.Collections.Generic.IList<double>>;
-
    // Create a separate source file for this
    public static class IEnumerableExtensions
    {
@@ -34,48 +32,45 @@
 
    public class PakiraDecisionTreeGenerator
    {
-      static public int UNKNOWN_CLASS_INDEX = -1;
-      static public int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
+      static public readonly int UNKNOWN_CLASS_INDEX = -1;
+      static public readonly int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
       static public readonly int randomSeed = new Random().Next();
-      static private int MINIMUM_SAMPLE_COUNT = 1000;
-      static private double DEFAULT_CERTAINTY_SCORE = 0.95;
-      static private PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
-      private Random RandomSource = new Random(randomSeed);
+      static private readonly int MINIMUM_SAMPLE_COUNT = 1000;
+      static private readonly double DEFAULT_CERTAINTY_SCORE = 0.95;
+      static private readonly PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
+      private readonly Random RandomSource = new Random(randomSeed);
+      private DiscreteUniform discreteUniform;
 
       public PakiraDecisionTreeGenerator()
       {
          MinimumSampleCount = MINIMUM_SAMPLE_COUNT;
          CertaintyScore = DEFAULT_CERTAINTY_SCORE;
-         DataTransformers += DefaultDataTransformer.ConvertAll;
+         discreteUniform = new DiscreteUniform(0, 255, RandomSource);
       }
 
       public int MinimumSampleCount { get; set; }
 
       public double CertaintyScore { get; set; }
 
-      public DataTransformer DataTransformers { get; set; }
-
-      public void Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IList<double> trainLabels)
+      public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<IList<double>> trainSamples, IList<double> trainLabels)
       {
-         DiscreteUniform discreteUniform = new DiscreteUniform(0, 255, RandomSource);
          IList<double> trainSample = trainSamples.ElementAt(0);
          int featureCount = trainSample.Count();
          bool generateMoreData = true;
          int dataDistributionSamplesCount = MinimumSampleCount;
          ImmutableList<SabotenCache> trainSamplesCache = trainSamples.Select(d => new SabotenCache(d)).ToImmutableList();
          ImmutableList<double> immutableTrainLabels = trainLabels.ToImmutableList();
-         TanukiTransformers theTransformers = new TanukiTransformers(DataTransformers, trainSample);
 
          Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount, featureCount, (i, j) => discreteUniform.Sample());
          ImmutableList<SabotenCache> dataDistributionSamplesCache = dataDistributionSamples.EnumerateRows().Select(d => new SabotenCache(d)).ToImmutableList();
-
-         pakiraDecisionTreeModel.DataTransformers = theTransformers;
 
          while (generateMoreData)
          {
             generateMoreData = false;
 
-            pakiraDecisionTreeModel.Tree = BuildTree(trainSamplesCache, immutableTrainLabels, dataDistributionSamplesCache, theTransformers);
+            PakiraTree tree = BuildTree(trainSamplesCache, immutableTrainLabels, dataDistributionSamplesCache, pakiraDecisionTreeModel.TanukiTransformers);
+
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(tree);
 
             generateMoreData = pakiraDecisionTreeModel.Tree.GetNodes().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX));
 
@@ -91,8 +86,6 @@
                ImmutableList<SabotenCache> parentSamples = dataDistributionSamplesCache.Where(d => pakiraDecisionTreeModel.Tree.GetParentNode(pakiraDecisionTreeModel.PredictNode(d)) == parent).ToImmutableList();
 
                int parentSamplesCount = parentSamples.Count();
-
-               parentSamplesCount.ShouldBeGreaterThanOrEqualTo(MinimumSampleCount);
 
                const int sampleSize = 100;
                const int minimumValidSampleCount = (int)(0.20 * sampleSize);
@@ -119,7 +112,7 @@
                            }
                            else
                            {
-                              dataSample = dataSample.Prefetch(i, theTransformers);
+                              dataSample = dataSample.Prefetch(i, pakiraDecisionTreeModel.TanukiTransformers);
 
                               return dataSample[i];
                            }
@@ -158,8 +151,7 @@
             }
          }
 
-         pakiraDecisionTreeModel.DataDistributionSamples = dataDistributionSamples;
-         pakiraDecisionTreeModel.DataDistributionSamplesCache = dataDistributionSamplesCache;
+         return pakiraDecisionTreeModel.UpdateDataDistributionSamplesCache(dataDistributionSamplesCache);
       }
 
       static private bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)

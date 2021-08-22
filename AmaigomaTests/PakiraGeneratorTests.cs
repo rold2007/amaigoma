@@ -20,7 +20,6 @@
       public void Generate()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
          const int featureCount = 2;
          const int sampleCount = 3;
          Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
@@ -44,7 +43,9 @@
 
          pakiraGenerator.CertaintyScore = 1.0;
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(samples.Row(0));
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -61,7 +62,6 @@
       public void MinimumSampleCount()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
          const int featureCount = 2;
          const int sampleCount = 3;
          Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
@@ -83,7 +83,9 @@
          labels.At(1, 54);
          labels.At(2, 42);
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(samples.Row(0));
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -96,7 +98,6 @@
       public void DataTransformers()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
          const int featureCount = 2;
          const int sampleCount = 3;
          Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
@@ -127,9 +128,10 @@
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
 
          pakiraGenerator.CertaintyScore = 1.0;
-         pakiraGenerator.DataTransformers = dataTransformers;
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(dataTransformers, samples.Row(0));
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -145,7 +147,6 @@
       public void DataTransformersQuickExit()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
          const int featureCount = 2;
          const int sampleCount = 3;
          Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
@@ -179,9 +180,9 @@
             dataTransformers += passThroughTransformer.ConvertAll;
          }
 
-         pakiraGenerator.DataTransformers = dataTransformers;
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(dataTransformers, samples.Row(0));
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -197,7 +198,6 @@
       public void DataTransformersQuickExit2()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
          const int featureCount = 2;
          const int sampleCount = 3;
          Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
@@ -226,9 +226,10 @@
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
 
          pakiraGenerator.CertaintyScore = 1.0;
-         pakiraGenerator.DataTransformers = dataTransformers;
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(dataTransformers, samples.Row(0));
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -244,7 +245,6 @@
       public void DeepTree()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel();
          const int featureCount = 2;
          const int sampleCount = 3;
          Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
@@ -266,11 +266,13 @@
          labels.At(1, 54);
          labels.At(2, 42);
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(samples.Row(0));
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(25, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Inseatd, the tree depth could also be validated.");
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(19, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Inseatd, the tree depth could also be validated.");
          pakiraDecisionTreeModel.Predict(samples.Row(0)).ShouldBe(labels.At(0));
          pakiraDecisionTreeModel.Predict(samples.Row(1)).ShouldBe(labels.At(1));
          pakiraDecisionTreeModel.Predict(samples.Row(2)).ShouldBe(labels.At(2));

@@ -6,22 +6,21 @@
    using System.Collections.Immutable;
    using System.Linq;
 
-   public sealed class SabotenCache
+   public sealed record SabotenCache
    {
-      private readonly ImmutableList<double> transformedData = ImmutableList<double>.Empty;
-      private readonly ImmutableList<bool> fetchedData = ImmutableList<bool>.Empty;
+      private ImmutableList<double> TransformedData { get; } = ImmutableList<double>.Empty;
+      private ImmutableList<bool> FetchedData { get; } = ImmutableList<bool>.Empty;
 
       public SabotenCache(IList<double> data)
       {
-         this.Data = data;
+         Data = data;
       }
 
       private SabotenCache(IList<double> data, ImmutableList<double> transformedData, ImmutableList<bool> fetchedData)
       {
-         this.Data = data;
-         this.transformedData = transformedData;
-
-         this.fetchedData = fetchedData;
+         Data = data;
+         TransformedData = transformedData;
+         FetchedData = fetchedData;
       }
 
       public SabotenCache LoadCache(Range range, IEnumerable<double> newTransformedData)
@@ -29,16 +28,16 @@
          ImmutableList<double> transformedData;
          ImmutableList<bool> fetchedData;
 
-         if (range.Start.Value == this.transformedData.Count)
+         if (range.Start.Value == TransformedData.Count)
          {
-            transformedData = this.transformedData.AddRange(newTransformedData);
-            fetchedData = this.fetchedData.AddRange(Enumerable.Repeat(true, range.End.Value - range.Start.Value));
+            transformedData = TransformedData.AddRange(newTransformedData);
+            fetchedData = FetchedData.AddRange(Enumerable.Repeat(true, range.End.Value - range.Start.Value));
          }
-         else if (range.Start.Value > this.transformedData.Count)
+         else if (range.Start.Value > TransformedData.Count)
          {
             // Fill the gap
-            transformedData = this.transformedData.AddRange(Enumerable.Repeat(0.0, range.Start.Value - this.transformedData.Count));
-            fetchedData = this.fetchedData.AddRange(Enumerable.Repeat(false, range.Start.Value - this.transformedData.Count));
+            transformedData = TransformedData.AddRange(Enumerable.Repeat(0.0, range.Start.Value - TransformedData.Count));
+            fetchedData = FetchedData.AddRange(Enumerable.Repeat(false, range.Start.Value - TransformedData.Count));
 
             // Fill the new data
             transformedData = transformedData.AddRange(newTransformedData);
@@ -46,10 +45,10 @@
          }
          else
          {
-            range.Start.Value.ShouldBeLessThan(this.transformedData.Count);
+            range.Start.Value.ShouldBeLessThan(TransformedData.Count);
 
-            transformedData = this.transformedData.RemoveRange(range.Start.Value, range.End.Value - range.Start.Value);
-            fetchedData = this.fetchedData.RemoveRange(range.Start.Value, range.End.Value - range.Start.Value);
+            transformedData = TransformedData.RemoveRange(range.Start.Value, range.End.Value - range.Start.Value);
+            fetchedData = FetchedData.RemoveRange(range.Start.Value, range.End.Value - range.Start.Value);
 
             transformedData = transformedData.InsertRange(range.Start.Value, newTransformedData);
             fetchedData = fetchedData.InsertRange(range.Start.Value, Enumerable.Repeat(true, range.End.Value - range.Start.Value));
@@ -60,9 +59,9 @@
 
       public bool CacheHit(int index)
       {
-         if (index < fetchedData.Count())
+         if (index < FetchedData.Count())
          {
-            return fetchedData[index];
+            return FetchedData[index];
          }
          else
          {
@@ -74,10 +73,9 @@
       {
          get
          {
-            fetchedData.Count().ShouldBeGreaterThan(index, "Need to call Prefect() first.");
-            fetchedData[index].ShouldBeTrue("Need to call Prefect() first.");
+            CacheHit(index).ShouldBeTrue("Need to call Prefect() first.");
 
-            return transformedData[index];
+            return TransformedData[index];
          }
       }
 

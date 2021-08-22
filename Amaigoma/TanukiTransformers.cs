@@ -11,7 +11,7 @@
       private readonly ImmutableList<Tuple<Range, Converter<IList<double>, IList<double>>>> dataTransformers = ImmutableList<Tuple<Range, Converter<IList<double>, IList<double>>>>.Empty;
       private readonly Comparer<Tuple<Range, Converter<IList<double>, IList<double>>>> rangeComparer = Comparer<Tuple<Range, Converter<IList<double>, IList<double>>>>.Create((x, y) => x.Item1.Start.Value.CompareTo(y.Item1.Start.Value));
 
-      public TanukiTransformers(Converter<IList<double>, IList<double>> converters, IList<double> trainSample)
+      public TanukiTransformers(Converter<IList<double>, IList<double>> converters, IList<double> dataSample)
       {
          Delegate[] delegates = converters.GetInvocationList();
 
@@ -21,7 +21,7 @@
          foreach (Delegate dataTransformer in delegates)
          {
             Converter<IList<double>, IList<double>> converter = dataTransformer as Converter<IList<double>, IList<double>>;
-            int transformedDataCount = converter(trainSample).Count();
+            int transformedDataCount = converter(dataSample).Count();
 
             end = new Index(start.Value + transformedDataCount);
 
