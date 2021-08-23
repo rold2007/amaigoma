@@ -61,16 +61,18 @@
          ImmutableList<SabotenCache> trainSamplesCache = trainSamples.Select(d => new SabotenCache(d)).ToImmutableList();
          ImmutableList<double> immutableTrainLabels = trainLabels.ToImmutableList();
 
-         Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount, featureCount, (i, j) => discreteUniform.Sample());
-         ImmutableList<SabotenCache> dataDistributionSamplesCache = dataDistributionSamples.EnumerateRows().Select(d => new SabotenCache(d)).ToImmutableList();
+         ImmutableList<SabotenCache> dataDistributionSamplesCache;
+
+         {
+            Matrix<double> dataDistributionSamples = Matrix<double>.Build.Dense(dataDistributionSamplesCount, featureCount, (i, j) => discreteUniform.Sample());
+            dataDistributionSamplesCache = dataDistributionSamples.EnumerateRows().Select(d => new SabotenCache(d)).ToImmutableList();
+         }
 
          while (generateMoreData)
          {
             generateMoreData = false;
 
-            PakiraTree tree = BuildTree(trainSamplesCache, immutableTrainLabels, dataDistributionSamplesCache, pakiraDecisionTreeModel);
-
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(tree);
+            pakiraDecisionTreeModel = BuildTree(trainSamplesCache, immutableTrainLabels, dataDistributionSamplesCache, pakiraDecisionTreeModel);
 
             generateMoreData = pakiraDecisionTreeModel.Tree.GetNodes().Any(pakiraNode => (pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX));
 
@@ -175,7 +177,7 @@
          public ImmutableList<SabotenCache> DataDistributionSamplesCache;
       };
 
-      private PakiraTree BuildTree(ImmutableList<SabotenCache> trainSamplesCache, ImmutableList<double> trainLabels, ImmutableList<SabotenCache> dataDistributionSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)
+      private PakiraDecisionTreeModel BuildTree(ImmutableList<SabotenCache> trainSamplesCache, ImmutableList<double> trainLabels, ImmutableList<SabotenCache> dataDistributionSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)
       {
          int distinctCount = trainLabels.Distinct().Take(2).Count();
 
@@ -183,7 +185,7 @@
 
          if (distinctCount == 1)
          {
-            return PakiraTree.Empty;
+            return pakiraDecisionTreeModel.UpdateTree(PakiraTree.Empty);
          }
 
          PakiraLeaf[] leaves = new PakiraLeaf[2];
@@ -272,7 +274,7 @@
             }
          }
 
-         return pakiraTree;
+         return pakiraDecisionTreeModel.UpdateTree(pakiraTree);
       }
 
       private Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> GetBestSplit(ImmutableList<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)

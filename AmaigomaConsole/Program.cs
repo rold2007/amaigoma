@@ -176,27 +176,28 @@ namespace AmaigomaConsole
             }
          }
 
-         foreach (SabotenCache dataDistributionSampleCache in pakiraDecisionTreeModel.DataDistributionSamplesCache)
-         {
-            resultClass = pakiraDecisionTreeModel.Predict(dataDistributionSampleCache);
 
-            if (resultClass == 42)
-            {
-               string resultClassString = resultClass.ToString();
+         //foreach (SabotenCache dataDistributionSampleCache in pakiraDecisionTreeModel.DataDistributionSamplesCache)
+         //{
+         //   resultClass = pakiraDecisionTreeModel.Predict(dataDistributionSampleCache);
 
-               byte[] grayscaleBytes = Array.ConvertAll<double, byte>(dataDistributionSampleCache.Data.ToArray(), x => Convert.ToByte(x));
+         //   if (resultClass == 42)
+         //   {
+         //      string resultClassString = resultClass.ToString();
 
-               using (Image<L8> image = Image.LoadPixelData<L8>(grayscaleBytes, 24, 24))
-               {
-                  folder = "c:\\!\\" + resultClassString;
-                  string path = folder + "\\" + System.IO.Path.GetRandomFileName() + ".png";
+         //      byte[] grayscaleBytes = Array.ConvertAll<double, byte>(dataDistributionSampleCache.Data.ToArray(), x => Convert.ToByte(x));
 
-                  System.IO.Directory.CreateDirectory(folder);
+         //      using (Image<L8> image = Image.LoadPixelData<L8>(grayscaleBytes, 24, 24))
+         //      {
+         //         folder = "c:\\!\\" + resultClassString;
+         //         string path = folder + "\\" + System.IO.Path.GetRandomFileName() + ".png";
 
-                  image.SaveAsPng(path);
-               }
-            }
-         }
+         //         System.IO.Directory.CreateDirectory(folder);
+
+         //         image.SaveAsPng(path);
+         //      }
+         //   }
+         //}
       }
 
       static void MainOld()
