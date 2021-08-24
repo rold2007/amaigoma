@@ -1,5 +1,6 @@
 ﻿namespace Amaigoma
 {
+   using Shouldly;
    using System;
    using System.Collections.Generic;
    using System.Collections.Immutable;
@@ -16,11 +17,12 @@
 
       private TanukiTransformers TanukiTransformers { get; }
 
-      private ImmutableList<SabotenCache> DataDistributionSamplesCache { get; }
+      private ImmutableDictionary<PakiraLeaf, ImmutableList<SabotenCache>> LeafDataDistributionSamplesCache { get; } = ImmutableDictionary<PakiraLeaf, ImmutableList<SabotenCache>>.Empty;
 
       /// <summary>Default constructor.</summary>
       public PakiraDecisionTreeModel() : this(new List<double>() { 0.0 })
       {
+         
       }
 
       /// <summary>Default constructor.</summary>
@@ -41,21 +43,30 @@
       }
 
       /// <summary>Default constructor.</summary>
-      private PakiraDecisionTreeModel(PakiraTree tree, TanukiTransformers tanukiTransformers, ImmutableList<SabotenCache> dataDistributionSamplesCache)
+      private PakiraDecisionTreeModel(PakiraTree tree, TanukiTransformers tanukiTransformers, ImmutableDictionary<PakiraLeaf, ImmutableList<SabotenCache>> leafDataDistributionSamplesCache)
       {
          Tree = tree;
          TanukiTransformers = tanukiTransformers;
-         DataDistributionSamplesCache = dataDistributionSamplesCache;
+         LeafDataDistributionSamplesCache = leafDataDistributionSamplesCache;
       }
 
       public PakiraDecisionTreeModel UpdateTree(PakiraTree tree)
       {
-         return new PakiraDecisionTreeModel(tree, TanukiTransformers, DataDistributionSamplesCache);
+         return new PakiraDecisionTreeModel(tree, TanukiTransformers, LeafDataDistributionSamplesCache);
       }
 
-      public PakiraDecisionTreeModel UpdateDataDistributionSamplesCache(ImmutableList<SabotenCache> dataDistributionSamplesCache)
+      public PakiraDecisionTreeModel AddDataDistributionSamplesCache(PakiraLeaf pakiraLeaf, ImmutableList<SabotenCache> dataDistributionSamplesCache)
       {
-         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, dataDistributionSamplesCache);
+         LeafDataDistributionSamplesCache.ContainsKey(pakiraLeaf).ShouldBeFalse();
+
+         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache.Add(pakiraLeaf, dataDistributionSamplesCache));
+      }
+
+      public PakiraDecisionTreeModel RemoveDataDistributionSamplesCache(PakiraLeaf pakiraLeaf)
+      {
+         LeafDataDistributionSamplesCache.ContainsKey(pakiraLeaf).ShouldBeTrue();
+
+         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache.Remove(pakiraLeaf));
       }
 
       public IEnumerable<int> FeatureIndices()
