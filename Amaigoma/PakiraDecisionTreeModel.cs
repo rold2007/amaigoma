@@ -18,11 +18,11 @@
       private TanukiTransformers TanukiTransformers { get; }
 
       private ImmutableDictionary<PakiraLeaf, ImmutableList<SabotenCache>> LeafDataDistributionSamplesCache { get; } = ImmutableDictionary<PakiraLeaf, ImmutableList<SabotenCache>>.Empty;
+      private ImmutableDictionary<PakiraLeaf, TrainDataCache> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, TrainDataCache>.Empty;
 
       /// <summary>Default constructor.</summary>
       public PakiraDecisionTreeModel() : this(new List<double>() { 0.0 })
       {
-         
       }
 
       /// <summary>Default constructor.</summary>
@@ -43,30 +43,69 @@
       }
 
       /// <summary>Default constructor.</summary>
-      private PakiraDecisionTreeModel(PakiraTree tree, TanukiTransformers tanukiTransformers, ImmutableDictionary<PakiraLeaf, ImmutableList<SabotenCache>> leafDataDistributionSamplesCache)
+      private PakiraDecisionTreeModel(PakiraTree tree, TanukiTransformers tanukiTransformers, ImmutableDictionary<PakiraLeaf, ImmutableList<SabotenCache>> leafDataDistributionSamplesCache, ImmutableDictionary<PakiraLeaf, TrainDataCache> leafTrainDataCache)
       {
          Tree = tree;
          TanukiTransformers = tanukiTransformers;
          LeafDataDistributionSamplesCache = leafDataDistributionSamplesCache;
+         LeafTrainDataCache = leafTrainDataCache;
       }
 
       public PakiraDecisionTreeModel UpdateTree(PakiraTree tree)
       {
-         return new PakiraDecisionTreeModel(tree, TanukiTransformers, LeafDataDistributionSamplesCache);
+         return new PakiraDecisionTreeModel(tree, TanukiTransformers, LeafDataDistributionSamplesCache, LeafTrainDataCache);
       }
 
       public PakiraDecisionTreeModel AddDataDistributionSamplesCache(PakiraLeaf pakiraLeaf, ImmutableList<SabotenCache> dataDistributionSamplesCache)
       {
-         LeafDataDistributionSamplesCache.ContainsKey(pakiraLeaf).ShouldBeFalse();
+         ImmutableList<SabotenCache> leafDataDistributionSamplesCache;
 
-         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache.Add(pakiraLeaf, dataDistributionSamplesCache));
+         if (LeafDataDistributionSamplesCache.TryGetValue(pakiraLeaf, out leafDataDistributionSamplesCache))
+         {
+            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache.SetItem(pakiraLeaf, leafDataDistributionSamplesCache.AddRange(dataDistributionSamplesCache)), LeafTrainDataCache);
+         }
+         else
+         {
+            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache.Add(pakiraLeaf, dataDistributionSamplesCache), LeafTrainDataCache);
+         }
+      }
+
+      public PakiraDecisionTreeModel AddTrainDataCache(PakiraLeaf pakiraLeaf, TrainDataCache trainDataCache)
+      {
+         TrainDataCache leafTrainDataCache;
+
+         if (LeafTrainDataCache.TryGetValue(pakiraLeaf, out leafTrainDataCache))
+         {
+            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache, LeafTrainDataCache.SetItem(pakiraLeaf, leafTrainDataCache.AddSamples(trainDataCache)));
+         }
+         else
+         {
+            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache, LeafTrainDataCache.Add(pakiraLeaf, trainDataCache));
+         }
+      }
+
+      public ImmutableList<SabotenCache> DataDistributionSamplesCache(PakiraLeaf pakiraLeaf)
+      {
+         return LeafDataDistributionSamplesCache[pakiraLeaf];
+      }
+
+      public TrainDataCache TrainDataCache(PakiraLeaf pakiraLeaf)
+      {
+         return LeafTrainDataCache[pakiraLeaf];
       }
 
       public PakiraDecisionTreeModel RemoveDataDistributionSamplesCache(PakiraLeaf pakiraLeaf)
       {
          LeafDataDistributionSamplesCache.ContainsKey(pakiraLeaf).ShouldBeTrue();
 
-         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache.Remove(pakiraLeaf));
+         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache.Remove(pakiraLeaf), LeafTrainDataCache);
+      }
+
+      public PakiraDecisionTreeModel RemoveTrainDataCache(PakiraLeaf pakiraLeaf)
+      {
+         LeafTrainDataCache.ContainsKey(pakiraLeaf).ShouldBeTrue();
+
+         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafDataDistributionSamplesCache, LeafTrainDataCache.Remove(pakiraLeaf));
       }
 
       public IEnumerable<int> FeatureIndices()
@@ -103,17 +142,17 @@
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>
       /// <returns>A node.</returns>
-      public IPakiraNode PredictNode(IList<double> y)
+      public PakiraLeaf PredictNode(IList<double> y)
       {
-         return WalkNode(new SabotenCache(y), Tree.Root);
+         return WalkNode(new SabotenCache(y), Tree.Root) as PakiraLeaf;
       }
 
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>
       /// <returns>A node.</returns>
-      public IPakiraNode PredictNode(SabotenCache sabotenCache)
+      public PakiraLeaf PredictNode(SabotenCache sabotenCache)
       {
-         return WalkNode(sabotenCache, Tree.Root);
+         return WalkNode(sabotenCache, Tree.Root) as PakiraLeaf;
       }
 
       /// <summary>Walk node.</summary>

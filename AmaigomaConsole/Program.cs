@@ -71,36 +71,41 @@ namespace AmaigomaConsole
             sourceImages.Add(Image.Load<L8>(filename));
          }
 
-         sourceImages.Add(Image.Load<L8>(@"Images\FS18800114.2.11-a2-427w-c32\r\arrived.png"));
+         //sourceImages.Add(Image.Load<L8>(@"Images\FS18800114.2.11-a2-427w-c32\r\arrived.png"));
 
          PakiraDecisionTreeGenerator pakiraGenerator = new PakiraDecisionTreeGenerator();
-         const int featureWindowSize = 24;
-         const int featureCount = featureWindowSize * featureWindowSize;
-         int sampleCount = sourceImages.Count;
-         Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
-         Vector<double> labels = Vector<double>.Build.Dense(sampleCount);
+         //const int featureWindowSize = 24;
+         //const int featureCount = featureWindowSize * featureWindowSize;
+         //int sampleCount = sourceImages.Count;
+         //Matrix<double> samples = Matrix<double>.Build.Dense(sampleCount, featureCount);
+         //Vector<double> labels = Vector<double>.Build.Dense(sampleCount);
+         TrainData trainData = new TrainData();
 
-         labels[0] = 42;
+         //labels[0] = 42;
 
-         for (int i = 1; i < sampleCount; i++)
-         {
-            labels[i] = -1;
-         }
+         //for (int i = 1; i < sampleCount; i++)
+         //{
+         //   labels[i] = -1;
+         //}
 
-         labels[labels.Count - 1] = 2;
+         //labels[labels.Count - 1] = 2;
 
          int sampleIndex = 0;
          Span<L8> imagePixels;
+         double label = 42;
 
          foreach (Image<L8> image in sourceImages)
          {
             image.TryGetSinglePixelSpan(out imagePixels).ShouldBeTrue();
 
-            for (int pixelIndex = 0; pixelIndex < imagePixels.Length; pixelIndex++)
+            //for (int pixelIndex = 0; pixelIndex < imagePixels.Length; pixelIndex++)
             {
-               samples.At(sampleIndex, pixelIndex, imagePixels[pixelIndex].PackedValue);
+               //samples.At(sampleIndex, pixelIndex, imagePixels[pixelIndex].PackedValue);
             }
 
+            trainData = trainData.AddSample(imagePixels.ToArray().Select<L8, double>(s => s.PackedValue), label);
+
+            label = -1;
             sampleIndex++;
          }
 
@@ -118,27 +123,29 @@ namespace AmaigomaConsole
          //pakiraGenerator.MinimumSampleCount = 100;
          //pakiraGenerator.MinimumSampleCount = 200;
          //pakiraGenerator.MinimumSampleCount = 500;
-         //pakiraGenerator.MinimumSampleCount = 1000;
+         pakiraGenerator.MinimumSampleCount = 1000;
          //pakiraGenerator.MinimumSampleCount = 10000;
 
          pakiraGenerator.CertaintyScore = 0.50;
-         //pakiraGenerator.CertaintyScore = 0.75;
-         //pakiraGenerator.CertaintyScore = 0.95;
+         pakiraGenerator.CertaintyScore = 0.75;
+         pakiraGenerator.CertaintyScore = 0.95;
          //pakiraGenerator.CertaintyScore = 1.0;
          //pakiraGenerator.CertaintyScore = 1.1;
          //pakiraGenerator.CertaintyScore = 10000.1;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(PakiraTree.Empty, dataTransformers, samples.Row(0));
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(PakiraTree.Empty, dataTransformers, trainData.Samples[0]);
 
          //pakiraGenerator.DataTransformers = dataTransformers;
 
-         pakiraGenerator.Generate(pakiraDecisionTreeModel, samples.EnumerateRows(), labels);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
-         double resultClass;
-
-         Image<L8> fullTextImage = Image.Load<L8>(@"Images\FS18800114.2.11-a2-427w-c32.png");
-         CropProcessor cropProcessor;
          string folder;
+
+         /*
+         Image <L8> fullTextImage = Image.Load<L8>(@"Images\FS18800114.2.11-a2-427w-c32.png");
+         CropProcessor cropProcessor;
+         const int featureWindowSize = 24;
+         double resultClass;
 
          for (int y = 0; y < fullTextImage.Height - featureWindowSize; y++)
          {
@@ -175,29 +182,41 @@ namespace AmaigomaConsole
                }
             }
          }
+         //*/
+         ///*
+         foreach (IPakiraNode node in pakiraDecisionTreeModel.Tree.GetNodes())
+         {
+            if (node.IsLeaf)
+            {
+               PakiraLeaf leaf = node as PakiraLeaf;
 
+               if (leaf.Value == 42)
+               {
+                  foreach (SabotenCache dataDistributionSampleCache in pakiraDecisionTreeModel.DataDistributionSamplesCache(leaf))
+                  {
+                     //resultClass = pakiraDecisionTreeModel.Predict(dataDistributionSampleCache);
 
-         //foreach (SabotenCache dataDistributionSampleCache in pakiraDecisionTreeModel.DataDistributionSamplesCache)
-         //{
-         //   resultClass = pakiraDecisionTreeModel.Predict(dataDistributionSampleCache);
+                     //if (resultClass == 42)
+                     {
+                        string resultClassString = leaf.Value.ToString();
 
-         //   if (resultClass == 42)
-         //   {
-         //      string resultClassString = resultClass.ToString();
+                        byte[] grayscaleBytes = Array.ConvertAll<double, byte>(dataDistributionSampleCache.Data.ToArray(), x => Convert.ToByte(x));
 
-         //      byte[] grayscaleBytes = Array.ConvertAll<double, byte>(dataDistributionSampleCache.Data.ToArray(), x => Convert.ToByte(x));
+                        using (Image<L8> image = Image.LoadPixelData<L8>(grayscaleBytes, 24, 24))
+                        {
+                           folder = "c:\\!\\" + resultClassString;
+                           string path = folder + "\\" + System.IO.Path.GetRandomFileName() + ".png";
 
-         //      using (Image<L8> image = Image.LoadPixelData<L8>(grayscaleBytes, 24, 24))
-         //      {
-         //         folder = "c:\\!\\" + resultClassString;
-         //         string path = folder + "\\" + System.IO.Path.GetRandomFileName() + ".png";
+                           System.IO.Directory.CreateDirectory(folder);
 
-         //         System.IO.Directory.CreateDirectory(folder);
-
-         //         image.SaveAsPng(path);
-         //      }
-         //   }
-         //}
+                           image.SaveAsPng(path);
+                        }
+                     }
+                  }
+               }
+            }
+         }
+         //*/
       }
 
       static void MainOld()
