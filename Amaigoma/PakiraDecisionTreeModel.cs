@@ -21,11 +21,6 @@
       private ImmutableDictionary<PakiraLeaf, TrainDataCache> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, TrainDataCache>.Empty;
 
       /// <summary>Default constructor.</summary>
-      public PakiraDecisionTreeModel() : this(new List<double>() { 0.0 })
-      {
-      }
-
-      /// <summary>Default constructor.</summary>
       public PakiraDecisionTreeModel(IList<double> dataSample) : this(PakiraTree.Empty, new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample)
       {
       }

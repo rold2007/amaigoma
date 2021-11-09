@@ -12,9 +12,5 @@
 /AmaigomaTests/bin
 /AmaigomaTests/obj
 Amaigoma/Amaigoma.v3.ncrunchsolution
-.vs/Amaigoma/DesignTimeBuild/.dtbcache.v2
-.vs/Amaigoma/v16/.suo
-.vs/Amaigoma/v16/TestStore/0/000.testlog
-.vs/Amaigoma/v16/TestStore/0/testlog.manifest
-_NCrunch_Amaigoma/Amaigoma.crunchsolution.cache
-_NCrunch_Amaigoma/Amaigoma.executiontimes.cache
+.vs/Amaigoma
+_NCrunch_Amaigoma

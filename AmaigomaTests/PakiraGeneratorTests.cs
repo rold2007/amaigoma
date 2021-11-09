@@ -189,6 +189,34 @@
          pakiraDecisionTreeModel.Predict(trainData.Samples[2]).ShouldBe(trainData.Labels[2]);
       }
 
+      [Fact]
+      public void CertaintyScore()
+      {
+         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+
+         pakiraGenerator.CertaintyScore = 0.5;
+
+         TrainData trainData = new TrainData();
+
+         trainData = trainData.AddSample(new List<double> { 2, 90 }, 42);
+         trainData = trainData.AddSample(new List<double> { 250, 140 }, 54);
+         trainData = trainData.AddSample(new List<double> { 200, 100 }, 42);
+
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
+
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+
+         pakiraDecisionTreeModel.Predict(trainData.Samples[0]).ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.Predict(trainData.Samples[1]).ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.Predict(trainData.Samples[2]).ShouldBe(trainData.Labels[2]);
+
+         pakiraDecisionTreeModel.Predict(new SabotenCache(trainData.Samples[0])).ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.Predict(new SabotenCache(trainData.Samples[1])).ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.Predict(new SabotenCache(trainData.Samples[2])).ShouldBe(trainData.Labels[2]);
+      }
+
       internal class MeanDistanceDataTransformer
       {
          public MeanDistanceDataTransformer()
