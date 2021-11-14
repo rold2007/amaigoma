@@ -366,9 +366,22 @@
 
                 Histogram histogram = new Histogram(featureDataDistributionSample, 10);
 
-                // LowerBound always has an offset
-                histogram.LowerBound.ShouldBeGreaterThanOrEqualTo((0.0).Decrement());
-                histogram.UpperBound.ShouldBeLessThanOrEqualTo(255.0);
+                // Complete the histogram to cover the whole data range
+                // Approximate the count using "-1" on the closest bucket
+                if (histogram.LowerBound > 0.0)
+                {
+                    int histogramIndex = Enumerable.Range(0, histogram.BucketCount).First((index) => histogram[index].Count > 0);
+
+                    // LowerBound always has an offset, so we need Decrement()
+                    histogram.AddBucket(new Bucket((0.0).Decrement(), histogram.LowerBound, Math.Max(0, histogram[histogramIndex].Count - 1)));
+                }
+
+                if (histogram.UpperBound < 255.0)
+                {
+                    int histogramIndex = Enumerable.Range(0, histogram.BucketCount).Reverse().First((index) => histogram[index].Count > 0);
+
+                    histogram.AddBucket(new Bucket(histogram.UpperBound, 255.0, Math.Max(0, histogram[histogramIndex].Count - 1)));
+                }
 
                 extractedTrainSamplesCache = pakiraDecisionTreeModel.Prefetch(extractedTrainSamplesCache, featureIndex);
 
@@ -379,19 +392,9 @@
                     trainSampleValue.ShouldBeGreaterThanOrEqualTo(0.0);
                     trainSampleValue.ShouldBeLessThanOrEqualTo(255.0);
 
-                    // LowerBound is not included in bucket
-                    if ((trainSampleValue > histogram.LowerBound) && (trainSampleValue <= histogram.UpperBound))
-                    {
-                        return count - histogram.GetBucketOf(trainSampleValue).Count;
-                    }
-                    else
-                    {
-                        // We might also end up here when the training sample falls between
-                        // the last tree split and the min/max of the distribution samples.
-                        // In that case it is not a very good split but this should happen
-                        // very rarely and it is not worse than a random split.
-                        return count;
-                    }
+                    double bucketCount = histogram.GetBucketOf(trainSampleValue).Count;
+
+                    return count - bucketCount;
                 }
                 );
 
