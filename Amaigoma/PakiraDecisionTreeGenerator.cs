@@ -342,6 +342,8 @@
             return pakiraDecisionTreeModel.UpdateTree(pakiraTree);
         }
 
+        static double histogramLowerBound = (0.0).Decrement();
+
         private Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> GetBestSplit(ImmutableList<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)
         {
             ImmutableList<SabotenCache> extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCache.ToImmutableList();
@@ -365,22 +367,41 @@
                 double count = featureDataDistributionSample.Count();
 
                 Histogram histogram = new Histogram(featureDataDistributionSample, 10);
+                double histogramBinSize = (histogram[0].UpperBound - histogram[0].LowerBound);
+                double nextCount = Math.Max(0, histogram[0].Count - 1);
+
+                histogram[0].Count.ShouldBeGreaterThan(0, "Malformed histogram.");
 
                 // Complete the histogram to cover the whole data range
                 // Approximate the count using "-1" on the closest bucket
-                if (histogram.LowerBound > 0.0)
+                while (histogram.LowerBound >= 0.0)
                 {
-                    int histogramIndex = Enumerable.Range(0, histogram.BucketCount).First((index) => histogram[index].Count > 0);
-
-                    // LowerBound always has an offset, so we need Decrement()
-                    histogram.AddBucket(new Bucket((0.0).Decrement(), histogram.LowerBound, Math.Max(0, histogram[histogramIndex].Count - 1)));
+                    if (nextCount == 0)
+                    {
+                        histogram.AddBucket(new Bucket(histogramLowerBound, histogram.LowerBound, nextCount));
+                    }
+                    else
+                    {
+                        histogram.AddBucket(new Bucket(Math.Max(histogramLowerBound, histogram.LowerBound - histogramBinSize), histogram.LowerBound, nextCount));
+                        nextCount = Math.Max(0, nextCount - 1);
+                    }
                 }
 
-                if (histogram.UpperBound < 255.0)
-                {
-                    int histogramIndex = Enumerable.Range(0, histogram.BucketCount).Reverse().First((index) => histogram[index].Count > 0);
+                nextCount = Math.Max(0, histogram[histogram.BucketCount - 1].Count - 1);
 
-                    histogram.AddBucket(new Bucket(histogram.UpperBound, 255.0, Math.Max(0, histogram[histogramIndex].Count - 1)));
+                histogram[histogram.BucketCount - 1].Count.ShouldBeGreaterThan(0, "Malformed histogram.");
+
+                while (histogram.UpperBound < 255.0)
+                {
+                    if (nextCount == 0)
+                    {
+                        histogram.AddBucket(new Bucket(histogram.UpperBound, 255.0, nextCount));
+                    }
+                    else
+                    {
+                        histogram.AddBucket(new Bucket(histogram.UpperBound, Math.Min(255.0, histogram.UpperBound + histogramBinSize), nextCount));
+                        nextCount = Math.Max(0, nextCount - 1);
+                    }
                 }
 
                 extractedTrainSamplesCache = pakiraDecisionTreeModel.Prefetch(extractedTrainSamplesCache, featureIndex);
