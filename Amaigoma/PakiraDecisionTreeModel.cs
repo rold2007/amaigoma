@@ -8,6 +8,18 @@
 
    using DataTransformer = System.Converter<System.Collections.Generic.IList<double>, System.Collections.Generic.IList<double>>;
 
+   public sealed record PakiraDecisionTreePredictionResult
+   {
+      public PakiraLeaf PakiraLeaf { get; }
+      public SabotenCache SabotenCache { get; }
+
+      public PakiraDecisionTreePredictionResult(PakiraLeaf pakiraLeaf, SabotenCache sabotenCache)
+      {
+         PakiraLeaf = pakiraLeaf;
+         SabotenCache = sabotenCache;
+      }
+   }
+
    /// <summary>A data Model for the decision tree.</summary>
    public sealed record PakiraDecisionTreeModel
    {
@@ -108,11 +120,6 @@
          return Enumerable.Range(0, TanukiTransformers.TotalOutputSamples);
       }
 
-      public SabotenCache Prefetch(SabotenCache dataSample, int featureIndex)
-      {
-         return dataSample.Prefetch(featureIndex, TanukiTransformers);
-      }
-
       public ImmutableList<SabotenCache> Prefetch(ImmutableList<SabotenCache> dataSamples, int featureIndex)
       {
          return dataSamples.Prefetch(featureIndex, TanukiTransformers).ToImmutableList();
@@ -120,34 +127,20 @@
 
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>
-      /// <returns>A double.</returns>
-      public double Predict(IList<double> y)
-      {
-         return PredictNode(y).Value;
-      }
-
-      /// <summary>Predicts the given y coordinate.</summary>
-      /// <param name="y">The Vector to process.</param>
-      /// <returns>A double.</returns>
-      public double Predict(SabotenCache sabotenCache)
-      {
-         return PredictNode(sabotenCache).Value;
-      }
-
-      /// <summary>Predicts the given y coordinate.</summary>
-      /// <param name="y">The Vector to process.</param>
       /// <returns>A node.</returns>
       public PakiraLeaf PredictNode(IList<double> y)
       {
-         return WalkNode(new SabotenCache(y), Tree.Root) as PakiraLeaf;
+         return WalkNode(new SabotenCache(y), Tree.Root).Item1 as PakiraLeaf;
       }
 
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>
       /// <returns>A node.</returns>
-      public PakiraLeaf PredictNode(SabotenCache sabotenCache)
+      public PakiraDecisionTreePredictionResult PredictNode(SabotenCache sabotenCache)
       {
-         return WalkNode(sabotenCache, Tree.Root) as PakiraLeaf;
+         Tuple<IPakiraNode, SabotenCache> walkNodeResult = WalkNode(sabotenCache, Tree.Root);
+
+         return new PakiraDecisionTreePredictionResult(walkNodeResult.Item1 as PakiraLeaf, walkNodeResult.Item2);
       }
 
       /// <summary>Walk node.</summary>
@@ -155,13 +148,13 @@
       /// <param name="v">The Vector to process.</param>
       /// <param name="node">The node.</param>
       /// <returns>A double.</returns>
-      private IPakiraNode WalkNode(SabotenCache v, IPakiraNode node)
+      private Tuple<IPakiraNode, SabotenCache> WalkNode(SabotenCache v, IPakiraNode node)
       {
          if (node.IsLeaf)
-            return node;
+            return new Tuple<IPakiraNode, SabotenCache>(node, v);
 
          // Get the index of the feature for this node.
-         var col = node.Column;
+         int col = node.Column;
 
          v = v.Prefetch(col, TanukiTransformers);
 
