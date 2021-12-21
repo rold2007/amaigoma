@@ -158,7 +158,7 @@
 
          v = v.Prefetch(col, TanukiTransformers);
 
-         return WalkNode(v, (v[col] < node.Threshold) ? Tree.GetLeftNode(node) : Tree.GetRightNode(node));
+         return WalkNode(v, (v[col] <= node.Threshold) ? Tree.GetLeftNode(node) : Tree.GetRightNode(node));
       }
    }
 }

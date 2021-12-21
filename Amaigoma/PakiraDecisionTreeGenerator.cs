@@ -391,6 +391,7 @@
          double bestScore = -1.0;
          int bestFeature = -1;
          ImmutableList<double> bestFeatureDataDistributionSample = ImmutableList<double>.Empty;
+         double count = extractedDataDistributionSamplesCacheList.Count();
 
          foreach (int featureIndex in randomFeatureIndices)
          {
@@ -403,8 +404,6 @@
                return sample[featureIndex];
             }
             ).ToImmutableList();
-
-            double count = featureDataDistributionSample.Count();
 
             Histogram histogram = new Histogram(featureDataDistributionSample, 10);
 

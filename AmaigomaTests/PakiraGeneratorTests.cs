@@ -134,7 +134,7 @@
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(3, 5);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(3, 7);
       }
 
       [Fact]
@@ -187,7 +187,7 @@
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(17, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Instead, the tree depth could also be validated.");
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(15, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Instead, the tree depth could also be validated.");
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
