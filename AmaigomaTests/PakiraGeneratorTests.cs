@@ -1,7 +1,6 @@
 ﻿namespace AmaigomaTests
 {
    using Amaigoma;
-   using MathNet.Numerics.LinearAlgebra;
    using Shouldly;
    using System;
    using System.Collections.Generic;
@@ -21,7 +20,7 @@
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
 
-         pakiraGenerator.CertaintyScore = 1.0;
+         pakiraGenerator.CertaintyScore = 10.0;
 
          TrainData trainData = new TrainData();
 
@@ -83,7 +82,7 @@
          dataTransformers += passThroughTransformer.ConvertAll;
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
 
-         pakiraGenerator.CertaintyScore = 1.0;
+         pakiraGenerator.CertaintyScore = 10.0;
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(dataTransformers, trainData.Samples[0]);
 
@@ -153,7 +152,7 @@
 
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
 
-         pakiraGenerator.CertaintyScore = 1.0;
+         pakiraGenerator.CertaintyScore = 10.0;
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(dataTransformers, trainData.Samples[0]);
 
@@ -198,7 +197,7 @@
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
 
-         pakiraGenerator.CertaintyScore = 0.5;
+         pakiraGenerator.CertaintyScore = 1.0;
 
          TrainData trainData = new TrainData();
 

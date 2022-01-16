@@ -88,7 +88,7 @@
       static public readonly int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
       static public readonly int randomSeed = new Random().Next();
       static private readonly int MINIMUM_SAMPLE_COUNT = 1000;
-      static private readonly double DEFAULT_CERTAINTY_SCORE = 0.95;
+      static private readonly double DEFAULT_CERTAINTY_SCORE = 2.0;
       static private readonly PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
       private readonly Random RandomSource = new Random(randomSeed);
       private readonly DiscreteUniform discreteUniform;
@@ -173,6 +173,8 @@
                   ImmutableList<SabotenCache> generatedSamplesCache = ImmutableList<SabotenCache>.Empty;
 
                   Vector<double> featuresMask = randomFeaturesMasks[randomFeaturesCount];
+
+                  sampleSize.ShouldBeGreaterThan(0);
 
                   for (int i = 0; i < sampleSize; i++)
                   {
@@ -298,7 +300,7 @@
                ImmutableList<SabotenCache> extractedDataDistributionSamplesCache = processNodeDataDistributionSamplesCache.Take(MinimumSampleCount).ToImmutableList();
                ImmutableList<SabotenCache> remainingDataDistributionSamplesCache = processNodeDataDistributionSamplesCache.Skip(MinimumSampleCount).ToImmutableList();
 
-               Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> tuple = GetBestSplit(extractedDataDistributionSamplesCache, processNodeTrainSamplesCache.Samples, pakiraDecisionTreeModel);
+               Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> tuple = GetBestSplit(extractedDataDistributionSamplesCache, processNodeTrainSamplesCache, pakiraDecisionTreeModel);
                int bestFeatureIndex = tuple.Item1;
                double threshold = tuple.Item2;
                ImmutableList<SabotenCache> bestSplitDataDistributionSamplesCache = tuple.Item3;
@@ -383,20 +385,19 @@
 
       static double histogramLowerBound = (0.0).Decrement();
 
-      private Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> GetBestSplit(ImmutableList<SabotenCache> extractedDataDistributionSamplesCache, ImmutableList<SabotenCache> extractedTrainSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)
+      private Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> GetBestSplit(ImmutableList<SabotenCache> extractedDataDistributionSamplesCache, TrainDataCache processNodeTrainSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)
       {
+         ImmutableList<SabotenCache> extractedTrainSamplesCache = processNodeTrainSamplesCache.Samples;
          ImmutableList<SabotenCache> extractedDataDistributionSamplesCacheList = extractedDataDistributionSamplesCache.ToImmutableList();
          ImmutableList<int> randomFeatureIndices = pakiraDecisionTreeModel.FeatureIndices().Shuffle(RandomSource).ToImmutableList();
 
-         double bestScore = -1.0;
+         double bestScore = double.MinValue;
          int bestFeature = -1;
          ImmutableList<double> bestFeatureDataDistributionSample = ImmutableList<double>.Empty;
          double count = extractedDataDistributionSamplesCacheList.Count();
 
          foreach (int featureIndex in randomFeatureIndices)
          {
-            double score = 0.0;
-
             extractedDataDistributionSamplesCacheList = pakiraDecisionTreeModel.Prefetch(extractedDataDistributionSamplesCacheList, featureIndex);
 
             ImmutableList<double> featureDataDistributionSample = extractedDataDistributionSamplesCacheList.Select<SabotenCache, double>(sample =>
@@ -405,48 +406,78 @@
             }
             ).ToImmutableList();
 
-            Histogram histogram = new Histogram(featureDataDistributionSample, 10);
+            Tuple<double, double> featureDataDistributionSampleMeanStandardDeviation = featureDataDistributionSample.MeanStandardDeviation();
+            double featureDataDistributionSampleMean = featureDataDistributionSampleMeanStandardDeviation.Item1;
+            double featureDataDistributionSampleStandardDeviation = featureDataDistributionSampleMeanStandardDeviation.Item2;
+            double invertedFeatureDataDistributionSampleStandardDeviation = 1 / featureDataDistributionSampleStandardDeviation;
 
-            if (histogram.LowerBound > 0.0)
+            ImmutableDictionary<double, double> minimumLabelScores = ImmutableDictionary<double, double>.Empty;
+            ImmutableDictionary<double, double> maximumLabelScores = ImmutableDictionary<double, double>.Empty;
+            double bestPotentialScore;
+
             {
-               int histogramIndex = Enumerable.Range(0, histogram.BucketCount).First((index) => histogram[index].Count > 0);
+               double minimumPotentialScore = (0.0 - featureDataDistributionSampleMean) * invertedFeatureDataDistributionSampleStandardDeviation;
+               double maximumPotentialScore = (255.0 - featureDataDistributionSampleMean) * invertedFeatureDataDistributionSampleStandardDeviation;
 
-               // LowerBound always has an offset, so we need Decrement()
-               histogram.AddBucket(new Bucket(histogramLowerBound, histogram.LowerBound, Math.Max(0, histogram[histogramIndex].Count - 1)));
+               bestPotentialScore = maximumPotentialScore - minimumPotentialScore;
             }
 
-            if (histogram.UpperBound < 255.0)
+            if (bestPotentialScore > bestScore)
             {
-               int histogramIndex = Enumerable.Range(0, histogram.BucketCount).Reverse().First((index) => histogram[index].Count > 0);
+               extractedTrainSamplesCache = pakiraDecisionTreeModel.Prefetch(extractedTrainSamplesCache, featureIndex);
 
-               histogram.AddBucket(new Bucket(histogram.UpperBound, 255.0, Math.Max(0, histogram[histogramIndex].Count - 1)));
+               for (int i = 0; i < extractedTrainSamplesCache.Count; i++)
+               {
+                  SabotenCache trainSample = extractedTrainSamplesCache[i];
+                  double trainLabel = processNodeTrainSamplesCache.Labels[i];
+                  double trainSampleValue = trainSample[featureIndex];
+
+                  trainSampleValue.ShouldBeGreaterThanOrEqualTo(0.0);
+                  trainSampleValue.ShouldBeLessThanOrEqualTo(255.0);
+
+                  double score = (trainSampleValue - featureDataDistributionSampleMean) * invertedFeatureDataDistributionSampleStandardDeviation;
+                  double currentMinimumPotentialScore;
+
+                  if (minimumLabelScores.TryGetValue(trainLabel, out currentMinimumPotentialScore))
+                  {
+                     if (score < currentMinimumPotentialScore)
+                     {
+                        minimumLabelScores = minimumLabelScores.SetItem(trainLabel, score);
+                     }
+
+                     maximumLabelScores.SetItem(trainLabel, Math.Max(maximumLabelScores[trainLabel], score));
+                  }
+                  else
+                  {
+                     minimumLabelScores = minimumLabelScores.SetItem(trainLabel, score);
+                     maximumLabelScores = maximumLabelScores.SetItem(trainLabel, score);
+                  }
+               }
             }
 
-            extractedTrainSamplesCache = pakiraDecisionTreeModel.Prefetch(extractedTrainSamplesCache, featureIndex);
-
-            score = extractedTrainSamplesCache.Max((SabotenCache trainSample) =>
+            foreach (KeyValuePair<double, double> labelMinimumPotentialScorePair in minimumLabelScores)
             {
-               double trainSampleValue = trainSample[featureIndex];
+               double minimumPotentialScore = labelMinimumPotentialScorePair.Value;
 
-               trainSampleValue.ShouldBeGreaterThanOrEqualTo(0.0);
-               trainSampleValue.ShouldBeLessThanOrEqualTo(255.0);
+               foreach (KeyValuePair<double, double> labelMaximumPotentialScorePair in maximumLabelScores.Where((labelMaximumLabelScores) => labelMaximumLabelScores.Key != labelMinimumPotentialScorePair.Key))
+               {
+                  double maximumPotentialScore = labelMaximumPotentialScorePair.Value;
 
-               double bucketCount = histogram.GetBucketOf(trainSampleValue).Count;
+                  // If both scores are on the same side of the mean
+                  // the score will be negative which makes it less interesting
+                  // The minimum score identifies the most discriminative feature
+                  double score = Math.Min(-minimumPotentialScore, maximumPotentialScore);
 
-               return count - bucketCount;
-            }
-            );
-
-            score /= count;
-
-            if (score > bestScore)
-            {
-               bestScore = score;
-               bestFeature = featureIndex;
-               bestFeatureDataDistributionSample = featureDataDistributionSample;
+                  if (score > bestScore)
+                  {
+                     bestScore = score;
+                     bestFeature = featureIndex;
+                     bestFeatureDataDistributionSample = featureDataDistributionSample;
+                  }
+               }
             }
 
-            if (score >= CertaintyScore)
+            if (bestScore >= CertaintyScore)
             {
                break;
             }

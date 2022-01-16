@@ -32,8 +32,8 @@ namespace AmaigomaConsole
       {
          List<double> features = new List<double>();
 
-         const int sizeX = 24;
-         const int sizeY = 24;
+         const int sizeX = /*24*/16;
+         const int sizeY = /*24*/16;
 
          for (int y = 0; y < sizeY - WindowSize; y += WindowSize)
          {
@@ -63,7 +63,7 @@ namespace AmaigomaConsole
    {
       static void Main(string[] args)
       {
-         const int featureWindowSize = 24;
+         const int featureWindowSize = /*24*/16;
          const int halfFeatureWindowSize = featureWindowSize / 2;
          string imageMainPath = args[0];
 
@@ -77,7 +77,9 @@ namespace AmaigomaConsole
          completeA.TryGetSinglePixelSpan(out imagePixels).ShouldBeTrue();
 
          L8 whitePixel = new L8(255);
-         byte dontCarePixel = new L8(128).PackedValue;
+         L8 blackPixel = new L8(0);
+         L8 dontCarePixel = new L8(128);
+         byte dontCarePixelValue = dontCarePixel.PackedValue;
          int imagePixelsIndex = 0;
 
          for (int y = 0; y < completeA.Height; y++)
@@ -86,7 +88,7 @@ namespace AmaigomaConsole
             {
                byte currentPixel = imagePixels[imagePixelsIndex].PackedValue;
 
-               if (currentPixel != dontCarePixel)
+               if (currentPixel != dontCarePixelValue)
                {
                   Span<L8> imageCropPixels;
                   Image<L8> whiteWindow = new Image<L8>(featureWindowSize, featureWindowSize, whitePixel);
@@ -107,6 +109,14 @@ namespace AmaigomaConsole
          dataTransformers += new TempDataTransformer(3).ConvertAll;
          dataTransformers += new TempDataTransformer(5).ConvertAll;
          dataTransformers += new TempDataTransformer(7).ConvertAll;
+         dataTransformers += new TempDataTransformer(9).ConvertAll;
+         dataTransformers += new TempDataTransformer(11).ConvertAll;
+         dataTransformers += new TempDataTransformer(13).ConvertAll;
+         dataTransformers += new TempDataTransformer(15).ConvertAll;
+         //dataTransformers += new TempDataTransformer(17).ConvertAll;
+         //dataTransformers += new TempDataTransformer(19).ConvertAll;
+         //dataTransformers += new TempDataTransformer(21).ConvertAll;
+         //dataTransformers += new TempDataTransformer(23).ConvertAll;
 
          pakiraGenerator.MinimumSampleCount = 10;
          //pakiraGenerator.MinimumSampleCount = 50;
@@ -116,11 +126,8 @@ namespace AmaigomaConsole
          //pakiraGenerator.MinimumSampleCount = 1000;
          //pakiraGenerator.MinimumSampleCount = 10000;
 
-         pakiraGenerator.CertaintyScore = 0.50;
-         pakiraGenerator.CertaintyScore = 0.75;
-         //pakiraGenerator.CertaintyScore = 0.95;
-         //pakiraGenerator.CertaintyScore = 1.0;
-         //pakiraGenerator.CertaintyScore = 1.1;
+         pakiraGenerator.CertaintyScore = 1.0;
+         pakiraGenerator.CertaintyScore = 4.0;
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(PakiraTree.Empty, dataTransformers, trainData.Samples[0]);
 
@@ -128,44 +135,63 @@ namespace AmaigomaConsole
 
          string folder;
 
-         /*
+         ///*
          CropProcessor cropProcessor;
          double resultClass;
+         Image<L8> completeAResult = completeA.Clone();
+
+         //completeAResult = new Image<L8>(completeA.Width, completeA.Height, dontCarePixel);
 
          for (int y = 0; y < fullTextImage.Height - featureWindowSize; y++)
          {
             for (int x = 0; x < fullTextImage.Width - featureWindowSize; x++)
             {
-               cropProcessor = new CropProcessor(new Rectangle(x, y, featureWindowSize, featureWindowSize), fullTextImage.Size());
-
-               ICloningImageProcessor<L8> cloningImageProcessor = cropProcessor.CreatePixelSpecificCloningProcessor(Configuration.Default, fullTextImage, new Rectangle(x, y, featureWindowSize, featureWindowSize));
-
-               Image<L8> croppedImage = cloningImageProcessor.CloneAndExecute();
-
-               croppedImage.TryGetSinglePixelSpan(out imagePixels).ShouldBeTrue();
-
-               Vector<double> croppedSample = Vector<double>.Build.Dense(imagePixels.Length);
-
-               for (int pixelIndex = 0; pixelIndex < imagePixels.Length; pixelIndex++)
+               if (completeA[x + halfFeatureWindowSize, y + halfFeatureWindowSize] == dontCarePixel)
                {
-                  croppedSample.At(pixelIndex, imagePixels[pixelIndex].PackedValue);
-               }
+                  cropProcessor = new CropProcessor(new Rectangle(x, y, featureWindowSize, featureWindowSize), fullTextImage.Size());
 
-               SabotenCache croppedSampleCache = new SabotenCache(croppedSample);
+                  ICloningImageProcessor<L8> cloningImageProcessor = cropProcessor.CreatePixelSpecificCloningProcessor(Configuration.Default, fullTextImage, new Rectangle(x, y, featureWindowSize, featureWindowSize));
 
-               resultClass = pakiraDecisionTreeModel.PredictNode(croppedSampleCache).PakiraLeaf.Value;
+                  Image<L8> croppedImage = cloningImageProcessor.CloneAndExecute();
 
-               if (resultClass == 255)
-               {
-                  string resultClassString = resultClass.ToString();
+                  croppedImage.TryGetSinglePixelSpan(out imagePixels).ShouldBeTrue();
 
-                  folder = "c:\\!\\argh\\" + resultClassString;
-                  System.IO.Directory.CreateDirectory(folder);
-                  string path = folder + "\\" + x.ToString() + "x" + y.ToString() + ".png";
+                  Vector<double> croppedSample = Vector<double>.Build.Dense(imagePixels.Length);
 
-                  croppedImage.SaveAsPng(path);
+                  for (int pixelIndex = 0; pixelIndex < imagePixels.Length; pixelIndex++)
+                  {
+                     croppedSample.At(pixelIndex, imagePixels[pixelIndex].PackedValue);
+                  }
+
+                  SabotenCache croppedSampleCache = new SabotenCache(croppedSample);
+
+                  resultClass = pakiraDecisionTreeModel.PredictNode(croppedSampleCache).PakiraLeaf.Value;
+
+                  if (resultClass == 0)
+                  {
+                     //completeAResult[x + halfFeatureWindowSize, y + halfFeatureWindowSize] = blackPixel;
+                  }
+                  else if (resultClass == 255)
+                  {
+                     //string resultClassString = resultClass.ToString();
+
+                     //folder = "c:\\!\\argh\\" + resultClassString;
+                     //Directory.CreateDirectory(folder);
+                     //string path = folder + "\\" + x.ToString() + "x" + y.ToString() + ".png";
+
+                     //croppedImage.SaveAsPng(path);
+
+                     completeAResult[x + halfFeatureWindowSize, y + halfFeatureWindowSize] = blackPixel;
+                     //completeAResult[x + 12, y + 12] = whitePixel;
+                  }
                }
             }
+
+            folder = "c:\\!\\argh\\" + 255;
+            Directory.CreateDirectory(folder);
+            string path = folder + "\\" + y.ToString() + ".png";
+
+            completeAResult.SaveAsPng(path);
          }
          //*/
          ///*
