@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 using DataTransformer = System.Converter<System.Collections.Generic.IList<double>, System.Collections.Generic.IList<double>>;
@@ -72,36 +73,38 @@ namespace AmaigomaConsole
 
          PakiraDecisionTreeGenerator pakiraGenerator = new PakiraDecisionTreeGenerator();
          TrainData trainData = new TrainData();
-         Span<L8> imagePixels;
-
-         completeA.TryGetSinglePixelSpan(out imagePixels).ShouldBeTrue();
 
          L8 whitePixel = new L8(255);
          L8 blackPixel = new L8(0);
          L8 dontCarePixel = new L8(128);
          byte dontCarePixelValue = dontCarePixel.PackedValue;
-         int imagePixelsIndex = 0;
+         byte[] imageCropPixelsData = new byte[featureWindowSize * featureWindowSize * Unsafe.SizeOf<L8>()];
 
-         for (int y = 0; y < completeA.Height; y++)
+         completeA.ProcessPixelRows(accessor =>
          {
-            for (int x = 0; x < completeA.Width; x++)
+            Span<byte> imageCropPixels = new Span<byte>(imageCropPixelsData);
+
+            for (int y = 0; y < accessor.Height; y++)
             {
-               byte currentPixel = imagePixels[imagePixelsIndex].PackedValue;
+               Span<L8> pixelRow = accessor.GetRowSpan(y);
 
-               if (currentPixel != dontCarePixelValue)
+               for (int x = 0; x < pixelRow.Length; x++)
                {
-                  Span<L8> imageCropPixels;
-                  Image<L8> whiteWindow = new Image<L8>(featureWindowSize, featureWindowSize, whitePixel);
-                  Image<L8> imageCrop = whiteWindow.Clone(clone => clone.DrawImage(fullTextImage, new Point(halfFeatureWindowSize - x, halfFeatureWindowSize - y), 1));
+                  // Get a reference to the pixel at position x
+                  ref L8 pixel = ref pixelRow[x];
 
-                  imageCrop.TryGetSinglePixelSpan(out imageCropPixels).ShouldBeTrue();
+                  if (pixel != dontCarePixel)
+                  {
+                     Image<L8> whiteWindow = new Image<L8>(featureWindowSize, featureWindowSize, whitePixel);
+                     Image<L8> imageCrop = whiteWindow.Clone(clone => clone.DrawImage(fullTextImage, new Point(halfFeatureWindowSize - x, halfFeatureWindowSize - y), 1));
 
-                  trainData = trainData.AddSample(imageCropPixels.ToArray().Select<L8, double>(s => s.PackedValue), currentPixel);
+                     imageCrop.CopyPixelDataTo(imageCropPixels);
+
+                     trainData = trainData.AddSample(imageCropPixelsData.Select<byte, double>(s => s), pixel.PackedValue);
+                  }
                }
-
-               imagePixelsIndex++;
             }
-         }
+         });
 
          DataTransformer dataTransformers = null;
 
@@ -123,11 +126,12 @@ namespace AmaigomaConsole
          pakiraGenerator.MinimumSampleCount = 100;
          //pakiraGenerator.MinimumSampleCount = 200;
          //pakiraGenerator.MinimumSampleCount = 500;
-         //pakiraGenerator.MinimumSampleCount = 1000;
+         pakiraGenerator.MinimumSampleCount = 1000;
          //pakiraGenerator.MinimumSampleCount = 10000;
 
          pakiraGenerator.CertaintyScore = 1.0;
          pakiraGenerator.CertaintyScore = 4.0;
+         //pakiraGenerator.CertaintyScore = double.MaxValue;
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(PakiraTree.Empty, dataTransformers, trainData.Samples[0]);
 
@@ -142,6 +146,8 @@ namespace AmaigomaConsole
 
          //completeAResult = new Image<L8>(completeA.Width, completeA.Height, dontCarePixel);
 
+         Span<byte> imagePixels = new Span<byte>(imageCropPixelsData);
+
          for (int y = 0; y < fullTextImage.Height - featureWindowSize; y++)
          {
             for (int x = 0; x < fullTextImage.Width - featureWindowSize; x++)
@@ -154,13 +160,13 @@ namespace AmaigomaConsole
 
                   Image<L8> croppedImage = cloningImageProcessor.CloneAndExecute();
 
-                  croppedImage.TryGetSinglePixelSpan(out imagePixels).ShouldBeTrue();
+                  croppedImage.CopyPixelDataTo(imagePixels);
 
                   Vector<double> croppedSample = Vector<double>.Build.Dense(imagePixels.Length);
 
                   for (int pixelIndex = 0; pixelIndex < imagePixels.Length; pixelIndex++)
                   {
-                     croppedSample.At(pixelIndex, imagePixels[pixelIndex].PackedValue);
+                     croppedSample.At(pixelIndex, imagePixels[pixelIndex]);
                   }
 
                   SabotenCache croppedSampleCache = new SabotenCache(croppedSample);
@@ -194,349 +200,6 @@ namespace AmaigomaConsole
             completeAResult.SaveAsPng(path);
          }
          //*/
-         ///*
-         foreach (IPakiraNode node in pakiraDecisionTreeModel.Tree.GetNodes())
-         {
-            if (node.IsLeaf)
-            {
-               PakiraLeaf leaf = node as PakiraLeaf;
-
-               if (leaf.Value == 255)
-               {
-                  foreach (SabotenCache dataDistributionSampleCache in pakiraDecisionTreeModel.DataDistributionSamplesCache(leaf))
-                  {
-                     //resultClass = pakiraDecisionTreeModel.Predict(dataDistributionSampleCache);
-
-                     //if (resultClass == 42)
-                     {
-                        string resultClassString = leaf.Value.ToString();
-
-                        byte[] grayscaleBytes = Array.ConvertAll<double, byte>(dataDistributionSampleCache.Data.ToArray(), x => Convert.ToByte(x));
-
-                        using (Image<L8> image = Image.LoadPixelData<L8>(grayscaleBytes, 24, 24))
-                        {
-                           folder = "c:\\!\\" + resultClassString;
-                           string path = folder + "\\" + System.IO.Path.GetRandomFileName() + ".png";
-
-                           System.IO.Directory.CreateDirectory(folder);
-
-                           image.SaveAsPng(path);
-                        }
-                     }
-                  }
-               }
-            }
-         }
-         //*/
-      }
-
-      static void MainOld()
-      {
-         //List<Property> features = new List<Property>();
-
-         for (int i = 0; i < 3; i++)
-         {
-            //SumFeature sumFeature = new SumFeature(i, i + 1)
-            //{
-            //   Name = "Sum" + i.ToString(),
-            //   Type = typeof(System.Double)
-            //};
-
-            //features.Add(sumFeature);
-
-            //ProductFeature productFeature = new ProductFeature(i, i + 1)
-            //{
-            //   Name = "Product" + i.ToString(),
-            //   Type = typeof(System.Double)
-            //};
-
-            //features.Add(productFeature);
-         }
-
-         for (int i = 0; i < 1; i++)
-         {
-            //RandomFeature randomFeature = new RandomFeature()
-            //{
-            //   Name = "Random" + i.ToString(),
-            //   Type = typeof(System.Double)
-            //};
-
-            //features.Add(randomFeature);
-         }
-
-         //PakiraDescriptor description = PakiraDescriptor.Create<Iris>();
-         //PakiraDescriptor fluentDescriptor = PakiraDescriptor.New(typeof(Iris))
-         //                                          .With("SepalLength").As(typeof(decimal))
-         //                                          .With("SepalWidth").As(typeof(double))
-         //                                          .With("PetalLength").As(typeof(decimal))
-         //                                          .With("PetalWidth").As(typeof(int))
-         //                                          .Learn("Class").As(typeof(string));
-
-         //features.AddRange(fluentDescriptor.Features);
-
-         //fluentDescriptor.Features = features.ToArray();
-
-         //Console.WriteLine(description);
-         //Console.WriteLine(fluentDescriptor);
-
-         //Iris[] data = Iris.Load();
-         //List<Generator> generators = new List<Generator>();
-
-         const int sampleCount = 400000;
-         //const int minimumSampleCount = /*500*/100;
-         //Iris[] samples = new Iris[sampleCount];
-
-         Parallel.For(0, sampleCount, i =>
-         //for (int i = 0; i < sampleCount; i++)
-         {
-            //decimal sepalLength = Convert.ToDecimal(MySampling.GetUniform(0.1, 10.0));
-            //decimal sepalWidth = Convert.ToDecimal(MySampling.GetUniform(0.1, 6.0));
-            //decimal petalLength = Convert.ToDecimal(MySampling.GetUniform(0.1, 8.0));
-            //decimal petalWidth = Convert.ToDecimal(MySampling.GetUniform(0.1, 3.0));
-
-            //System.Diagnostics.Debug.WriteLine(sepalLength.ToString() + ";" + sepalWidth.ToString());
-
-            // samples.Add(new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty });
-            //samples[i] = new Iris { SepalLength = sepalLength, SepalWidth = sepalWidth, PetalLength = petalLength, PetalWidth = petalWidth, Class = string.Empty };
-         }
-          );
-
-         //PakiraGenerator pakiraGenerator = new PakiraGenerator(samples, minimumSampleCount);
-         //PakiraModel pakiraModel = null;
-         //List<Iris> trainingSet = new List<Iris>() { data[0], data[50], data[100] };
-         //List<Iris> trainingSamples = new List<Iris>();
-         //List<Iris> testSamples = new List<Iris>();
-
-         //for (int dataindex = 1; dataindex < data.Count() / 3; dataindex++)
-         //{
-         //   if (dataindex < 25)
-         //   {
-         //      trainingSamples.Add(data[dataindex]);
-         //      trainingSamples.Add(data[dataindex + 50]);
-         //      trainingSamples.Add(data[dataindex + 100]);
-         //   }
-         //   else
-         //   {
-         //      testSamples.Add(data[dataindex]);
-         //      testSamples.Add(data[dataindex + 50]);
-         //      testSamples.Add(data[dataindex + 100]);
-         //   }
-         //}
-
-         //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[100] });
-         //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[50], data[51], data[100], data[101] });
-         //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[50], data[51], data[52], data[53], data[54], data[100] });
-         //pakiraModel = pakiraGenerator.Generate(new List<Iris>() { data[0], data[1], data[2], data[50], data[51], data[52], data[100], data[101], data[102] });
-
-         bool trainingSamplesCountIncreased = true;
-         //int previousSamplesCount = -1;
-         int trainingRound = 0;
-
-         while (trainingSamplesCountIncreased)
-         {
-            Console.WriteLine("Training " + trainingRound.ToString());
-
-            //pakiraModel = pakiraGenerator.Generate(trainingSet);
-
-            //Console.WriteLine("Model " + pakiraModel.ToString());
-
-            //Dictionary<Node, int> failedNodes = new Dictionary<Node, int>();
-
-            for (int swapRootNode = 0; swapRootNode < 2; swapRootNode++)
-            {
-               // int labelCount = (pakiraModel.Descriptor.Label as StringProperty).Dictionary.Count();
-               ConfusionMatrix trainingSamplesConfusionMatrix = new ConfusionMatrix(0/*labelCount*/);
-               ConfusionMatrix testSamplesConfusionMatrix = new ConfusionMatrix(0/*labelCount*/);
-
-               //for (int i = 0; i < trainingSamples.Count(); i++)
-               {
-                  /*
-                  (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[i], true) }.ToExamples();
-                  Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
-                  int currentSampleClass = (int)valueTuple.Item2[0];
-                  int predictedClass = (int)predictionNode.Value;
-
-                  trainingSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
-
-                  if (swapRootNode == 0)
-                  {
-                     if (currentSampleClass != predictedClass)
-                     {
-                        predictedClass.ShouldNotBe<int>(labelCount + PakiraGenerator.INSUFFICIENT_SAMPLES_CLASS_INDEX);
-
-                        if (failedNodes.ContainsKey(predictionNode))
-                        {
-                           // For now, we simply keep the first fail found
-                           // But it would probably be better to keep only the worst fail found
-                           // The worst fail would have the strongest bad prediction of the last node
-
-                           //(Matrix, Vector) previousFailValueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(trainingSamples[failedNodes[predictionNode]], true) }.ToExamples();
-                        }
-                        else
-                        {
-                           failedNodes[predictionNode] = i;
-                        }
-                     }
-                  }
-                  */
-                  //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
-                  //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
-               }
-
-               //for (int i = 0; i < testSamples.Count(); i++)
-               {
-                  /*
-                  (Matrix, Vector) valueTuple = new List<IEnumerable<double>>() { pakiraGenerator.Descriptor.Convert(testSamples[i], true) }.ToExamples();
-                  Node predictionNode = pakiraModel.Predict(valueTuple.Item1.Row(0));
-                  int currentSampleClass = (int)valueTuple.Item2[0];
-                  int predictedClass = (int)predictionNode.Value;
-
-                  testSamplesConfusionMatrix.AddPrediction(currentSampleClass, predictedClass);
-
-                  if (currentSampleClass != predictedClass)
-                  {
-                     //Console.WriteLine("Expected " + currentSampleClass.ToString() + " but predicted " + predictedClass.ToString());
-                  }
-                  */
-
-                  //var inEdges = pakiraModel.Tree.GetInEdges(predictionNode).ToList();
-                  //var parents = pakiraModel.Tree.GetParents(predictionNode).ToList();
-               }
-
-               Console.WriteLine();
-
-
-               List<double> matthewsCorrelationCoefficients = trainingSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
-
-               Console.WriteLine("Training set Matthews Correlation Coefficients");
-
-               foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
-               {
-                  Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
-               }
-
-               Console.WriteLine();
-               Console.WriteLine("Test set Matthews Correlation Coefficients");
-
-               matthewsCorrelationCoefficients = testSamplesConfusionMatrix.ComputeMatthewsCorrelationCoefficient();
-
-               foreach (double matthewsCorrelationCoefficient in matthewsCorrelationCoefficients)
-               {
-                  Console.WriteLine(matthewsCorrelationCoefficient.ToString() + ";");
-               }
-
-               Console.WriteLine();
-
-               if (swapRootNode == 0)
-               {
-                  //IEdge[] edges = pakiraModel.Tree.GetOutEdges(pakiraModel.Tree.Root).ToArray();
-
-                  // Swap values using tuples
-                  //(edges[0].ChildId, edges[1].ChildId) = (edges[1].ChildId, edges[0].ChildId);
-               }
-            }
-
-            SortedSet<int> sortedDataIndices = new SortedSet<int>();
-
-            // Transfer some samples from the training samples to the training set
-            //foreach (int dataIndex in failedNodes.Values)
-            //{
-            //   trainingSet.Add(trainingSamples[dataIndex]);
-            //   sortedDataIndices.Add(dataIndex);
-            //}
-
-            //foreach (int dataIndex in sortedDataIndices.Reverse())
-            //{
-            //   trainingSamples.RemoveAt(dataIndex);
-            //}
-
-            //trainingSamplesCountIncreased = (previousSamplesCount != trainingSamples.Count());
-            //previousSamplesCount = trainingSamples.Count();
-
-            trainingRound++;
-         }
-
-
-         int generatorIndex = 0;
-
-         //foreach (Generator generator in generators)
-         {
-            //IModel model;
-
-            //if (generator.Descriptor == null)
-            //{
-            //   model = generator.Generate(description, data);
-            //}
-            //else
-            //{
-            //   model = generator.Generate(data);
-            //}
-
-            //Console.WriteLine("Model " + model.ToString());
-
-            //Iris prediction;
-
-            //prediction = model.Predict(data[0]);
-
-            //prediction.Class = string.Empty;
-            //prediction.PetalLength = 9.9m;
-            //prediction.PetalWidth = 9.9m;
-            //prediction.SepalLength = 9.9m;
-            //prediction.SepalWidth = 9.9m;
-
-            //prediction = model.Predict(prediction);
-
-            //prediction.Class = string.Empty;
-            //prediction.PetalLength = 0.0m;
-            //prediction.PetalWidth = 0.0m;
-            //prediction.SepalLength = 0.0m;
-            //prediction.SepalWidth = 0.0m;
-
-            //prediction = model.Predict(prediction);
-
-            //prediction.Class = string.Empty;
-            //prediction.PetalLength = 5.2m;
-            //prediction.PetalWidth = 1.9m;
-            //prediction.SepalLength = 6.0m;
-            //prediction.SepalWidth = 3.1m;
-
-            //prediction = model.Predict(prediction);
-
-            //prediction = model.Predict(data[149]);
-
-            //LearningModel learned;
-            //IModel learnedModel;
-            //double accuracy;
-            //  learned = Learner.Learn(data, 0.80, 1, decisionTreeGenerator);
-            //  learnedModel = learned.Model;
-            //  accuracy = learned.Accuracy;
-
-            Console.WriteLine("Analyzing generator index " + generatorIndex++);
-            double minAccuracy = double.MaxValue;
-            double maxAccuracy = double.MinValue;
-            double sumAccuracy = 0.0;
-            const int learnCount = 1;
-
-            for (int i = 0; i < learnCount; i++)
-            {
-               //learned = Learner.Learn(data, 0.10, 1, generator);
-               //learnedModel = learned.Model;
-               //accuracy = learned.Accuracy;
-
-               //minAccuracy = Math.Min(minAccuracy, accuracy);
-               //maxAccuracy = Math.Max(maxAccuracy, accuracy);
-               //sumAccuracy += accuracy;
-
-               //Console.WriteLine(accuracy.ToString());
-               //Console.WriteLine("Model " + learnedModel.ToString());
-            }
-
-            Console.WriteLine("Min: " + minAccuracy.ToString());
-            Console.WriteLine("Max: " + maxAccuracy.ToString());
-            Console.WriteLine("Average: " + (sumAccuracy / learnCount).ToString());
-
-            Console.WriteLine();
-         }
       }
    }
 
@@ -546,7 +209,7 @@ namespace AmaigomaConsole
       {
          get
          {
-            return Matrix.Count();
+            return Matrix.Count;
          }
 
          private set

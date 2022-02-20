@@ -95,7 +95,7 @@
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(3);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count.ShouldBe(3);
       }
 
       [Fact]
@@ -133,7 +133,7 @@
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(3, 7);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count.ShouldBeInRange(3, 7);
       }
 
       [Fact]
@@ -165,7 +165,7 @@
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(3);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count.ShouldBe(3);
       }
 
       [Fact]
@@ -177,6 +177,12 @@
          trainData = trainData.AddSample(new List<double> { 2, 3 }, 42);
          trainData = trainData.AddSample(new List<double> { 250, 254 }, 54);
          trainData = trainData.AddSample(new List<double> { 250, 255 }, 42);
+         trainData = trainData.AddSample(new List<double> { 251, 253 }, 6);
+         trainData = trainData.AddSample(new List<double> { 251, 254 }, 9);
+         trainData = trainData.AddSample(new List<double> { 1, 2 }, 96);
+         trainData = trainData.AddSample(new List<double> { 2, 1 }, 97);
+         trainData = trainData.AddSample(new List<double> { 2, 2 }, 98);
+         trainData = trainData.AddSample(new List<double> { 3, 2 }, 99);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
 
@@ -186,7 +192,7 @@
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(15, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Instead, the tree depth could also be validated.");
+         pakiraDecisionTreeModel.Tree.GetNodes().Count.ShouldBeGreaterThanOrEqualTo(15, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Instead, the tree depth could also be validated.");
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
@@ -228,9 +234,9 @@
 
          public IList<double> ConvertAll(IList<double> list)
          {
-            List<double> result = new List<double>(list.Count() - 1);
+            List<double> result = new List<double>(list.Count - 1);
 
-            for (int i = 0; i < list.Count() - 1; i++)
+            for (int i = 0; i < list.Count - 1; i++)
             {
                double add = list[i] + list[i + 1];
 

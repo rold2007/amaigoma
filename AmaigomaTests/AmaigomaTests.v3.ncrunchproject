@@ -1,3 +1,5 @@
 ﻿<ProjectConfiguration>
-  <Settings />
+  <Settings>
+    <DefaultTestTimeout>5000</DefaultTestTimeout>
+  </Settings>
 </ProjectConfiguration>
