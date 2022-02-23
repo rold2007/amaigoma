@@ -1,8 +1,6 @@
 ﻿namespace Amaigoma
 {
-   using MathNet.Numerics;
    using MathNet.Numerics.Distributions;
-   using MathNet.Numerics.LinearAlgebra;
    using MathNet.Numerics.LinearAlgebra.Double;
    using MathNet.Numerics.Statistics;
    using Shouldly;
@@ -195,15 +193,13 @@
 
       private PakiraDecisionTreeModel BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel)
       {
-         Stack<ProcessNode> processNodes = new Stack<ProcessNode>();
+         ImmutableStack<ProcessNode> processNodes = ImmutableStack<ProcessNode>.Empty;
          PakiraTree pakiraTree = pakiraDecisionTreeModel.Tree;
 
          {
-            List<PakiraLeaf> insufficientSamplesLeaves = pakiraDecisionTreeModel.Tree.GetNodes().FindAll(pakiraNode => pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX).Cast<PakiraLeaf>().ToList();
-
-            foreach (PakiraLeaf pakiraLeaf in insufficientSamplesLeaves)
+            foreach (PakiraLeaf pakiraLeaf in pakiraDecisionTreeModel.Tree.GetNodes().Where(pakiraNode => pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX).Cast<PakiraLeaf>())
             {
-               processNodes.Push(new ProcessNode(pakiraLeaf, pakiraDecisionTreeModel.TrainDataCache(pakiraLeaf), ImmutableList<SabotenCache>.Empty));
+               processNodes = processNodes.Push(new ProcessNode(pakiraLeaf, pakiraDecisionTreeModel.TrainDataCache(pakiraLeaf), ImmutableList<SabotenCache>.Empty));
             }
          }
 
@@ -211,9 +207,11 @@
          ImmutableList<SabotenCache>[] slice = new ImmutableList<SabotenCache>[2];
          ImmutableList<double>[] ySlice = new ImmutableList<double>[2];
 
-         while (processNodes.Count > 0)
+         while (!processNodes.IsEmpty)
          {
-            ProcessNode processNode = processNodes.Pop();
+            ProcessNode processNode;
+
+            processNodes = processNodes.Pop(out processNode);
 
             TrainDataCache processNodeTrainSamplesCache = processNode.TrainSamplesCache;
 
@@ -260,7 +258,7 @@
                   {
                      leaves[leafIndex] = new PakiraLeaf(UNKNOWN_CLASS_INDEX);
 
-                     processNodes.Push(new ProcessNode(leaves[leafIndex], new TrainDataCache(slice[leafIndex], ySlice[leafIndex]), ImmutableList<SabotenCache>.Empty));
+                     processNodes = processNodes.Push(new ProcessNode(leaves[leafIndex], new TrainDataCache(slice[leafIndex], ySlice[leafIndex]), ImmutableList<SabotenCache>.Empty));
                   }
                }
                else

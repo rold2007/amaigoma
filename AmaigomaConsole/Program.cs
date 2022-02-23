@@ -7,16 +7,16 @@ using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Processing.Processors;
 using SixLabors.ImageSharp.Processing.Processors.Transforms;
 using System;
+using System.Collections.Immutable;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-
-using DataTransformer = System.Converter<System.Collections.Generic.IList<double>, System.Collections.Generic.IList<double>>;
 
 namespace AmaigomaConsole
 {
+   using DataTransformer = System.Converter<IList<double>, IList<double>>;
+
    internal class TempDataTransformer
    {
       private int WindowSize
@@ -31,7 +31,7 @@ namespace AmaigomaConsole
 
       public IList<double> ConvertAll(IList<double> list)
       {
-         List<double> features = new List<double>();
+         ImmutableList<double> features = ImmutableList<double>.Empty;
 
          const int sizeX = /*24*/16;
          const int sizeY = /*24*/16;
@@ -52,7 +52,7 @@ namespace AmaigomaConsole
                   }
                }
 
-               features.Add(sum / (WindowSize * WindowSize));
+               features = features.Add(sum / (WindowSize * WindowSize));
             }
          }
 
@@ -218,20 +218,16 @@ namespace AmaigomaConsole
 
             Matrix.ShouldBeNull();
 
-            Matrix = new List<List<int>>(value);
+            Matrix = ImmutableList<ImmutableList<int>>.Empty;
 
             for (int i = 0; i < labelCount; i++)
             {
-               List<int> matrixLine = new List<int>(labelCount);
-
-               matrixLine.AddRange(Enumerable.Repeat(0, labelCount));
-
-               Matrix.Add(matrixLine);
+               Matrix = Matrix.Add(ImmutableList<int>.Empty.AddRange(Enumerable.Repeat(0, labelCount)));
             }
          }
       }
 
-      private List<List<int>> Matrix
+      private ImmutableList<ImmutableList<int>> Matrix
       {
          get;
          set;
@@ -244,13 +240,16 @@ namespace AmaigomaConsole
 
       public void AddPrediction(int expectedSampleLabel, int predictedSampleLabel)
       {
-         Matrix[expectedSampleLabel][predictedSampleLabel]++;
+         ImmutableList<int> matrixLine = Matrix[expectedSampleLabel];
+
+         matrixLine = matrixLine.SetItem(predictedSampleLabel, matrixLine[predictedSampleLabel] + 1);
+         Matrix = Matrix.SetItem(expectedSampleLabel, matrixLine);
       }
 
       // Based on https://en.wikipedia.org/wiki/Matthews_correlation_coefficient
-      public List<double> ComputeMatthewsCorrelationCoefficient()
+      public ImmutableList<double> ComputeMatthewsCorrelationCoefficient()
       {
-         List<double> matthewsCorrelationCoefficients = new List<double>(LabelCount);
+         ImmutableList<double> matthewsCorrelationCoefficients = ImmutableList<double>.Empty;
 
          // Compute the Matthews coefficient for each class
          for (int labelIndex = 0; labelIndex < LabelCount; labelIndex++)
@@ -305,7 +304,7 @@ namespace AmaigomaConsole
 
             double matthewsCorrelationCoefficient = ((truePositives * trueNegatives) - (falsePositives * falseNegatives)) / matthewsCorrelationCoefficientDenominator;
 
-            matthewsCorrelationCoefficients.Add(matthewsCorrelationCoefficient);
+            matthewsCorrelationCoefficients = matthewsCorrelationCoefficients.Add(matthewsCorrelationCoefficient);
          }
 
          return matthewsCorrelationCoefficients;

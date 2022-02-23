@@ -119,13 +119,13 @@
          return rightNodes[node];
       }
 
-      public List<IPakiraNode> GetNodes()
+      public IList<IPakiraNode> GetNodes()
       {
-         List<IPakiraNode> allNodes = new List<IPakiraNode>(1 + leftNodes.Count + rightNodes.Count);
+         ImmutableList<IPakiraNode> allNodes = ImmutableList<IPakiraNode>.Empty;
 
-         allNodes.Add(Root);
-         allNodes.AddRange(leftNodes.Values);
-         allNodes.AddRange(rightNodes.Values);
+         allNodes = allNodes.Add(Root);
+         allNodes = allNodes.AddRange(leftNodes.Values);
+         allNodes = allNodes.AddRange(rightNodes.Values);
 
          return allNodes;
       }
