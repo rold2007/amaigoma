@@ -7,15 +7,15 @@ using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Processing.Processors;
 using SixLabors.ImageSharp.Processing.Processors.Transforms;
 using System;
-using System.Collections.Immutable;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace AmaigomaConsole
 {
-   using DataTransformer = System.Converter<IList<double>, IList<double>>;
+   using DataTransformer = System.Converter<IEnumerable<double>, IEnumerable<double>>;
 
    internal class TempDataTransformer
    {
@@ -29,7 +29,7 @@ namespace AmaigomaConsole
          WindowSize = windowSize;
       }
 
-      public IList<double> ConvertAll(IList<double> list)
+      public IEnumerable<double> ConvertAll(IEnumerable<double> list)
       {
          ImmutableList<double> features = ImmutableList<double>.Empty;
 
@@ -48,7 +48,7 @@ namespace AmaigomaConsole
 
                   for (int i = 0; i < WindowSize; i++)
                   {
-                     sum += list[offsetStart + i];
+                     sum += list.ElementAt(offsetStart + i);
                   }
                }
 

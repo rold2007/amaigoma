@@ -1,32 +1,14 @@
-﻿namespace Amaigoma
+﻿using MathNet.Numerics.Distributions;
+using MathNet.Numerics.LinearAlgebra.Double;
+using MathNet.Numerics.Statistics;
+using Shouldly;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+
+namespace Amaigoma
 {
-   using MathNet.Numerics.Distributions;
-   using MathNet.Numerics.LinearAlgebra.Double;
-   using MathNet.Numerics.Statistics;
-   using Shouldly;
-   using System;
-   using System.Collections.Generic;
-   using System.Collections.Immutable;
-   using System.Linq;
-
-   public static class IEnumerableExtensions
-   {
-      // Obtained from https://stackoverflow.com/a/1287572/263228
-      public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source, Random rng)
-      {
-         T[] elements = source.ToArray();
-         for (int i = elements.Length - 1; i >= 0; i--)
-         {
-            // Swap element "i" with a random earlier element it (or itself)
-            // ... except we don't really need to swap it fully, as we can
-            // return it immediately, and afterwards it's irrelevant.
-            int swapIndex = rng.Next(i + 1);
-            yield return elements[swapIndex];
-            elements[swapIndex] = elements[i];
-         }
-      }
-   }
-
    public sealed record TrainData
    {
       public ImmutableList<ImmutableList<double>> Samples { get; } = ImmutableList<ImmutableList<double>>.Empty;
@@ -73,7 +55,7 @@
 
          if (!Samples.IsEmpty)
          {
-            samples.Samples[0].Data.Count.ShouldBe(Samples[0].Data.Count);
+            samples.Samples[0].Data.Count().ShouldBe(Samples[0].Data.Count());
          }
 
          return new TrainDataCache(Samples.AddRange(samples.Samples), Labels.AddRange(samples.Labels));
@@ -121,10 +103,10 @@
             for (int i = 0; i < MinimumSampleCount; i++)
             {
                SabotenCache newSampleCache = new SabotenCache(DenseVector.Create(featureCount, (dataIndex) =>
-               {
-                  return discreteUniform.Sample();
-               }
-               ));
+             {
+                return discreteUniform.Sample();
+             }
+             ));
                distributionSamples = distributionSamples.Add(newSampleCache);
             }
 
@@ -166,7 +148,7 @@
          {
             pakiraDecisionTreeModel = BuildTree(pakiraDecisionTreeModel);
 
-            buildNewTree = pakiraDecisionTreeModel.Tree.GetNodes().Count <= 1;
+            buildNewTree = pakiraDecisionTreeModel.Tree.GetNodes().Count() <= 1;
          }
 
          return pakiraDecisionTreeModel;

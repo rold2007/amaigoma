@@ -1,22 +1,22 @@
-﻿namespace Amaigoma
-{
-   using Shouldly;
-   using System;
-   using System.Collections.Generic;
-   using System.Collections.Immutable;
-   using System.Linq;
+﻿using Shouldly;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 
+namespace Amaigoma
+{
    public sealed record SabotenCache
    {
       private ImmutableList<double> TransformedData { get; } = ImmutableList<double>.Empty;
       private ImmutableList<bool> FetchedData { get; } = ImmutableList<bool>.Empty;
 
-      public SabotenCache(IList<double> data)
+      public SabotenCache(IEnumerable<double> data)
       {
          Data = data;
       }
 
-      private SabotenCache(IList<double> data, ImmutableList<double> transformedData, ImmutableList<bool> fetchedData)
+      private SabotenCache(IEnumerable<double> data, ImmutableList<double> transformedData, ImmutableList<bool> fetchedData)
       {
          Data = data;
          TransformedData = transformedData;
@@ -79,6 +79,6 @@
          }
       }
 
-      public IList<double> Data { get; }
+      public IEnumerable<double> Data { get; }
    }
 }

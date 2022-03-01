@@ -1,14 +1,14 @@
+using System.Collections.Generic;
+
 namespace Amaigoma
 {
-   using System.Collections.Generic;
-
    public class PassThroughTransformer
    {
       public PassThroughTransformer()
       {
       }
 
-      public IList<double> ConvertAll(IList<double> list)
+      public IEnumerable<double> ConvertAll(IEnumerable<double> list)
       {
          return list;
       }

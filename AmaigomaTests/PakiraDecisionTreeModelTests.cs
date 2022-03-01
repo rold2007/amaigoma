@@ -1,9 +1,9 @@
+using Amaigoma;
+using System;
+using Xunit;
+
 namespace AmaigomaTests
 {
-   using Amaigoma;
-   using System;
-   using Xunit;
-
    public class PakiraNodeTests
    {
       [Fact]

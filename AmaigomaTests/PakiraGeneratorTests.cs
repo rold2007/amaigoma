@@ -1,12 +1,13 @@
-﻿namespace AmaigomaTests
-{
-   using Amaigoma;
-   using Shouldly;
-   using System;
-   using System.Collections.Generic;
-   using System.Linq;
-   using Xunit;
+﻿using Amaigoma;
+using Shouldly;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using Xunit;
 
+namespace AmaigomaTests
+{
    public class PakiraGeneratorTests
    {
       [Fact]
@@ -24,9 +25,9 @@
 
          TrainData trainData = new TrainData();
 
-         trainData = trainData.AddSample(new List<double> { 2, 90 }, 42);
-         trainData = trainData.AddSample(new List<double> { 250, 140 }, 54);
-         trainData = trainData.AddSample(new List<double> { 200, 100 }, 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
 
@@ -49,9 +50,9 @@
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainData trainData = new TrainData();
 
-         trainData = trainData.AddSample(new List<double> { 2, 3 }, 42);
-         trainData = trainData.AddSample(new List<double> { 20, 140 }, 54);
-         trainData = trainData.AddSample(new List<double> { 33, 200 }, 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 20, 140 }), 54);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 33, 200 }), 42);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
 
@@ -70,14 +71,14 @@
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainData trainData = new TrainData();
 
-         trainData = trainData.AddSample(new List<double> { 2, 3 }, 42);
-         trainData = trainData.AddSample(new List<double> { 120, 140 }, 54);
-         trainData = trainData.AddSample(new List<double> { 190, 200 }, 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
          PassThroughTransformer passThroughTransformer = new PassThroughTransformer();
          MeanDistanceDataTransformer meanDistanceDataTransformer = new MeanDistanceDataTransformer();
 
-         Converter<IList<double>, IList<double>> dataTransformers = null;
+         Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
          dataTransformers += passThroughTransformer.ConvertAll;
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
@@ -95,7 +96,7 @@
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count.ShouldBe(3);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(3);
       }
 
       [Fact]
@@ -104,14 +105,14 @@
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainData trainData = new TrainData();
 
-         trainData = trainData.AddSample(new List<double> { 25, 35 }, 42);
-         trainData = trainData.AddSample(new List<double> { 120, 140 }, 54);
-         trainData = trainData.AddSample(new List<double> { 190, 200 }, 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
          PassThroughTransformer passThroughTransformer = new PassThroughTransformer();
          MeanDistanceDataTransformer meanDistanceDataTransformer = new MeanDistanceDataTransformer();
 
-         Converter<IList<double>, IList<double>> dataTransformers = null;
+         Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
 
@@ -133,7 +134,7 @@
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count.ShouldBeInRange(3, 7);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(3, 7);
       }
 
       [Fact]
@@ -142,13 +143,13 @@
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainData trainData = new TrainData();
 
-         trainData = trainData.AddSample(new List<double> { 25, 35 }, 42);
-         trainData = trainData.AddSample(new List<double> { 120, 140 }, 54);
-         trainData = trainData.AddSample(new List<double> { 190, 200 }, 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
          MeanDistanceDataTransformer meanDistanceDataTransformer = new MeanDistanceDataTransformer();
 
-         Converter<IList<double>, IList<double>> dataTransformers = null;
+         Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
          dataTransformers += meanDistanceDataTransformer.ConvertAll;
 
@@ -165,7 +166,7 @@
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count.ShouldBe(3);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(3);
       }
 
       [Fact]
@@ -174,15 +175,15 @@
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainData trainData = new TrainData();
 
-         trainData = trainData.AddSample(new List<double> { 2, 3 }, 42);
-         trainData = trainData.AddSample(new List<double> { 250, 254 }, 54);
-         trainData = trainData.AddSample(new List<double> { 250, 255 }, 42);
-         trainData = trainData.AddSample(new List<double> { 251, 253 }, 6);
-         trainData = trainData.AddSample(new List<double> { 251, 254 }, 9);
-         trainData = trainData.AddSample(new List<double> { 1, 2 }, 96);
-         trainData = trainData.AddSample(new List<double> { 2, 1 }, 97);
-         trainData = trainData.AddSample(new List<double> { 2, 2 }, 98);
-         trainData = trainData.AddSample(new List<double> { 3, 2 }, 99);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 254 }), 54);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 255 }), 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 251, 253 }), 6);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 251, 254 }), 9);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 1, 2 }), 96);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 1 }), 97);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 2 }), 98);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 3, 2 }), 99);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
 
@@ -192,7 +193,7 @@
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.Tree.GetNodes().Count.ShouldBeGreaterThanOrEqualTo(15, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Instead, the tree depth could also be validated.");
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(15, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Instead, the tree depth could also be validated.");
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
          pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
@@ -207,9 +208,9 @@
 
          TrainData trainData = new TrainData();
 
-         trainData = trainData.AddSample(new List<double> { 2, 90 }, 42);
-         trainData = trainData.AddSample(new List<double> { 250, 140 }, 54);
-         trainData = trainData.AddSample(new List<double> { 200, 100 }, 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
 
@@ -232,18 +233,18 @@
          {
          }
 
-         public IList<double> ConvertAll(IList<double> list)
+         public IEnumerable<double> ConvertAll(IEnumerable<double> list)
          {
-            List<double> result = new List<double>(list.Count - 1);
+            ImmutableList<double> result = ImmutableList<double>.Empty;
 
-            for (int i = 0; i < list.Count - 1; i++)
+            for (int i = 0; i < list.Count() - 1; i++)
             {
-               double add = list[i] + list[i + 1];
+               double add = list.ElementAt(i) + list.ElementAt(i + 1);
 
                add = 255 - add;
                add = Math.Abs(add);
 
-               result.Add(add);
+               result = result.Add(add);
             }
 
             return result;

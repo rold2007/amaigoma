@@ -1,9 +1,10 @@
-﻿namespace AmaigomaTests
-{
-   using Amaigoma;
-   using Shouldly;
-   using Xunit;
+﻿using Amaigoma;
+using Shouldly;
+using System.Linq;
+using Xunit;
 
+namespace AmaigomaTests
+{
    public class PakiraTreeTests
    {
       [Fact]
@@ -25,7 +26,7 @@
          pakiraTree = pakiraTree.AddNode(root, left, right);
 
          pakiraTree.Root.ShouldBe(root);
-         pakiraTree.GetNodes().Count.ShouldBe(3);
+         pakiraTree.GetNodes().Count().ShouldBe(3);
          pakiraTree.GetParentNode(root).ShouldBeNull();
       }
 
@@ -39,7 +40,7 @@
          PakiraTree pakiraTree = PakiraTree.Empty.AddNode(root, left, right);
 
          pakiraTree.Root.ShouldBe(root);
-         pakiraTree.GetNodes().Count.ShouldBe(7);
+         pakiraTree.GetNodes().Count().ShouldBe(7);
          pakiraTree.GetParentNode(left.Root).ShouldBe(root);
          pakiraTree.GetParentNode(right.Root).ShouldBe(root);
       }
@@ -66,7 +67,7 @@
          pakiraTree = pakiraTree.ReplaceLeaf(leftLeaf, PakiraTree.Empty.AddNode(subNode, newLeftLeaf, newRightLeaf));
 
          pakiraTree.Root.ShouldBe(rootNode);
-         pakiraTree.GetNodes().Count.ShouldBe(7);
+         pakiraTree.GetNodes().Count().ShouldBe(7);
       }
    }
 }

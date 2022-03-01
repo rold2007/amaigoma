@@ -1,11 +1,11 @@
-﻿namespace Amaigoma
-{
-   using Shouldly;
-   using System;
-   using System.Collections.Generic;
-   using System.Collections.Immutable;
-   using System.Linq;
+﻿using Shouldly;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 
+namespace Amaigoma
+{
    public sealed class PakiraTree
    {
       private static readonly PakiraTree empty = new PakiraTree();
@@ -119,7 +119,7 @@
          return rightNodes[node];
       }
 
-      public IList<IPakiraNode> GetNodes()
+      public IEnumerable<IPakiraNode> GetNodes()
       {
          ImmutableList<IPakiraNode> allNodes = ImmutableList<IPakiraNode>.Empty;
 

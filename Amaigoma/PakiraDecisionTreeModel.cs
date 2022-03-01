@@ -1,12 +1,12 @@
-﻿namespace Amaigoma
-{
-   using Shouldly;
-   using System;
-   using System.Collections.Generic;
-   using System.Collections.Immutable;
-   using System.Linq;
+﻿using Shouldly;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 
-   using DataTransformer = System.Converter<System.Collections.Generic.IList<double>, System.Collections.Generic.IList<double>>;
+namespace Amaigoma
+{
+   using DataTransformer = System.Converter<IEnumerable<double>, IEnumerable<double>>;
 
    public sealed record PakiraDecisionTreePredictionResult
    {
@@ -34,15 +34,15 @@
       public ImmutableList<double> DataDistributionSamplesMean { get; } = ImmutableList<double>.Empty;
       public ImmutableList<double> DataDistributionSamplesInvertedStandardDeviation { get; } = ImmutableList<double>.Empty;
 
-      public PakiraDecisionTreeModel(IList<double> dataSample) : this(PakiraTree.Empty, new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample)
+      public PakiraDecisionTreeModel(IEnumerable<double> dataSample) : this(PakiraTree.Empty, new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample)
       {
       }
 
-      public PakiraDecisionTreeModel(DataTransformer dataTransformers, IList<double> dataSample) : this(PakiraTree.Empty, dataTransformers, dataSample)
+      public PakiraDecisionTreeModel(DataTransformer dataTransformers, IEnumerable<double> dataSample) : this(PakiraTree.Empty, dataTransformers, dataSample)
       {
       }
 
-      public PakiraDecisionTreeModel(PakiraTree tree, DataTransformer dataTransformers, IList<double> dataSample)
+      public PakiraDecisionTreeModel(PakiraTree tree, DataTransformer dataTransformers, IEnumerable<double> dataSample)
       {
          Tree = tree;
          TanukiTransformers = new TanukiTransformers(dataTransformers, dataSample);
@@ -118,7 +118,7 @@
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>
       /// <returns>A node.</returns>
-      public PakiraLeaf PredictNode(IList<double> y)
+      public PakiraLeaf PredictNode(IEnumerable<double> y)
       {
          return WalkNode(new SabotenCache(y), Tree.Root).Item1 as PakiraLeaf;
       }
