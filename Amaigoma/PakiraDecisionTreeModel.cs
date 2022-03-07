@@ -105,11 +105,6 @@ namespace Amaigoma
          return Enumerable.Range(0, TanukiTransformers.TotalOutputSamples);
       }
 
-      public ImmutableList<SabotenCache> Prefetch(IEnumerable<SabotenCache> dataSamples, int featureIndex)
-      {
-         return dataSamples.Prefetch(featureIndex, TanukiTransformers).ToImmutableList();
-      }
-
       public ImmutableList<SabotenCache> PrefetchAll(IEnumerable<SabotenCache> dataSamples)
       {
          return dataSamples.PrefetchAll(TanukiTransformers).ToImmutableList();

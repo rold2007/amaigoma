@@ -209,7 +209,6 @@ namespace Amaigoma
             {
                bool theKey = (leafIndex == 0);
 
-
                slice[leafIndex] = bestSplitTrainSamplesCache.Where(column => ThresholdCompareLessThanOrEqual(column[bestFeatureIndex], threshold) == theKey).ToImmutableList();
 
                ySlice[leafIndex] = processNodeTrainSamplesCache.Labels.Where(
