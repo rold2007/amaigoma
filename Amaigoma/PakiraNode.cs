@@ -5,7 +5,6 @@ namespace Amaigoma
 {
    public interface IPakiraNode
    {
-      bool IsLeaf { get; }
       double Value { get; }
       int Column { get; }
       double Threshold { get; }
@@ -22,14 +21,6 @@ namespace Amaigoma
 
          this.Column = column;
          this.Threshold = threshold;
-      }
-
-      public bool IsLeaf
-      {
-         get
-         {
-            return false;
-         }
       }
 
       /// <summary>Gets or sets the value.</summary>
@@ -54,14 +45,6 @@ namespace Amaigoma
       public PakiraLeaf(double value)
       {
          this.Value = value;
-      }
-
-      public bool IsLeaf
-      {
-         get
-         {
-            return true;
-         }
       }
 
       public double Value { get; }

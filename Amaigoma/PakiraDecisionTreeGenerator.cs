@@ -179,7 +179,7 @@ namespace Amaigoma
          PakiraTree pakiraTree = pakiraDecisionTreeModel.Tree;
 
          {
-            foreach (PakiraLeaf pakiraLeaf in pakiraDecisionTreeModel.Tree.GetNodes().Where(pakiraNode => pakiraNode.IsLeaf && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX).Cast<PakiraLeaf>())
+            foreach (PakiraLeaf pakiraLeaf in pakiraDecisionTreeModel.Tree.GetNodes().Where(pakiraNode => (pakiraTree.IsLeaf(pakiraNode) == true) && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX).Cast<PakiraLeaf>())
             {
                processNodes = processNodes.Push(new ProcessNode(pakiraLeaf, pakiraDecisionTreeModel.TrainDataCache(pakiraLeaf), ImmutableList<SabotenCache>.Empty));
             }
@@ -214,7 +214,7 @@ namespace Amaigoma
                ySlice[leafIndex] = processNodeTrainSamplesCache.Labels.Where(
                            (trainLabel, trainLabelIndex) =>
                            {
-                              double trainSample = bestSplitTrainSamplesCache.ElementAt(trainLabelIndex)[bestFeatureIndex];
+                              double trainSample = bestSplitTrainSamplesCache[trainLabelIndex][bestFeatureIndex];
 
                               return ThresholdCompareLessThanOrEqual(trainSample, threshold) == theKey;
                            }

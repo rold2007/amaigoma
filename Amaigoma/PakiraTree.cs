@@ -104,6 +104,15 @@ namespace Amaigoma
             ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty.Add(leaf, null));
       }
 
+      public IPakiraNode GetLeftNodeSafe(IPakiraNode node)
+      {
+         IPakiraNode leftNode;
+
+         leftNodes.TryGetValue(node, out leftNode);
+
+         return leftNode;
+      }
+
       public IPakiraNode GetLeftNode(IPakiraNode node)
       {
          return leftNodes[node];
@@ -128,6 +137,19 @@ namespace Amaigoma
       public IPakiraNode GetParentNode(IPakiraNode node)
       {
          return parentNodes[node];
+      }
+
+      public bool IsLeaf(IPakiraNode node)
+      {
+         if (leftNodes.ContainsKey(node))
+         {
+            rightNodes.ContainsKey(node).ShouldBeTrue();
+            return false;
+         }
+         else
+         {
+            return true;
+         }
       }
    }
 }

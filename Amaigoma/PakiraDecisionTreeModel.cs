@@ -135,15 +135,22 @@ namespace Amaigoma
       /// <returns>A double.</returns>
       private Tuple<IPakiraNode, SabotenCache> WalkNode(SabotenCache v, IPakiraNode node)
       {
-         if (node.IsLeaf)
+         IPakiraNode leftNode = Tree.GetLeftNodeSafe(node);
+
+         if (leftNode == null)
+         {
+            // Leaf node
             return new Tuple<IPakiraNode, SabotenCache>(node, v);
+         }
+         else
+         {
+            // Get the index of the feature for this node.
+            int col = node.Column;
 
-         // Get the index of the feature for this node.
-         int col = node.Column;
+            v = v.Prefetch(col, TanukiTransformers);
 
-         v = v.Prefetch(col, TanukiTransformers);
-
-         return WalkNode(v, (v[col] <= node.Threshold) ? Tree.GetLeftNode(node) : Tree.GetRightNode(node));
+            return WalkNode(v, (v[col] <= node.Threshold) ? leftNode : Tree.GetRightNode(node));
+         }
       }
    }
 }
