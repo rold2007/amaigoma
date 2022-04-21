@@ -9,27 +9,54 @@ namespace Amaigoma
    public sealed class PakiraTree
    {
       private static readonly PakiraTree empty = new PakiraTree();
+      private readonly ImmutableDictionary<PakiraNode, PakiraNode> leftNodes;
+      private readonly ImmutableDictionary<PakiraNode, PakiraNode> rightNodes;
+      private readonly ImmutableDictionary<PakiraNode, PakiraLeaf> leftLeaves;
+      private readonly ImmutableDictionary<PakiraNode, PakiraLeaf> rightLeaves;
 
-      private readonly ImmutableDictionary<IPakiraNode, IPakiraNode> leftNodes;
-      private readonly ImmutableDictionary<IPakiraNode, IPakiraNode> rightNodes;
-      private readonly ImmutableDictionary<IPakiraNode, IPakiraNode> parentNodes;
+      private sealed record PakiraNodeComparer : IEqualityComparer<PakiraNode>
+      {
+         private static readonly PakiraNodeComparer instance = new PakiraNodeComparer();
+
+         public static PakiraNodeComparer Instance
+         {
+            get
+            {
+               return instance;
+            }
+         }
+
+         public bool Equals(PakiraNode x, PakiraNode y)
+         {
+            // Return reference comparison to prevent duplicate keys when their properties have the same values.
+            return ReferenceEquals(x, y);
+         }
+
+         public int GetHashCode(PakiraNode obj)
+         {
+            return obj.GetHashCode();
+         }
+      }
 
       private PakiraTree()
       {
-         leftNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty;
-         rightNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty;
-         parentNodes = ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty;
+         Root = null;
+         leftNodes = ImmutableDictionary<PakiraNode, PakiraNode>.Empty.WithComparers(PakiraNodeComparer.Instance);
+         rightNodes = ImmutableDictionary<PakiraNode, PakiraNode>.Empty.WithComparers(PakiraNodeComparer.Instance);
+         leftLeaves = ImmutableDictionary<PakiraNode, PakiraLeaf>.Empty.WithComparers(PakiraNodeComparer.Instance);
+         rightLeaves = ImmutableDictionary<PakiraNode, PakiraLeaf>.Empty.WithComparers(PakiraNodeComparer.Instance);
       }
 
-      private PakiraTree(IPakiraNode root, ImmutableDictionary<IPakiraNode, IPakiraNode> leftNodes, ImmutableDictionary<IPakiraNode, IPakiraNode> rightNodes, ImmutableDictionary<IPakiraNode, IPakiraNode> parentNodes)
+      private PakiraTree(PakiraNode root, ImmutableDictionary<PakiraNode, PakiraNode> leftNodes, ImmutableDictionary<PakiraNode, PakiraNode> rightNodes, ImmutableDictionary<PakiraNode, PakiraLeaf> leftLeaves, ImmutableDictionary<PakiraNode, PakiraLeaf> rightLeaves)
       {
          Root = root;
          this.leftNodes = leftNodes;
          this.rightNodes = rightNodes;
-         this.parentNodes = parentNodes;
+         this.leftLeaves = leftLeaves;
+         this.rightLeaves = rightLeaves;
       }
 
-      public IPakiraNode Root { get; }
+      public PakiraNode Root { get; }
 
       public static PakiraTree Empty
       {
@@ -39,45 +66,42 @@ namespace Amaigoma
          }
       }
 
-      public PakiraTree ReplaceLeaf(PakiraLeaf leaf, PakiraTree pakiraTree)
+      public PakiraTree ReplaceLeaf(PakiraNode parentNode, PakiraLeaf leaf, PakiraTree pakiraTree)
       {
-         IPakiraNode leafParent = GetParentNode(leaf);
-
-         // The current pakira tree only has a leaf as root
-         if (leafParent == null)
+         if (Root == null)
          {
-            leaf.ShouldBe(Root);
-
             return pakiraTree;
          }
          else
          {
-            ImmutableDictionary<IPakiraNode, IPakiraNode> updatedLeftNodes;
-            ImmutableDictionary<IPakiraNode, IPakiraNode> updatedRightNodes;
-            ImmutableDictionary<IPakiraNode, IPakiraNode> updatedParentNodes;
+            ImmutableDictionary<PakiraNode, PakiraNode> updatedLeftNodes;
+            ImmutableDictionary<PakiraNode, PakiraNode> updatedRightNodes;
+            ImmutableDictionary<PakiraNode, PakiraLeaf> updatedLeftLeaves;
+            ImmutableDictionary<PakiraNode, PakiraLeaf> updatedRightLeaves;
 
-            if (leftNodes.Contains(leafParent, leaf))
+            if (leftLeaves.Contains(parentNode, leaf))
             {
-               updatedLeftNodes = leftNodes.Remove(leafParent);
+               updatedLeftNodes = leftNodes.Add(parentNode, pakiraTree.Root);
                updatedRightNodes = rightNodes;
-               updatedLeftNodes = updatedLeftNodes.Add(leafParent, pakiraTree.Root);
+               updatedLeftLeaves = leftLeaves.Remove(parentNode);
+               updatedRightLeaves = rightLeaves;
             }
             else
             {
-               rightNodes.ShouldContainKeyAndValue(leafParent, leaf);
+               rightLeaves.ShouldContainKeyAndValue(parentNode, leaf);
 
                updatedLeftNodes = leftNodes;
-               updatedRightNodes = rightNodes.Remove(leafParent);
-               updatedRightNodes = updatedRightNodes.Add(leafParent, pakiraTree.Root);
+               updatedRightNodes = rightNodes.Add(parentNode, pakiraTree.Root);
+               updatedLeftLeaves = leftLeaves;
+               updatedRightLeaves = rightLeaves.Remove(parentNode);
             }
 
             updatedLeftNodes = updatedLeftNodes.AddRange(pakiraTree.leftNodes);
             updatedRightNodes = updatedRightNodes.AddRange(pakiraTree.rightNodes);
-            updatedParentNodes = parentNodes.Remove(leaf);
-            updatedParentNodes = updatedParentNodes.Add(pakiraTree.Root, leafParent);
-            updatedParentNodes = updatedParentNodes.AddRange(pakiraTree.parentNodes);
+            updatedLeftLeaves = updatedLeftLeaves.AddRange(pakiraTree.leftLeaves);
+            updatedRightLeaves = updatedRightLeaves.AddRange(pakiraTree.rightLeaves);
 
-            return new PakiraTree(Root, updatedLeftNodes, updatedRightNodes, updatedParentNodes);
+            return new PakiraTree(Root, updatedLeftNodes, updatedRightNodes, updatedLeftLeaves, updatedRightLeaves);
          }
       }
 
@@ -89,43 +113,53 @@ namespace Amaigoma
          rightChildLeaf.ShouldNotBeNull();
 
          return new PakiraTree(node,
-            leftNodes.Add(node, leftChildLeaf),
-            rightNodes.Add(node, rightChildLeaf),
-            parentNodes.Add(leftChildLeaf, node).Add(rightChildLeaf, node));
+            leftNodes,
+            rightNodes,
+            leftLeaves.Add(node, leftChildLeaf),
+            rightLeaves.Add(node, rightChildLeaf));
       }
 
-      public PakiraTree AddLeaf(PakiraLeaf leaf)
+      public PakiraNode GetLeftNodeSafe(PakiraNode node)
       {
-         this.ShouldBeSameAs(Empty);
-
-         return new PakiraTree(leaf,
-            ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty,
-            ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty,
-            ImmutableDictionary<IPakiraNode, IPakiraNode>.Empty.Add(leaf, null));
-      }
-
-      public IPakiraNode GetLeftNodeSafe(IPakiraNode node)
-      {
-         IPakiraNode leftNode;
+         PakiraNode leftNode;
 
          leftNodes.TryGetValue(node, out leftNode);
 
          return leftNode;
       }
 
-      public IPakiraNode GetLeftNode(IPakiraNode node)
+      public PakiraNode GetRightNodeSafe(PakiraNode node)
+      {
+         PakiraNode rightNode;
+
+         rightNodes.TryGetValue(node, out rightNode);
+
+         return rightNode;
+      }
+
+      public PakiraNode GetLeftNode(PakiraNode node)
       {
          return leftNodes[node];
       }
 
-      public IPakiraNode GetRightNode(IPakiraNode node)
+      public PakiraNode GetRightNode(PakiraNode node)
       {
          return rightNodes[node];
       }
 
-      public IEnumerable<IPakiraNode> GetNodes()
+      public PakiraLeaf GetLeftLeaf(PakiraNode node)
       {
-         ImmutableList<IPakiraNode> allNodes = ImmutableList<IPakiraNode>.Empty;
+         return leftLeaves[node];
+      }
+
+      public PakiraLeaf GetRightLeaf(PakiraNode node)
+      {
+         return rightLeaves[node];
+      }
+
+      public IEnumerable<PakiraNode> GetNodes()
+      {
+         ImmutableList<PakiraNode> allNodes = ImmutableList<PakiraNode>.Empty;
 
          allNodes = allNodes.Add(Root);
          allNodes = allNodes.AddRange(leftNodes.Values);
@@ -134,22 +168,9 @@ namespace Amaigoma
          return allNodes;
       }
 
-      public IPakiraNode GetParentNode(IPakiraNode node)
+      public IEnumerable<KeyValuePair<PakiraNode, PakiraLeaf>> GetLeaves()
       {
-         return parentNodes[node];
-      }
-
-      public bool IsLeaf(IPakiraNode node)
-      {
-         if (leftNodes.ContainsKey(node))
-         {
-            rightNodes.ContainsKey(node).ShouldBeTrue();
-            return false;
-         }
-         else
-         {
-            return true;
-         }
+         return leftLeaves.Concat(rightLeaves).AsEnumerable();
       }
    }
 }

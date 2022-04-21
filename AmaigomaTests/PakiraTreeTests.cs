@@ -28,16 +28,16 @@ namespace AmaigomaTests
          PakiraLeaf newLeftLeaf = new PakiraLeaf(12);
          PakiraLeaf newRightLeaf = new PakiraLeaf(13);
 
-         pakiraTree = pakiraTree.ReplaceLeaf(rightLeaf, PakiraTree.Empty.AddNode(subNode, newLeftLeaf, newRightLeaf));
+         pakiraTree = pakiraTree.ReplaceLeaf(rootNode, rightLeaf, PakiraTree.Empty.AddNode(subNode, newLeftLeaf, newRightLeaf));
 
          subNode = new PakiraNode(14, 15);
          newLeftLeaf = new PakiraLeaf(16);
          newRightLeaf = new PakiraLeaf(17);
 
-         pakiraTree = pakiraTree.ReplaceLeaf(leftLeaf, PakiraTree.Empty.AddNode(subNode, newLeftLeaf, newRightLeaf));
+         pakiraTree = pakiraTree.ReplaceLeaf(rootNode, leftLeaf, PakiraTree.Empty.AddNode(subNode, newLeftLeaf, newRightLeaf));
 
          pakiraTree.Root.ShouldBe(rootNode);
-         pakiraTree.GetNodes().Count().ShouldBe(7);
+         pakiraTree.GetNodes().Count().ShouldBe(3);
       }
    }
 }

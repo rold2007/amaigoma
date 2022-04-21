@@ -1,16 +1,11 @@
 ﻿using Shouldly;
-using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 
 namespace Amaigoma
 {
-   public interface IPakiraNode
-   {
-      double Value { get; }
-      int Column { get; }
-      double Threshold { get; }
-   }
-
-   public sealed class PakiraNode : IPakiraNode
+   public sealed record PakiraNode
    {
       /// <summary>
       /// Initializes a new instance of the <see cref="PakiraNode"/> class.
@@ -19,49 +14,46 @@ namespace Amaigoma
       {
          column.ShouldBeGreaterThanOrEqualTo(0);
 
-         this.Column = column;
-         this.Threshold = threshold;
+         Column = column;
+         Threshold = threshold;
       }
 
-      /// <summary>Gets or sets the value.</summary>
-      /// <value>The value.</value>
-      public double Value
-      {
-         get
-         {
-            throw new InvalidOperationException();
-         }
-      }
       /// <summary>Gets or sets the column.</summary>
       /// <value>The column.</value>
       public int Column { get; }
+
       /// <summary>Gets or sets the threshold.</summary>
       /// <value>The threshold.</value>
       public double Threshold { get; }
    }
 
-   public sealed class PakiraLeaf : IPakiraNode
+   public sealed record PakiraLeaf
    {
-      public PakiraLeaf(double value)
+      private ImmutableList<double> labelValues = ImmutableList<double>.Empty;
+
+      public PakiraLeaf(double labelValue)
       {
-         this.Value = value;
+         labelValues = labelValues.Add(labelValue);
       }
 
-      public double Value { get; }
+      public PakiraLeaf(IEnumerable<double> labelValues)
+      {
+         this.labelValues = this.labelValues.AddRange(labelValues);
+      }
 
-      public int Column
+      public double LabelValue
       {
          get
          {
-            throw new InvalidOperationException();
+            return labelValues[0];
          }
       }
 
-      public double Threshold
+      public IEnumerable<double> LabelValues
       {
          get
          {
-            throw new InvalidOperationException();
+            return labelValues.AsEnumerable();
          }
       }
    }

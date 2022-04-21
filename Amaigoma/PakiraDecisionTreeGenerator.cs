@@ -64,8 +64,14 @@ namespace Amaigoma
 
    public class PakiraDecisionTreeGenerator
    {
+      private sealed record PakiraLeafResult
+      {
+         public PakiraLeaf pakiraLeaf;
+         public ImmutableList<SabotenCache> slice;
+         public ImmutableList<double> ySlice;
+      }
+
       static public readonly int UNKNOWN_CLASS_INDEX = -1;
-      static public readonly int INSUFFICIENT_SAMPLES_CLASS_INDEX = -2;
       static public readonly int randomSeed = new Random().Next();
       static private readonly int MINIMUM_SAMPLE_COUNT = 1000;
       static private readonly double DEFAULT_CERTAINTY_SCORE = 2.0;
@@ -84,74 +90,32 @@ namespace Amaigoma
 
       public double CertaintyScore { get; set; }
 
+      public double UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
+
       public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainData trainData)
       {
-         ImmutableList<double> trainSample = trainData.Samples[0];
-         int featureCount = trainSample.Count();
-         bool buildNewTree = true;
          ImmutableList<SabotenCache> trainSamplesCache = pakiraDecisionTreeModel.PrefetchAll(trainData.Samples.Select(d => new SabotenCache(d)));
          ImmutableList<double> immutableTrainLabels = trainData.Labels;
 
          if (pakiraDecisionTreeModel.Tree.Root == null)
          {
-            PakiraLeaf initialLeaf = new PakiraLeaf(INSUFFICIENT_SAMPLES_CLASS_INDEX);
+            TrainDataCache trainDataCache = new TrainDataCache(trainSamplesCache, immutableTrainLabels);
 
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(PakiraTree.Empty.AddLeaf(initialLeaf));
+            pakiraDecisionTreeModel = InitializeDistributionSamples(pakiraDecisionTreeModel, trainData);
 
-            ImmutableList<SabotenCache> distributionSamples = ImmutableList<SabotenCache>.Empty;
-
-            for (int i = 0; i < MinimumSampleCount; i++)
-            {
-               SabotenCache newSampleCache = new SabotenCache(DenseVector.Create(featureCount, (dataIndex) =>
-             {
-                return discreteUniform.Sample();
-             }
-             ));
-               distributionSamples = distributionSamples.Add(newSampleCache);
-            }
-
-            distributionSamples = pakiraDecisionTreeModel.PrefetchAll(distributionSamples);
-
-            ImmutableList<double> dataDistributionSamplesMean = ImmutableList<double>.Empty;
-            ImmutableList<double> dataDistributionSamplesInvertedStandardDeviation = ImmutableList<double>.Empty;
-
-            foreach (int featureIndex in pakiraDecisionTreeModel.FeatureIndices())
-            {
-               ImmutableList<double> featureDataDistributionSample = distributionSamples.Select<SabotenCache, double>(sample =>
-               {
-                  return sample[featureIndex];
-               }
-               ).ToImmutableList();
-
-               Tuple<double, double> featureDataDistributionSampleMeanStandardDeviation = featureDataDistributionSample.MeanStandardDeviation();
-               double featureDataDistributionSampleMean = featureDataDistributionSampleMeanStandardDeviation.Item1;
-               double featureDataDistributionSampleStandardDeviation = featureDataDistributionSampleMeanStandardDeviation.Item2;
-               double invertedFeatureDataDistributionSampleStandardDeviation = 1 / featureDataDistributionSampleStandardDeviation;
-
-               dataDistributionSamplesMean = dataDistributionSamplesMean.Add(featureDataDistributionSampleMean);
-               dataDistributionSamplesInvertedStandardDeviation = dataDistributionSamplesInvertedStandardDeviation.Add(invertedFeatureDataDistributionSampleStandardDeviation);
-            }
-
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.DataDistributionSamplesStatistics(dataDistributionSamplesMean, dataDistributionSamplesInvertedStandardDeviation);
+            pakiraDecisionTreeModel = BuildInitialTree(pakiraDecisionTreeModel, trainDataCache);
          }
-
-         for (int trainSampleIndex = 0; trainSampleIndex < trainSamplesCache.Count; trainSampleIndex++)
+         else
          {
-            PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictNode(trainSamplesCache[trainSampleIndex]);
+            for (int trainSampleIndex = 0; trainSampleIndex < trainSamplesCache.Count; trainSampleIndex++)
+            {
+               PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(trainSamplesCache[trainSampleIndex]);
 
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraDecisionTreePredictionResult.PakiraLeaf, new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(pakiraDecisionTreePredictionResult.SabotenCache), ImmutableList<double>.Empty.Add(immutableTrainLabels[trainSampleIndex])));
+               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraDecisionTreePredictionResult.PakiraLeaf, new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(pakiraDecisionTreePredictionResult.SabotenCache), ImmutableList<double>.Empty.Add(immutableTrainLabels[trainSampleIndex])));
+            }
          }
 
-         ImmutableList<SabotenCache> randomSamplesCache = ImmutableList<SabotenCache>.Empty;
-
-         while (buildNewTree)
-         {
-            pakiraDecisionTreeModel = BuildTree(pakiraDecisionTreeModel);
-
-            buildNewTree = pakiraDecisionTreeModel.Tree.GetNodes().Count() <= 1;
-         }
-
-         return pakiraDecisionTreeModel;
+         return BuildTree(pakiraDecisionTreeModel);
       }
 
       static private bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)
@@ -159,103 +123,172 @@ namespace Amaigoma
          return inputValue <= threshold;
       }
 
-      private struct ProcessNode
+      private struct ProcessLeaf
       {
-         public ProcessNode(IPakiraNode node, TrainDataCache trainSamplesCache, ImmutableList<SabotenCache> dataDistributionSamplesCache)
+         public ProcessLeaf(PakiraNode parentNode, PakiraLeaf leaf, TrainDataCache trainSamplesCache)
          {
-            Node = node;
+            ParentNode = parentNode;
+            Leaf = leaf;
             TrainSamplesCache = trainSamplesCache;
-            DataDistributionSamplesCache = dataDistributionSamplesCache;
          }
 
-         public IPakiraNode Node;
+         public PakiraNode ParentNode;
+         public PakiraLeaf Leaf;
          public TrainDataCache TrainSamplesCache;
-         public ImmutableList<SabotenCache> DataDistributionSamplesCache;
       };
+
+      private PakiraDecisionTreeModel InitializeDistributionSamples(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainData trainData)
+      {
+         ImmutableList<double> trainSample = trainData.Samples[0];
+         int featureCount = trainSample.Count();
+         ImmutableList<SabotenCache> distributionSamples = ImmutableList<SabotenCache>.Empty;
+
+         for (int i = 0; i < MinimumSampleCount; i++)
+         {
+            SabotenCache newSampleCache = new SabotenCache(DenseVector.Create(featureCount, (dataIndex) =>
+            {
+               return discreteUniform.Sample();
+            }
+          ));
+            distributionSamples = distributionSamples.Add(newSampleCache);
+         }
+
+         distributionSamples = pakiraDecisionTreeModel.PrefetchAll(distributionSamples);
+
+         ImmutableList<double> dataDistributionSamplesMean = ImmutableList<double>.Empty;
+         ImmutableList<double> dataDistributionSamplesInvertedStandardDeviation = ImmutableList<double>.Empty;
+
+         foreach (int featureIndex in pakiraDecisionTreeModel.FeatureIndices())
+         {
+            ImmutableList<double> featureDataDistributionSample = distributionSamples.Select<SabotenCache, double>(sample =>
+            {
+               return sample[featureIndex];
+            }
+            ).ToImmutableList();
+
+            Tuple<double, double> featureDataDistributionSampleMeanStandardDeviation = featureDataDistributionSample.MeanStandardDeviation();
+            double featureDataDistributionSampleMean = featureDataDistributionSampleMeanStandardDeviation.Item1;
+            double featureDataDistributionSampleStandardDeviation = featureDataDistributionSampleMeanStandardDeviation.Item2;
+            double invertedFeatureDataDistributionSampleStandardDeviation = 1 / featureDataDistributionSampleStandardDeviation;
+
+            dataDistributionSamplesMean = dataDistributionSamplesMean.Add(featureDataDistributionSampleMean);
+            dataDistributionSamplesInvertedStandardDeviation = dataDistributionSamplesInvertedStandardDeviation.Add(invertedFeatureDataDistributionSampleStandardDeviation);
+         }
+
+         pakiraDecisionTreeModel = pakiraDecisionTreeModel.DataDistributionSamplesStatistics(dataDistributionSamplesMean, dataDistributionSamplesInvertedStandardDeviation);
+
+         return pakiraDecisionTreeModel;
+      }
+
+      private PakiraNode PrepareNode(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainDataCache trainDataCache)
+      {
+         Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> tuple = GetBestSplit(trainDataCache, pakiraDecisionTreeModel);
+         int bestFeatureIndex = tuple.Item1;
+         double threshold = tuple.Item2;
+         ImmutableList<SabotenCache> bestSplitDataDistributionSamplesCache = tuple.Item3;
+         ImmutableList<SabotenCache> bestSplitTrainSamplesCache = tuple.Item4;
+
+         PakiraNode node = new PakiraNode(bestFeatureIndex, threshold);
+
+         return node;
+      }
+
+      private PakiraLeafResult[] PrepareLeaves(int featureIndex, double threshold, TrainDataCache trainDataCache)
+      {
+         PakiraLeafResult[] pakiraLeavesResult = new PakiraLeafResult[2];
+
+         for (int leafIndex = 0; leafIndex < 2; leafIndex++)
+         {
+            bool theKey = (leafIndex == 0);
+
+            pakiraLeavesResult[leafIndex] = new PakiraLeafResult();
+
+            pakiraLeavesResult[leafIndex].slice = trainDataCache.Samples.Where(column => ThresholdCompareLessThanOrEqual(column[featureIndex], threshold) == theKey).ToImmutableList();
+
+            pakiraLeavesResult[leafIndex].ySlice = trainDataCache.Labels.Where(
+                        (trainLabel, trainLabelIndex) =>
+                        {
+                           double trainSample = trainDataCache.Samples[trainLabelIndex][featureIndex];
+
+                           return ThresholdCompareLessThanOrEqual(trainSample, threshold) == theKey;
+                        }
+                        ).ToImmutableList();
+         }
+
+         for (int leafIndex = 0; leafIndex < 2; leafIndex++)
+         {
+            if (pakiraLeavesResult[leafIndex].slice.Count() > 0)
+            {
+               ImmutableList<double> distinctValues = pakiraLeavesResult[leafIndex].ySlice.Distinct().ToImmutableList();
+
+               // only one answer, set leaf
+               if (distinctValues.Count == 1)
+               {
+                  double leafValue = pakiraLeavesResult[leafIndex].ySlice.First();
+
+                  pakiraLeavesResult[leafIndex].pakiraLeaf = new PakiraLeaf(leafValue);
+               }
+               // otherwise continue to build tree
+               else
+               {
+                  pakiraLeavesResult[leafIndex].pakiraLeaf = new PakiraLeaf(distinctValues);
+               }
+            }
+            else
+            {
+               // We don't have any training data for this node
+               pakiraLeavesResult[leafIndex].pakiraLeaf = new PakiraLeaf(UnknownLabelValue);
+            }
+         }
+
+         return pakiraLeavesResult;
+      }
+
+      private PakiraDecisionTreeModel BuildInitialTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainDataCache trainDataCache)
+      {
+         pakiraDecisionTreeModel.Tree.Root.ShouldBeNull();
+
+         PakiraNode pakiraNode = PrepareNode(pakiraDecisionTreeModel, trainDataCache);
+         PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, trainDataCache);
+
+         pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf));
+         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[0].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[0].slice, pakiraLeavesResults[0].ySlice));
+         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[1].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[1].slice, pakiraLeavesResults[1].ySlice));
+
+         return pakiraDecisionTreeModel;
+      }
 
       private PakiraDecisionTreeModel BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel)
       {
-         ImmutableStack<ProcessNode> processNodes = ImmutableStack<ProcessNode>.Empty;
-         PakiraTree pakiraTree = pakiraDecisionTreeModel.Tree;
+         ImmutableStack<ProcessLeaf> processLeaves = ImmutableStack<ProcessLeaf>.Empty;
 
+         foreach (KeyValuePair<PakiraNode, PakiraLeaf> pakiraNodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves().Where(pakiraNodeLeaf => (pakiraNodeLeaf.Value.LabelValues.Count() > 1)))
          {
-            foreach (PakiraLeaf pakiraLeaf in pakiraDecisionTreeModel.Tree.GetNodes().Where(pakiraNode => (pakiraTree.IsLeaf(pakiraNode) == true) && pakiraNode.Value == INSUFFICIENT_SAMPLES_CLASS_INDEX).Cast<PakiraLeaf>())
+            processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNodeLeaf.Key, pakiraNodeLeaf.Value, pakiraDecisionTreeModel.TrainDataCache(pakiraNodeLeaf.Value)));
+         }
+
+         while (!processLeaves.IsEmpty)
+         {
+            ProcessLeaf processLeaf;
+
+            processLeaves = processLeaves.Pop(out processLeaf);
+
+            TrainDataCache processNodeTrainSamplesCache = processLeaf.TrainSamplesCache;
+            PakiraNode pakiraNode = PrepareNode(pakiraDecisionTreeModel, processNodeTrainSamplesCache);
+            PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, processNodeTrainSamplesCache);
+
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, PakiraTree.Empty.AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf)));
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveTrainDataCache(processLeaf.Leaf);
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[0].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[0].slice, pakiraLeavesResults[0].ySlice));
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[1].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[1].slice, pakiraLeavesResults[1].ySlice));
+
+            foreach (PakiraLeafResult pakiraLeafResult in pakiraLeavesResults.Where(pakiraLeafResult => (pakiraLeafResult.pakiraLeaf.LabelValues.Count() > 1)))
             {
-               processNodes = processNodes.Push(new ProcessNode(pakiraLeaf, pakiraDecisionTreeModel.TrainDataCache(pakiraLeaf), ImmutableList<SabotenCache>.Empty));
+               processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNode, pakiraLeafResult.pakiraLeaf, pakiraDecisionTreeModel.TrainDataCache(pakiraLeafResult.pakiraLeaf)));
             }
          }
 
-         PakiraLeaf[] leaves = new PakiraLeaf[2];
-         ImmutableList<SabotenCache>[] slice = new ImmutableList<SabotenCache>[2];
-         ImmutableList<double>[] ySlice = new ImmutableList<double>[2];
-
-         while (!processNodes.IsEmpty)
-         {
-            ProcessNode processNode;
-
-            processNodes = processNodes.Pop(out processNode);
-
-            TrainDataCache processNodeTrainSamplesCache = processNode.TrainSamplesCache;
-
-            Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> tuple = GetBestSplit(processNodeTrainSamplesCache, pakiraDecisionTreeModel);
-            int bestFeatureIndex = tuple.Item1;
-            double threshold = tuple.Item2;
-            ImmutableList<SabotenCache> bestSplitDataDistributionSamplesCache = tuple.Item3;
-            ImmutableList<SabotenCache> bestSplitTrainSamplesCache = tuple.Item4;
-
-            PakiraNode node = new PakiraNode(bestFeatureIndex, threshold);
-
-            for (int leafIndex = 0; leafIndex < 2; leafIndex++)
-            {
-               bool theKey = (leafIndex == 0);
-
-               slice[leafIndex] = bestSplitTrainSamplesCache.Where(column => ThresholdCompareLessThanOrEqual(column[bestFeatureIndex], threshold) == theKey).ToImmutableList();
-
-               ySlice[leafIndex] = processNodeTrainSamplesCache.Labels.Where(
-                           (trainLabel, trainLabelIndex) =>
-                           {
-                              double trainSample = bestSplitTrainSamplesCache[trainLabelIndex][bestFeatureIndex];
-
-                              return ThresholdCompareLessThanOrEqual(trainSample, threshold) == theKey;
-                           }
-                           ).ToImmutableList();
-            }
-
-            for (int leafIndex = 0; leafIndex < 2; leafIndex++)
-            {
-               if (slice[leafIndex].Count() > 0)
-               {
-                  int distinctLabelsCount = ySlice[leafIndex].Distinct().Count();
-
-                  // only one answer, set leaf
-                  if (distinctLabelsCount == 1)
-                  {
-                     double leafValue = ySlice[leafIndex].First();
-
-                     leaves[leafIndex] = new PakiraLeaf(leafValue);
-                  }
-                  // otherwise continue to build tree
-                  else
-                  {
-                     leaves[leafIndex] = new PakiraLeaf(UNKNOWN_CLASS_INDEX);
-
-                     processNodes = processNodes.Push(new ProcessNode(leaves[leafIndex], new TrainDataCache(slice[leafIndex], ySlice[leafIndex]), ImmutableList<SabotenCache>.Empty));
-                  }
-               }
-               else
-               {
-                  // We don't have any training data for this node
-                  leaves[leafIndex] = new PakiraLeaf(UNKNOWN_CLASS_INDEX);
-               }
-            }
-
-            pakiraTree = pakiraTree.ReplaceLeaf(processNode.Node as PakiraLeaf, PakiraTree.Empty.AddNode(node, leaves[0], leaves[1]));
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveTrainDataCache(processNode.Node as PakiraLeaf);
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(leaves[0], new TrainDataCache(slice[0], ySlice[0]));
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(leaves[1], new TrainDataCache(slice[1], ySlice[1]));
-         }
-
-         return pakiraDecisionTreeModel.UpdateTree(pakiraTree);
+         return pakiraDecisionTreeModel;
       }
 
       private Tuple<int, double, ImmutableList<SabotenCache>, ImmutableList<SabotenCache>> GetBestSplit(TrainDataCache processNodeTrainSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)

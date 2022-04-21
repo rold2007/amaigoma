@@ -171,7 +171,7 @@ namespace AmaigomaConsole
 
                   SabotenCache croppedSampleCache = new SabotenCache(croppedSample);
 
-                  resultClass = pakiraDecisionTreeModel.PredictNode(croppedSampleCache).PakiraLeaf.Value;
+                  resultClass = pakiraDecisionTreeModel.PredictLeaf(croppedSampleCache).PakiraLeaf.LabelValue;
 
                   if (resultClass == 0)
                   {

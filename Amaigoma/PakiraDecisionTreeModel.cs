@@ -113,19 +113,24 @@ namespace Amaigoma
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>
       /// <returns>A node.</returns>
-      public PakiraLeaf PredictNode(IEnumerable<double> y)
+      public PakiraLeaf PredictLeaf(IEnumerable<double> y)
       {
-         return WalkNode(new SabotenCache(y), Tree.Root).Item1 as PakiraLeaf;
+         return WalkNode(new SabotenCache(y), Tree).Item1;
       }
 
       /// <summary>Predicts the given y coordinate.</summary>
       /// <param name="y">The Vector to process.</param>
       /// <returns>A node.</returns>
-      public PakiraDecisionTreePredictionResult PredictNode(SabotenCache sabotenCache)
+      public PakiraDecisionTreePredictionResult PredictLeaf(SabotenCache sabotenCache)
       {
-         Tuple<IPakiraNode, SabotenCache> walkNodeResult = WalkNode(sabotenCache, Tree.Root);
+         Tuple<PakiraLeaf, SabotenCache> walkNodeResult = WalkNode(sabotenCache, Tree);
 
-         return new PakiraDecisionTreePredictionResult(walkNodeResult.Item1 as PakiraLeaf, walkNodeResult.Item2);
+         return new PakiraDecisionTreePredictionResult(walkNodeResult.Item1, walkNodeResult.Item2);
+      }
+
+      private Tuple<PakiraLeaf, SabotenCache> WalkNode(SabotenCache sabotenCache, PakiraTree tree)
+      {
+         return WalkNode(sabotenCache, tree.Root);
       }
 
       /// <summary>Walk node.</summary>
@@ -133,24 +138,40 @@ namespace Amaigoma
       /// <param name="v">The Vector to process.</param>
       /// <param name="node">The node.</param>
       /// <returns>A double.</returns>
-      private Tuple<IPakiraNode, SabotenCache> WalkNode(SabotenCache v, IPakiraNode node)
+      private Tuple<PakiraLeaf, SabotenCache> WalkNode(SabotenCache v, PakiraNode node)
       {
-         IPakiraNode leftNode = Tree.GetLeftNodeSafe(node);
-
-         if (leftNode == null)
-         {
-            // Leaf node
-            return new Tuple<IPakiraNode, SabotenCache>(node, v);
-         }
-         else
+         while (node != null)
          {
             // Get the index of the feature for this node.
             int col = node.Column;
 
             v = v.Prefetch(col, TanukiTransformers);
 
-            return WalkNode(v, (v[col] <= node.Threshold) ? leftNode : Tree.GetRightNode(node));
+            PakiraNode subNode;
+
+            if (v[col] <= node.Threshold)
+            {
+               subNode = Tree.GetLeftNodeSafe(node);
+
+               if (subNode == null)
+               {
+                  return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetLeftLeaf(node), v);
+               }
+            }
+            else
+            {
+               subNode = Tree.GetRightNodeSafe(node);
+
+               if (subNode == null)
+               {
+                  return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetRightLeaf(node), v);
+               }
+            }
+
+            node = subNode;
          }
+
+         throw new InvalidOperationException();
       }
    }
 }

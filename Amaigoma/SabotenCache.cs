@@ -73,7 +73,9 @@ namespace Amaigoma
       {
          get
          {
+#if DEBUG
             CacheHit(index).ShouldBeTrue("Need to call Prefect() first.");
+#endif
 
             return TransformedData[index];
          }

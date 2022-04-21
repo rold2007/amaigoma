@@ -35,13 +35,13 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValue.ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValue.ShouldBe(trainData.Labels[2]);
 
-         pakiraDecisionTreeModel.PredictNode(new SabotenCache(trainData.Samples[0])).PakiraLeaf.Value.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictNode(new SabotenCache(trainData.Samples[1])).PakiraLeaf.Value.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictNode(new SabotenCache(trainData.Samples[2])).PakiraLeaf.Value.ShouldBe(trainData.Labels[2]);
+         pakiraDecisionTreeModel.PredictLeaf(new SabotenCache(trainData.Samples[0])).PakiraLeaf.LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(new SabotenCache(trainData.Samples[1])).PakiraLeaf.LabelValue.ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(new SabotenCache(trainData.Samples[2])).PakiraLeaf.LabelValue.ShouldBe(trainData.Labels[2]);
       }
 
       [Fact]
@@ -60,9 +60,9 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValue.ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValue.ShouldBe(trainData.Labels[2]);
       }
 
       [Fact]
@@ -91,12 +91,12 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValue.ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValue.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(3);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(1);
       }
 
       [Fact]
@@ -129,12 +129,12 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValue.ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValue.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(3, 7);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(1, 5);
       }
 
       [Fact]
@@ -161,12 +161,12 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValue.ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValue.ShouldBe(trainData.Labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(3);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(1);
       }
 
       [Fact]
@@ -193,10 +193,10 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(15, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Instead, the tree depth could also be validated.");
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(3, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Instead, the tree depth could also be validated.");
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValue.ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValue.ShouldBe(trainData.Labels[2]);
       }
 
       [Fact]
@@ -218,13 +218,13 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[0]).Value.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[1]).Value.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictNode(trainData.Samples[2]).Value.ShouldBe(trainData.Labels[2]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValue.ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValue.ShouldBe(trainData.Labels[2]);
 
-         pakiraDecisionTreeModel.PredictNode(new SabotenCache(trainData.Samples[0])).PakiraLeaf.Value.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictNode(new SabotenCache(trainData.Samples[1])).PakiraLeaf.Value.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictNode(new SabotenCache(trainData.Samples[2])).PakiraLeaf.Value.ShouldBe(trainData.Labels[2]);
+         pakiraDecisionTreeModel.PredictLeaf(new SabotenCache(trainData.Samples[0])).PakiraLeaf.LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(new SabotenCache(trainData.Samples[1])).PakiraLeaf.LabelValue.ShouldBe(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(new SabotenCache(trainData.Samples[2])).PakiraLeaf.LabelValue.ShouldBe(trainData.Labels[2]);
       }
 
       internal class MeanDistanceDataTransformer
