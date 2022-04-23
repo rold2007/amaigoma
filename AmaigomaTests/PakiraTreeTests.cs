@@ -39,5 +39,16 @@ namespace AmaigomaTests
          pakiraTree.Root.ShouldBe(rootNode);
          pakiraTree.GetNodes().Count().ShouldBe(3);
       }
+
+      [Fact]
+      public void PakiraNodeComparer()
+      {
+         PakiraNode rootNode = new PakiraNode(6, 7);
+         PakiraLeaf leftLeaf = new PakiraLeaf(8);
+         PakiraLeaf rightLeaf = new PakiraLeaf(9);
+         PakiraTree pakiraTree = PakiraTree.Empty.AddNode(rootNode, leftLeaf, rightLeaf);
+
+         pakiraTree = pakiraTree.ReplaceLeaf(rootNode, leftLeaf, PakiraTree.Empty.AddNode(new PakiraNode(6, 7), new PakiraLeaf(8), new PakiraLeaf(9)));
+      }
    }
 }
