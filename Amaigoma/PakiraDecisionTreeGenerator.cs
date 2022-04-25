@@ -97,6 +97,17 @@ namespace Amaigoma
          ImmutableList<SabotenCache> trainSamplesCache = pakiraDecisionTreeModel.PrefetchAll(trainData.Samples.Select(d => new SabotenCache(d)));
          ImmutableList<double> immutableTrainLabels = trainData.Labels;
 
+         foreach (SabotenCache sabotenCache in trainSamplesCache)
+         {
+            foreach (int featureIndex in pakiraDecisionTreeModel.FeatureIndices())
+            {
+               double trainSampleValue = sabotenCache[featureIndex];
+
+               trainSampleValue.ShouldBeGreaterThanOrEqualTo(0.0);
+               trainSampleValue.ShouldBeLessThanOrEqualTo(255.0);
+            }
+         }
+
          if (pakiraDecisionTreeModel.Tree.Root == null)
          {
             TrainDataCache trainDataCache = new TrainDataCache(trainSamplesCache, immutableTrainLabels);
@@ -312,9 +323,6 @@ namespace Amaigoma
                SabotenCache trainSample = extractedTrainSamplesCache[i];
                double trainLabel = processNodeTrainSamplesCache.Labels[i];
                double trainSampleValue = trainSample[featureIndex];
-
-               trainSampleValue.ShouldBeGreaterThanOrEqualTo(0.0);
-               trainSampleValue.ShouldBeLessThanOrEqualTo(255.0);
 
                double score = (trainSampleValue - featureDataDistributionSampleMean) * invertedFeatureDataDistributionSampleStandardDeviation;
                Tuple<double, double> currentMinimumPotentialScoreValue;
