@@ -137,16 +137,6 @@ namespace Amaigoma
          return rightNode;
       }
 
-      public PakiraNode GetLeftNode(PakiraNode node)
-      {
-         return leftNodes[node];
-      }
-
-      public PakiraNode GetRightNode(PakiraNode node)
-      {
-         return rightNodes[node];
-      }
-
       public PakiraLeaf GetLeftLeaf(PakiraNode node)
       {
          return leftLeaves[node];

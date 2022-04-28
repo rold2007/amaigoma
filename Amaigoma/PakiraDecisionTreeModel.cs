@@ -64,9 +64,7 @@ namespace Amaigoma
 
       public PakiraDecisionTreeModel AddTrainDataCache(PakiraLeaf pakiraLeaf, TrainDataCache trainDataCache)
       {
-         TrainDataCache leafTrainDataCache;
-
-         if (LeafTrainDataCache.TryGetValue(pakiraLeaf, out leafTrainDataCache))
+         if (LeafTrainDataCache.TryGetValue(pakiraLeaf, out TrainDataCache leafTrainDataCache))
          {
             return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.SetItem(pakiraLeaf, leafTrainDataCache.AddSamples(trainDataCache)), DataDistributionSamplesMean, DataDistributionSamplesInvertedStandardDeviation);
          }

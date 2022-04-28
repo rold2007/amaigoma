@@ -2,6 +2,7 @@
 using MathNet.Numerics.LinearAlgebra;
 using Shouldly;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Memory;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Processing.Processors;
@@ -23,10 +24,15 @@ namespace AmaigomaConsole
       {
          get;
       }
+      private int WindowSizeSquared
+      {
+         get;
+      }
 
       public TempDataTransformer(int windowSize)
       {
          WindowSize = windowSize;
+         WindowSizeSquared = windowSize * windowSize;
       }
 
       public IEnumerable<double> ConvertAll(IEnumerable<double> list)
@@ -36,23 +42,30 @@ namespace AmaigomaConsole
          const int sizeX = /*24*/16;
          const int sizeY = /*24*/16;
 
+         Buffer2D<ulong> integralImage = Image.LoadPixelData<L8>(list.Select((x) => (byte)x).ToArray(), sizeX, sizeY).CalculateIntegralImage();
+
          for (int y = 0; y < sizeY - WindowSize; y += WindowSize)
          {
             for (int x = 0; x < sizeX - WindowSize; x += WindowSize)
             {
-               double sum = 0;
+               double sum = integralImage[x + WindowSize - 1, y + WindowSize - 1];
 
-               for (int j = 0; j < WindowSize; j++)
+               if (x > 0)
                {
-                  int offsetStart = x + ((y + j) * sizeX);
+                  sum -= integralImage[x - 1, y + WindowSize - 1];
 
-                  for (int i = 0; i < WindowSize; i++)
+                  if (y > 0)
                   {
-                     sum += list.ElementAt(offsetStart + i);
+                     sum -= integralImage[x + WindowSize - 1, y - 1];
+                     sum += integralImage[x - 1, y - 1];
                   }
                }
+               else if (y > 0)
+               {
+                  sum -= integralImage[x + WindowSize - 1, y - 1];
+               }
 
-               features = features.Add(sum / (WindowSize * WindowSize));
+               features = features.Add(sum / WindowSizeSquared);
             }
          }
 
