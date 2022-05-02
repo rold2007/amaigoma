@@ -10,6 +10,39 @@ namespace AmaigomaTests
 {
    public class PakiraGeneratorTests
    {
+      internal class MeanDistanceDataTransformer
+      {
+         public MeanDistanceDataTransformer()
+         {
+         }
+
+         public IEnumerable<double> ConvertAll(IEnumerable<double> list)
+         {
+            ImmutableList<double> result = ImmutableList<double>.Empty;
+
+            for (int i = 0; i < list.Count() - 1; i++)
+            {
+               double add = list.ElementAt(i) + list.ElementAt(i + 1);
+
+               add = 255 - add;
+               add = Math.Abs(add);
+
+               result = result.Add(add);
+            }
+
+            return result;
+         }
+      }
+
+      static public PakiraDecisionTreeGenerator CreatePakiraGeneratorInstance()
+      {
+         PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator = new PakiraDecisionTreeGenerator();
+
+         Console.WriteLine("PakiraDecisionTreeGenerator random seed: " + PakiraDecisionTreeGenerator.randomSeed.ToString());
+
+         return pakiraDecisionTreeGenerator;
+      }
+
       [Fact]
       public void Constructor()
       {
@@ -273,37 +306,58 @@ namespace AmaigomaTests
          pakiraDecisionTreeModel.PredictLeaf(new SabotenCache(trainData.Samples[2])).PakiraLeaf.LabelValue.ShouldBe(trainData.Labels[2]);
       }
 
-      internal class MeanDistanceDataTransformer
+      [Fact]
+      public void GenerateCannotSplit()
       {
-         public MeanDistanceDataTransformer()
-         {
-         }
+         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
 
-         public IEnumerable<double> ConvertAll(IEnumerable<double> list)
-         {
-            ImmutableList<double> result = ImmutableList<double>.Empty;
+         pakiraGenerator.CertaintyScore = 10.0;
 
-            for (int i = 0; i < list.Count() - 1; i++)
-            {
-               double add = list.ElementAt(i) + list.ElementAt(i + 1);
+         TrainData trainData = new TrainData();
 
-               add = 255 - add;
-               add = Math.Abs(add);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 42);
 
-               result = result.Add(add);
-            }
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
 
-            return result;
-         }
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
+
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValues.Count().ShouldBe(2);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValues.Count().ShouldBe(2);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValues.ShouldContain(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValues.ShouldContain(trainData.Labels[2]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValues.ShouldContain(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValues.ShouldContain(trainData.Labels[2]);
       }
 
-      static public PakiraDecisionTreeGenerator CreatePakiraGeneratorInstance()
+      [Fact]
+      public void GenerateCannotSplit2()
       {
-         PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator = new PakiraDecisionTreeGenerator();
+         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
 
-         Console.WriteLine("PakiraDecisionTreeGenerator random seed: " + PakiraDecisionTreeGenerator.randomSeed.ToString());
+         pakiraGenerator.CertaintyScore = 10.0;
 
-         return pakiraDecisionTreeGenerator;
+         TrainData trainData = new TrainData();
+
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
+         trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 42);
+
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
+
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValues.Count().ShouldBe(2);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValues.ShouldContain(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValues.ShouldContain(trainData.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValues.ShouldContain(trainData.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValues.ShouldContain(trainData.Labels[1]);
       }
    }
 }

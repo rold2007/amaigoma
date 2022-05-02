@@ -49,6 +49,8 @@ namespace Amaigoma
 
       private PakiraTree(PakiraNode root, ImmutableDictionary<PakiraNode, PakiraNode> leftNodes, ImmutableDictionary<PakiraNode, PakiraNode> rightNodes, ImmutableDictionary<PakiraNode, PakiraLeaf> leftLeaves, ImmutableDictionary<PakiraNode, PakiraLeaf> rightLeaves)
       {
+         root.ShouldNotBeNull();
+
          Root = root;
          this.leftNodes = leftNodes;
          this.rightNodes = rightNodes;

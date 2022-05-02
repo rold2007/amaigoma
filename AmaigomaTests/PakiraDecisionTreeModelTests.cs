@@ -1,7 +1,6 @@
-using Amaigoma;
-using System;
-using Xunit;
-
 namespace AmaigomaTests
 {
+   public class PakiraDecisionTreeModelTests
+   {
+   }
 }
