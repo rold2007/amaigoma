@@ -138,7 +138,7 @@ namespace Amaigoma
       /// <returns>A double.</returns>
       private Tuple<PakiraLeaf, SabotenCache> WalkNode(SabotenCache v, PakiraNode node)
       {
-         while (node != null)
+         do
          {
             // Get the index of the feature for this node.
             int col = node.Column;
@@ -168,8 +168,7 @@ namespace Amaigoma
 
             node = subNode;
          }
-
-         throw new InvalidOperationException();
+         while (true);
       }
    }
 }

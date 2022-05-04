@@ -70,41 +70,36 @@ namespace Amaigoma
 
       public PakiraTree ReplaceLeaf(PakiraNode parentNode, PakiraLeaf leaf, PakiraTree pakiraTree)
       {
-         if (Root == null)
+         Root.ShouldNotBeNull();
+
+         ImmutableDictionary<PakiraNode, PakiraNode> updatedLeftNodes;
+         ImmutableDictionary<PakiraNode, PakiraNode> updatedRightNodes;
+         ImmutableDictionary<PakiraNode, PakiraLeaf> updatedLeftLeaves;
+         ImmutableDictionary<PakiraNode, PakiraLeaf> updatedRightLeaves;
+
+         if (leftLeaves.Contains(parentNode, leaf))
          {
-            return pakiraTree;
+            updatedLeftNodes = leftNodes.Add(parentNode, pakiraTree.Root);
+            updatedRightNodes = rightNodes;
+            updatedLeftLeaves = leftLeaves.Remove(parentNode);
+            updatedRightLeaves = rightLeaves;
          }
          else
          {
-            ImmutableDictionary<PakiraNode, PakiraNode> updatedLeftNodes;
-            ImmutableDictionary<PakiraNode, PakiraNode> updatedRightNodes;
-            ImmutableDictionary<PakiraNode, PakiraLeaf> updatedLeftLeaves;
-            ImmutableDictionary<PakiraNode, PakiraLeaf> updatedRightLeaves;
+            rightLeaves.ShouldContainKeyAndValue(parentNode, leaf);
 
-            if (leftLeaves.Contains(parentNode, leaf))
-            {
-               updatedLeftNodes = leftNodes.Add(parentNode, pakiraTree.Root);
-               updatedRightNodes = rightNodes;
-               updatedLeftLeaves = leftLeaves.Remove(parentNode);
-               updatedRightLeaves = rightLeaves;
-            }
-            else
-            {
-               rightLeaves.ShouldContainKeyAndValue(parentNode, leaf);
-
-               updatedLeftNodes = leftNodes;
-               updatedRightNodes = rightNodes.Add(parentNode, pakiraTree.Root);
-               updatedLeftLeaves = leftLeaves;
-               updatedRightLeaves = rightLeaves.Remove(parentNode);
-            }
-
-            updatedLeftNodes = updatedLeftNodes.AddRange(pakiraTree.leftNodes);
-            updatedRightNodes = updatedRightNodes.AddRange(pakiraTree.rightNodes);
-            updatedLeftLeaves = updatedLeftLeaves.AddRange(pakiraTree.leftLeaves);
-            updatedRightLeaves = updatedRightLeaves.AddRange(pakiraTree.rightLeaves);
-
-            return new PakiraTree(Root, updatedLeftNodes, updatedRightNodes, updatedLeftLeaves, updatedRightLeaves);
+            updatedLeftNodes = leftNodes;
+            updatedRightNodes = rightNodes.Add(parentNode, pakiraTree.Root);
+            updatedLeftLeaves = leftLeaves;
+            updatedRightLeaves = rightLeaves.Remove(parentNode);
          }
+
+         updatedLeftNodes = updatedLeftNodes.AddRange(pakiraTree.leftNodes);
+         updatedRightNodes = updatedRightNodes.AddRange(pakiraTree.rightNodes);
+         updatedLeftLeaves = updatedLeftLeaves.AddRange(pakiraTree.leftLeaves);
+         updatedRightLeaves = updatedRightLeaves.AddRange(pakiraTree.rightLeaves);
+
+         return new PakiraTree(Root, updatedLeftNodes, updatedRightNodes, updatedLeftLeaves, updatedRightLeaves);
       }
 
       public PakiraTree AddNode(PakiraNode node, PakiraLeaf leftChildLeaf, PakiraLeaf rightChildLeaf)

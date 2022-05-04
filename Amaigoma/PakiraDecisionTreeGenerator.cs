@@ -297,6 +297,8 @@ namespace Amaigoma
             }
          }
 
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+
          return pakiraDecisionTreeModel;
       }
 
