@@ -16,7 +16,7 @@ namespace AmaigomaTests
          {
          }
 
-         public IEnumerable<double> ConvertAll(IEnumerable<double> list)
+         public static IEnumerable<double> ConvertAll(IEnumerable<double> list)
          {
             ImmutableList<double> result = ImmutableList<double>.Empty;
 
@@ -34,19 +34,13 @@ namespace AmaigomaTests
          }
       }
 
-      static public PakiraDecisionTreeGenerator CreatePakiraGeneratorInstance()
+      public static PakiraDecisionTreeGenerator CreatePakiraGeneratorInstance()
       {
-         PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator = new PakiraDecisionTreeGenerator();
+         PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator = new();
 
          Console.WriteLine("PakiraDecisionTreeGenerator random seed: " + PakiraDecisionTreeGenerator.randomSeed.ToString());
 
          return pakiraDecisionTreeGenerator;
-      }
-
-      [Fact]
-      public void Constructor()
-      {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
       }
 
       [Fact]
@@ -56,13 +50,13 @@ namespace AmaigomaTests
 
          pakiraGenerator.CertaintyScore = 10.0;
 
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
@@ -84,19 +78,19 @@ namespace AmaigomaTests
 
          pakiraGenerator.CertaintyScore = 10.0;
 
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         TrainData trainData2 = new TrainData();
+         TrainData trainData2 = new();
 
          trainData2 = trainData2.AddSample(ImmutableList.CreateRange(new double[] { 3, 91 }), 42);
          trainData2 = trainData2.AddSample(ImmutableList.CreateRange(new double[] { 251, 141 }), 54);
@@ -127,13 +121,13 @@ namespace AmaigomaTests
       public void MinimumSampleCount()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 20, 140 }), 54);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 33, 200 }), 42);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
@@ -148,23 +142,23 @@ namespace AmaigomaTests
       public void DataTransformers()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
-         PassThroughTransformer passThroughTransformer = new PassThroughTransformer();
-         MeanDistanceDataTransformer meanDistanceDataTransformer = new MeanDistanceDataTransformer();
+         PassThroughTransformer passThroughTransformer = new();
+         MeanDistanceDataTransformer meanDistanceDataTransformer = new();
 
          Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
          dataTransformers += passThroughTransformer.ConvertAll;
-         dataTransformers += meanDistanceDataTransformer.ConvertAll;
+         dataTransformers += MeanDistanceDataTransformer.ConvertAll;
 
          pakiraGenerator.CertaintyScore = 10.0;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(dataTransformers, trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(dataTransformers, trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
@@ -182,25 +176,25 @@ namespace AmaigomaTests
       public void DataTransformersQuickExit()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
-         PassThroughTransformer passThroughTransformer = new PassThroughTransformer();
-         MeanDistanceDataTransformer meanDistanceDataTransformer = new MeanDistanceDataTransformer();
+         PassThroughTransformer passThroughTransformer = new();
+         MeanDistanceDataTransformer meanDistanceDataTransformer = new();
 
          Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
-         dataTransformers += meanDistanceDataTransformer.ConvertAll;
+         dataTransformers += MeanDistanceDataTransformer.ConvertAll;
 
          for (int i = 0; i < 100; i++)
          {
             dataTransformers += passThroughTransformer.ConvertAll;
          }
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(dataTransformers, trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(dataTransformers, trainData.Samples[0]);
 
          pakiraGenerator.MinimumSampleCount = 250;
 
@@ -220,21 +214,21 @@ namespace AmaigomaTests
       public void DataTransformersQuickExit2()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
-         MeanDistanceDataTransformer meanDistanceDataTransformer = new MeanDistanceDataTransformer();
+         MeanDistanceDataTransformer meanDistanceDataTransformer = new();
 
          Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
-         dataTransformers += meanDistanceDataTransformer.ConvertAll;
+         dataTransformers += MeanDistanceDataTransformer.ConvertAll;
 
          pakiraGenerator.CertaintyScore = 10.0;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(dataTransformers, trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(dataTransformers, trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
@@ -252,7 +246,7 @@ namespace AmaigomaTests
       public void DeepTree()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 254 }), 54);
@@ -264,7 +258,7 @@ namespace AmaigomaTests
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 2 }), 98);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 3, 2 }), 99);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainData.Samples[0]);
 
          pakiraGenerator.MinimumSampleCount = 100;
 
@@ -285,13 +279,13 @@ namespace AmaigomaTests
 
          pakiraGenerator.CertaintyScore = 1.0;
 
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
@@ -313,13 +307,13 @@ namespace AmaigomaTests
 
          pakiraGenerator.CertaintyScore = 10.0;
 
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 42);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
@@ -341,12 +335,12 @@ namespace AmaigomaTests
 
          pakiraGenerator.CertaintyScore = 10.0;
 
-         TrainData trainData = new TrainData();
+         TrainData trainData = new();
 
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
          trainData = trainData.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 42);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 

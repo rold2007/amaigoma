@@ -84,18 +84,18 @@ namespace AmaigomaConsole
          Image<L8> fullTextImage = Image.Load<L8>(imageMainPath + @"Images\FS18800114.2.11-a2-427w-c32.png");
          Image<L8> completeA = Image.Load<L8>(imageMainPath + @"\Images\FS18800114.2.11-a2-427w-c32\a\CompleteA.png");
 
-         PakiraDecisionTreeGenerator pakiraGenerator = new PakiraDecisionTreeGenerator();
-         TrainData trainData = new TrainData();
+         PakiraDecisionTreeGenerator pakiraGenerator = new();
+         TrainData trainData = new();
 
-         L8 whitePixel = new L8(255);
-         L8 blackPixel = new L8(0);
-         L8 dontCarePixel = new L8(128);
+         L8 whitePixel = new(255);
+         L8 blackPixel = new(0);
+         L8 dontCarePixel = new(128);
          byte dontCarePixelValue = dontCarePixel.PackedValue;
          byte[] imageCropPixelsData = new byte[featureWindowSize * featureWindowSize * Unsafe.SizeOf<L8>()];
 
          completeA.ProcessPixelRows(accessor =>
          {
-            Span<byte> imageCropPixels = new Span<byte>(imageCropPixelsData);
+            Span<byte> imageCropPixels = new(imageCropPixelsData);
 
             for (int y = 0; y < accessor.Height; y++)
             {
@@ -108,7 +108,7 @@ namespace AmaigomaConsole
 
                   if (pixel != dontCarePixel)
                   {
-                     Image<L8> whiteWindow = new Image<L8>(featureWindowSize, featureWindowSize, whitePixel);
+                     Image<L8> whiteWindow = new(featureWindowSize, featureWindowSize, whitePixel);
                      Image<L8> imageCrop = whiteWindow.Clone(clone => clone.DrawImage(fullTextImage, new Point(halfFeatureWindowSize - x, halfFeatureWindowSize - y), 1));
 
                      imageCrop.CopyPixelDataTo(imageCropPixels);
@@ -146,7 +146,7 @@ namespace AmaigomaConsole
          pakiraGenerator.CertaintyScore = 4.0;
          //pakiraGenerator.CertaintyScore = double.MaxValue;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new PakiraDecisionTreeModel(PakiraTree.Empty, dataTransformers, trainData.Samples[0]);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
@@ -159,7 +159,7 @@ namespace AmaigomaConsole
 
          //completeAResult = new Image<L8>(completeA.Width, completeA.Height, dontCarePixel);
 
-         Span<byte> imagePixels = new Span<byte>(imageCropPixelsData);
+         Span<byte> imagePixels = new(imageCropPixelsData);
 
          for (int y = 0; y < fullTextImage.Height - featureWindowSize; y++)
          {
@@ -182,7 +182,7 @@ namespace AmaigomaConsole
                      croppedSample.At(pixelIndex, imagePixels[pixelIndex]);
                   }
 
-                  SabotenCache croppedSampleCache = new SabotenCache(croppedSample);
+                  SabotenCache croppedSampleCache = new(croppedSample);
 
                   resultClass = pakiraDecisionTreeModel.PredictLeaf(croppedSampleCache).PakiraLeaf.LabelValue;
 

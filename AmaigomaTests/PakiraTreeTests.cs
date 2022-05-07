@@ -18,15 +18,15 @@ namespace AmaigomaTests
       [Fact]
       public void AddNodeTopBottom()
       {
-         PakiraNode rootNode = new PakiraNode(6, 7);
-         PakiraLeaf leftLeaf = new PakiraLeaf(8);
-         PakiraLeaf rightLeaf = new PakiraLeaf(9);
+         PakiraNode rootNode = new(6, 7);
+         PakiraLeaf leftLeaf = new(8);
+         PakiraLeaf rightLeaf = new(9);
          PakiraTree pakiraTree = PakiraTree.Empty.AddNode(rootNode, leftLeaf, rightLeaf);
 
-         PakiraNode subNode = new PakiraNode(10, 11);
+         PakiraNode subNode = new(10, 11);
 
-         PakiraLeaf newLeftLeaf = new PakiraLeaf(12);
-         PakiraLeaf newRightLeaf = new PakiraLeaf(13);
+         PakiraLeaf newLeftLeaf = new(12);
+         PakiraLeaf newRightLeaf = new(13);
 
          pakiraTree = pakiraTree.ReplaceLeaf(rootNode, rightLeaf, PakiraTree.Empty.AddNode(subNode, newLeftLeaf, newRightLeaf));
 
@@ -43,12 +43,12 @@ namespace AmaigomaTests
       [Fact]
       public void PakiraNodeComparer()
       {
-         PakiraNode rootNode = new PakiraNode(6, 7);
-         PakiraLeaf leftLeaf = new PakiraLeaf(8);
-         PakiraLeaf rightLeaf = new PakiraLeaf(9);
+         PakiraNode rootNode = new(6, 7);
+         PakiraLeaf leftLeaf = new(8);
+         PakiraLeaf rightLeaf = new(9);
          PakiraTree pakiraTree = PakiraTree.Empty.AddNode(rootNode, leftLeaf, rightLeaf);
 
-         pakiraTree = pakiraTree.ReplaceLeaf(rootNode, leftLeaf, PakiraTree.Empty.AddNode(new PakiraNode(6, 7), new PakiraLeaf(8), new PakiraLeaf(9)));
+         pakiraTree.ReplaceLeaf(rootNode, leftLeaf, PakiraTree.Empty.AddNode(new PakiraNode(6, 7), new PakiraLeaf(8), new PakiraLeaf(9)));
       }
    }
 }

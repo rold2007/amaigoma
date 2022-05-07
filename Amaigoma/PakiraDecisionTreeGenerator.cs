@@ -71,12 +71,12 @@ namespace Amaigoma
          public ImmutableList<double> ySlice;
       }
 
-      static public readonly int UNKNOWN_CLASS_INDEX = -1;
-      static public readonly int randomSeed = new Random().Next();
-      static private readonly int MINIMUM_SAMPLE_COUNT = 1000;
-      static private readonly double DEFAULT_CERTAINTY_SCORE = 2.0;
-      static private readonly PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
-      private readonly Random RandomSource = new Random(randomSeed);
+      public static readonly int UNKNOWN_CLASS_INDEX = -1;
+      public static readonly int randomSeed = new Random().Next();
+      private static readonly int MINIMUM_SAMPLE_COUNT = 1000;
+      private static readonly double DEFAULT_CERTAINTY_SCORE = 2.0;
+      private static readonly PassThroughTransformer DefaultDataTransformer = new();
+      private readonly Random RandomSource = new(randomSeed);
       private readonly DiscreteUniform discreteUniform;
 
       public PakiraDecisionTreeGenerator()
@@ -110,7 +110,7 @@ namespace Amaigoma
 
          if (pakiraDecisionTreeModel.Tree.Root == null)
          {
-            TrainDataCache trainDataCache = new TrainDataCache(trainSamplesCache, immutableTrainLabels);
+            TrainDataCache trainDataCache = new(trainSamplesCache, immutableTrainLabels);
 
             pakiraDecisionTreeModel = InitializeDistributionSamples(pakiraDecisionTreeModel, trainData);
 
@@ -129,7 +129,7 @@ namespace Amaigoma
          return BuildTree(pakiraDecisionTreeModel);
       }
 
-      static private bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)
+      private static bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)
       {
          return inputValue <= threshold;
       }
@@ -156,7 +156,7 @@ namespace Amaigoma
 
          for (int i = 0; i < MinimumSampleCount; i++)
          {
-            SabotenCache newSampleCache = new SabotenCache(DenseVector.Create(featureCount, (dataIndex) =>
+            SabotenCache newSampleCache = new(DenseVector.Create(featureCount, (dataIndex) =>
             {
                return discreteUniform.Sample();
             }
@@ -274,9 +274,8 @@ namespace Amaigoma
 
          while (!processLeaves.IsEmpty)
          {
-            ProcessLeaf processLeaf;
 
-            processLeaves = processLeaves.Pop(out processLeaf);
+            processLeaves = processLeaves.Pop(out ProcessLeaf processLeaf);
 
             TrainDataCache processNodeTrainSamplesCache = processLeaf.TrainSamplesCache;
             PakiraNode pakiraNode = PrepareNode(pakiraDecisionTreeModel, processNodeTrainSamplesCache);
@@ -325,9 +324,8 @@ namespace Amaigoma
                double trainSampleValue = trainSample[featureIndex];
 
                double score = (trainSampleValue - featureDataDistributionSampleMean) * invertedFeatureDataDistributionSampleStandardDeviation;
-               Tuple<double, double> currentMinimumPotentialScoreValue;
 
-               if (minimumLabelScores.TryGetValue(trainLabel, out currentMinimumPotentialScoreValue))
+               if (minimumLabelScores.TryGetValue(trainLabel, out Tuple<double, double> currentMinimumPotentialScoreValue))
                {
                   if (score < currentMinimumPotentialScoreValue.Item1)
                   {

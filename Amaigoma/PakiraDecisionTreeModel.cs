@@ -23,7 +23,7 @@ namespace Amaigoma
    /// <summary>A data Model for the decision tree.</summary>
    public sealed record PakiraDecisionTreeModel
    {
-      static private readonly PassThroughTransformer DefaultDataTransformer = new PassThroughTransformer();
+      private static readonly PassThroughTransformer DefaultDataTransformer = new();
 
       public PakiraTree Tree { get; } = PakiraTree.Empty;
 

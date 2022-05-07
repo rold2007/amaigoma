@@ -29,7 +29,7 @@ namespace Amaigoma
 
    public sealed record PakiraLeaf
    {
-      private ImmutableList<double> labelValues = ImmutableList<double>.Empty;
+      private readonly ImmutableList<double> labelValues = ImmutableList<double>.Empty;
 
       public PakiraLeaf(double labelValue)
       {

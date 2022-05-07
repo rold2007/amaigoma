@@ -15,7 +15,7 @@ namespace Amaigoma
       {
          Delegate[] delegates = converters.GetInvocationList();
 
-         Index start = new Index();
+         Index start = new();
          Index end;
 
          foreach (Delegate dataTransformer in delegates)

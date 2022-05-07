@@ -8,7 +8,7 @@ namespace Amaigoma
 {
    public sealed class PakiraTree
    {
-      private static readonly PakiraTree empty = new PakiraTree();
+      private static readonly PakiraTree empty = new();
       private readonly ImmutableDictionary<PakiraNode, PakiraNode> leftNodes;
       private readonly ImmutableDictionary<PakiraNode, PakiraNode> rightNodes;
       private readonly ImmutableDictionary<PakiraNode, PakiraLeaf> leftLeaves;
@@ -16,7 +16,7 @@ namespace Amaigoma
 
       private sealed record PakiraNodeComparer : IEqualityComparer<PakiraNode>
       {
-         private static readonly PakiraNodeComparer instance = new PakiraNodeComparer();
+         private static readonly PakiraNodeComparer instance = new();
 
          public static PakiraNodeComparer Instance
          {
@@ -118,18 +118,15 @@ namespace Amaigoma
 
       public PakiraNode GetLeftNodeSafe(PakiraNode node)
       {
-         PakiraNode leftNode;
-
-         leftNodes.TryGetValue(node, out leftNode);
+         leftNodes.TryGetValue(node, out PakiraNode leftNode);
 
          return leftNode;
       }
 
       public PakiraNode GetRightNodeSafe(PakiraNode node)
       {
-         PakiraNode rightNode;
 
-         rightNodes.TryGetValue(node, out rightNode);
+         rightNodes.TryGetValue(node, out PakiraNode rightNode);
 
          return rightNode;
       }
