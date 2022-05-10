@@ -177,9 +177,7 @@ namespace Amaigoma
             }
             ).ToImmutableList();
 
-            Tuple<double, double> featureDataDistributionSampleMeanStandardDeviation = featureDataDistributionSample.MeanStandardDeviation();
-            double featureDataDistributionSampleMean = featureDataDistributionSampleMeanStandardDeviation.Item1;
-            double featureDataDistributionSampleStandardDeviation = featureDataDistributionSampleMeanStandardDeviation.Item2;
+            (double featureDataDistributionSampleMean, double featureDataDistributionSampleStandardDeviation) = featureDataDistributionSample.MeanStandardDeviation();
             double invertedFeatureDataDistributionSampleStandardDeviation = 1 / featureDataDistributionSampleStandardDeviation;
 
             dataDistributionSamplesMean = dataDistributionSamplesMean.Add(featureDataDistributionSampleMean);
