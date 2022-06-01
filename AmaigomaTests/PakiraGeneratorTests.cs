@@ -93,7 +93,7 @@ namespace AmaigomaTests
          TrainData trainData2 = new();
 
          trainData2 = trainData2.AddSample(ImmutableList.CreateRange(new double[] { 3, 91 }), 42);
-         trainData2 = trainData2.AddSample(ImmutableList.CreateRange(new double[] { 251, 141 }), 54);
+         trainData2 = trainData2.AddSample(ImmutableList.CreateRange(new double[] { 128, 95 }), 54);
          trainData2 = trainData2.AddSample(ImmutableList.CreateRange(new double[] { 201, 101 }), 42);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData2);

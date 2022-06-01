@@ -265,14 +265,13 @@ namespace Amaigoma
       {
          ImmutableStack<ProcessLeaf> processLeaves = ImmutableStack<ProcessLeaf>.Empty;
 
-         foreach (KeyValuePair<PakiraNode, PakiraLeaf> pakiraNodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves().Where(pakiraNodeLeaf => (pakiraNodeLeaf.Value.LabelValues.Count() > 1)))
+         foreach (KeyValuePair<PakiraNode, PakiraLeaf> pakiraNodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves().Where(pakiraNodeLeaf => (pakiraDecisionTreeModel.TrainDataCache(pakiraNodeLeaf.Value).Labels.Distinct().Count() > 1)))
          {
             processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNodeLeaf.Key, pakiraNodeLeaf.Value, pakiraDecisionTreeModel.TrainDataCache(pakiraNodeLeaf.Value)));
          }
 
          while (!processLeaves.IsEmpty)
          {
-
             processLeaves = processLeaves.Pop(out ProcessLeaf processLeaf);
 
             TrainDataCache processNodeTrainSamplesCache = processLeaf.TrainSamplesCache;

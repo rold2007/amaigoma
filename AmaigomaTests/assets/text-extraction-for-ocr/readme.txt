@@ -1,0 +1,1 @@
+https://www.kaggle.com/datasets/manishthem/text-extraction-for-ocr
