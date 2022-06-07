@@ -78,11 +78,39 @@ namespace AmaigomaTests
    {
       static private readonly ImmutableList<Point> allUppercaseA_507484246_Points = ImmutableList<Point>.Empty.AddRange(new Point[] {
          new Point(83, 150),
-         new Point(624, 140)
+         new Point(624, 140),
+         new Point(670, 140),
+         new Point(688, 140),
+         new Point(36, 196),
+         new Point(192, 197),
+         new Point(181, 213),
+         new Point(576, 216),
+         new Point(603, 217),
+         new Point(658, 217),
+         new Point(109, 333),
+         new Point(127, 333),
+         new Point(228, 334),
+         new Point(283, 335),
+         new Point(153, 408),
+         new Point(217, 519),
+         new Point(155, 549),
+         new Point(218, 790),
+         new Point(411, 836),
+         new Point(137, 851),
+         new Point(257, 851),
+         new Point(605, 852)
       });
 
       static private readonly ImmutableList<Rectangle> allNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] {
-         new Rectangle(20, 420, 380, 80)
+         new Rectangle(0, 0, 300, 100),
+         new Rectangle(520, 40, 230, 90),
+         new Rectangle(20, 420, 380, 80),
+         new Rectangle(190, 540, 280, 20),
+         new Rectangle(20, 555, 480, 215),
+         new Rectangle(520, 550, 250, 216),
+         new Rectangle(95, 810, 500, 20),
+         new Rectangle(20, 900, 756, 70),
+         new Rectangle(180, 960, 310, 35)
       });
 
       public static System.Collections.Generic.IEnumerable<object[]> GetUppercaseA_507484246_Data()
@@ -95,6 +123,8 @@ namespace AmaigomaTests
       [Timeout(60000)]
       public void UppercaseA_507484246(string imagePath, ImmutableList<Point> points, ImmutableList<Rectangle> rectangles)
       {
+         const double uppercaseAClass = 1;
+         const double otherClass = 2;
          const int featureWindowSize = 16;
          const int halfFeatureWindowSize = featureWindowSize / 2;
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), @"..\..\..\" + imagePath);
@@ -116,21 +146,21 @@ namespace AmaigomaTests
 
             imageCrop.CopyPixelDataTo(imageCropPixels);
 
-            trainData = trainData.AddSample(imageCropPixelsData.Select<byte, double>(s => s), 1);
+            trainData = trainData.AddSample(imageCropPixelsData.Select<byte, double>(s => s), uppercaseAClass);
          }
 
-         foreach(Rectangle rectangle in rectangles)
+         foreach (Rectangle rectangle in rectangles)
          {
             for (int y = halfFeatureWindowSize; y < rectangle.Height - halfFeatureWindowSize; y++)
             {
                for (int x = halfFeatureWindowSize; x < rectangle.Width - halfFeatureWindowSize; x++)
                {
                   Image<L8> whiteWindow = new(featureWindowSize, featureWindowSize, whitePixel);
-                  Image<L8> imageCrop = whiteWindow.Clone(clone => clone.DrawImage(fullTextImage, new Point(halfFeatureWindowSize - x, halfFeatureWindowSize - y), 1));
+                  Image<L8> imageCrop = whiteWindow.Clone(clone => clone.DrawImage(fullTextImage, new Point(halfFeatureWindowSize - (x + rectangle.Left), halfFeatureWindowSize - (y + rectangle.Top)), 1));
 
                   imageCrop.CopyPixelDataTo(imageCropPixels);
 
-                  backgroundTrainData = backgroundTrainData.AddSample(imageCropPixelsData.Select<byte, double>(s => s), 2);
+                  backgroundTrainData = backgroundTrainData.AddSample(imageCropPixelsData.Select<byte, double>(s => s), otherClass);
                }
             }
          }
@@ -164,17 +194,19 @@ namespace AmaigomaTests
          sabotenCache = new(backgroundTrainData.Samples[20000]);
          resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
 
-         foreach(ImmutableList<double> sample in backgroundTrainData.Samples)
+         foreach (ImmutableList<double> sample in backgroundTrainData.Samples)
          {
             sabotenCache = new(sample);
             resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
 
-            if(resultClass != 2)
+            if (resultClass != otherClass)
             {
-               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainData(ImmutableList< ImmutableList<double>>.Empty.Add(sample), ImmutableList<double>.Empty.Add(2)));
+               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainData(ImmutableList<ImmutableList<double>>.Empty.Add(sample), ImmutableList<double>.Empty.Add(otherClass)));
 
-               resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
-               resultClass.ShouldBe(2);
+               PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(sabotenCache);
+
+               pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValues.Count().ShouldBe(1);
+               pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue.ShouldBe(otherClass);
             }
          }
       }
