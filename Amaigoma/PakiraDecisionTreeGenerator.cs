@@ -11,14 +11,14 @@ namespace Amaigoma
 {
    public sealed record TrainData
    {
-      public ImmutableList<ImmutableList<double>> Samples { get; } = ImmutableList<ImmutableList<double>>.Empty;
+      public ImmutableList<List<double>> Samples { get; } = ImmutableList<List<double>>.Empty;
       public ImmutableList<double> Labels { get; } = ImmutableList<double>.Empty;
 
       public TrainData()
       {
       }
 
-      public TrainData(ImmutableList<ImmutableList<double>> samples, ImmutableList<double> labels)
+      public TrainData(ImmutableList<List<double>> samples, ImmutableList<double> labels)
       {
          Samples = samples;
          Labels = labels;
@@ -26,14 +26,14 @@ namespace Amaigoma
 
       public TrainData AddSample(IEnumerable<double> sample, double label)
       {
-         ImmutableList<double> immutableSample = sample.ToImmutableList();
+         List<double> listSample = sample.ToList();
 
          if (!Samples.IsEmpty)
          {
-            immutableSample.Count.ShouldBe(Samples[0].Count);
+            listSample.Count.ShouldBe(Samples[0].Count);
          }
 
-         return new TrainData(Samples.Add(immutableSample), Labels.Add(label));
+         return new TrainData(Samples.Add(listSample), Labels.Add(label));
       }
    }
 
@@ -150,7 +150,7 @@ namespace Amaigoma
 
       private PakiraDecisionTreeModel InitializeDistributionSamples(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainData trainData)
       {
-         ImmutableList<double> trainSample = trainData.Samples[0];
+         List<double> trainSample = trainData.Samples[0];
          int featureCount = trainSample.Count();
          ImmutableList<SabotenCache> distributionSamples = ImmutableList<SabotenCache>.Empty;
 

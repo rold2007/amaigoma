@@ -120,7 +120,7 @@ namespace AmaigomaTests
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
-      [Timeout(60000)]
+      [Timeout(25000)]
       public void UppercaseA_507484246(string imagePath, ImmutableList<Point> points, ImmutableList<Rectangle> rectangles)
       {
          const double uppercaseAClass = 1;
@@ -194,14 +194,14 @@ namespace AmaigomaTests
          sabotenCache = new(backgroundTrainData.Samples[20000]);
          resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
 
-         foreach (ImmutableList<double> sample in backgroundTrainData.Samples)
+         foreach (List<double> sample in backgroundTrainData.Samples)
          {
             sabotenCache = new(sample);
             resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
 
             if (resultClass != otherClass)
             {
-               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainData(ImmutableList<ImmutableList<double>>.Empty.Add(sample), ImmutableList<double>.Empty.Add(otherClass)));
+               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainData(ImmutableList<List<double>>.Empty.Add(sample), ImmutableList<double>.Empty.Add(otherClass)));
 
                PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(sabotenCache);
 
