@@ -11,7 +11,6 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace AmaigomaTests
@@ -24,6 +23,7 @@ namespace AmaigomaTests
       {
          get;
       }
+
       private int WindowSizeSquared
       {
          get;
@@ -41,29 +41,32 @@ namespace AmaigomaTests
 
          const int sizeX = 16;
          const int sizeY = 16;
+         const int halfSizeX = sizeX / 2;
+         const int halfSizeY = sizeY / 2;
 
-         Buffer2D<ulong> integralImage = Image.LoadPixelData<L8>(list.Select((x) => (byte)x).ToArray(), sizeX, sizeY).CalculateIntegralImage();
+         int positionX = Convert.ToInt32(list.ElementAt(1));
+         int positionY = Convert.ToInt32(list.ElementAt(2));
+
+         double[] otherIntegral = list.Skip(3).ToArray();
 
          for (int y = 0; y < sizeY - WindowSize; y += WindowSize)
          {
+            int offsetY = y + positionY - halfSizeY - 1;
+
             for (int x = 0; x < sizeX - WindowSize; x += WindowSize)
             {
-               double sum = integralImage[x + WindowSize - 1, y + WindowSize - 1];
+               int offsetX = x + positionX - halfSizeX - 1;
 
-               if (x > 0)
-               {
-                  sum -= integralImage[x - 1, y + WindowSize - 1];
+               // TODO Simplify this code
+               x++;
+               y++;
 
-                  if (y > 0)
-                  {
-                     sum -= integralImage[x + WindowSize - 1, y - 1];
-                     sum += integralImage[x - 1, y - 1];
-                  }
-               }
-               else if (y > 0)
-               {
-                  sum -= integralImage[x + WindowSize - 1, y - 1];
-               }
+               double sum;
+
+               sum = otherIntegral[(x + WindowSize - 1) + ((sizeX + 1) * (y + WindowSize - 1))];
+               sum -= otherIntegral[(x - 1) + ((sizeX + 1) * (y + WindowSize - 1))];
+               sum -= otherIntegral[(x + WindowSize - 1) + ((sizeX + 1) * (y - 1))];
+               sum += otherIntegral[(x - 1) + ((sizeX + 1) * (y - 1))];
 
                features = features.Add(sum / WindowSizeSquared);
             }
@@ -120,7 +123,7 @@ namespace AmaigomaTests
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
-      [Timeout(25000)]
+      [Timeout(60000)]
       public void UppercaseA_507484246(string imagePath, ImmutableList<Point> points, ImmutableList<Rectangle> rectangles)
       {
          const double uppercaseAClass = 1;
@@ -129,24 +132,52 @@ namespace AmaigomaTests
          const int halfFeatureWindowSize = featureWindowSize / 2;
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), @"..\..\..\" + imagePath);
 
-         Image<L8> fullTextImage = Image.Load<L8>(fullImagePath);
-
          PakiraDecisionTreeGenerator pakiraGenerator = new();
          TrainData trainData = new();
          TrainData backgroundTrainData = new();
+         List<double> trainSample = new();
 
-         L8 whitePixel = new(255);
-         byte[] imageCropPixelsData = new byte[featureWindowSize * featureWindowSize * Unsafe.SizeOf<L8>()];
-         Span<byte> imageCropPixels = new(imageCropPixelsData);
+         Image<L8> fullTextImage = Image.Load<L8>(fullImagePath);
+         Buffer2D<ulong> integralImage = fullTextImage.CalculateIntegralImage();
 
          foreach (Point point in points)
          {
-            Image<L8> whiteWindow = new(featureWindowSize, featureWindowSize, whitePixel);
-            Image<L8> imageCrop = whiteWindow.Clone(clone => clone.DrawImage(fullTextImage, new Point(halfFeatureWindowSize - point.X, halfFeatureWindowSize - point.Y), 1));
+            // TODO No need to complicate things by generating an overscan in case the analysis window falls outside the image. Just assert that the window totally fits in the image. If it really becomes needed, the overscan could be easily added to the full image instead.n
+            trainSample.Add(trainData.Samples.Count);
+            trainSample.Add(point.X);
+            trainSample.Add(point.Y);
 
-            imageCrop.CopyPixelDataTo(imageCropPixels);
+            // TODO This code needs to be moved to a new method and also used by the Rectangle loop below
+            for (int y = point.Y - halfFeatureWindowSize - 1; y < point.Y + halfFeatureWindowSize; y++)
+            {
+               if (y >= 0)
+               {
+                  int x = point.X - halfFeatureWindowSize - 1;
+                  int sliceLength = featureWindowSize;
 
-            trainData = trainData.AddSample(imageCropPixelsData.Select<byte, double>(s => s), uppercaseAClass);
+                  if (x < 0)
+                  {
+                     trainSample.Add(0);
+                     x++;
+                  }
+                  else
+                  {
+                     sliceLength++;
+                  }
+
+                  foreach (ulong integralValue in integralImage.DangerousGetRowSpan(y).Slice(x, sliceLength))
+                  {
+                     trainSample.Add(integralValue);
+                  }
+               }
+               else
+               {
+                  trainSample.AddRange(Enumerable.Repeat<double>(0, featureWindowSize + 1));
+               }
+            }
+
+            trainData = trainData.AddSample(trainSample, uppercaseAClass);
+            trainSample.Clear();
          }
 
          foreach (Rectangle rectangle in rectangles)
@@ -155,17 +186,47 @@ namespace AmaigomaTests
             {
                for (int x = halfFeatureWindowSize; x < rectangle.Width - halfFeatureWindowSize; x++)
                {
-                  Image<L8> whiteWindow = new(featureWindowSize, featureWindowSize, whitePixel);
-                  Image<L8> imageCrop = whiteWindow.Clone(clone => clone.DrawImage(fullTextImage, new Point(halfFeatureWindowSize - (x + rectangle.Left), halfFeatureWindowSize - (y + rectangle.Top)), 1));
+                  trainSample.Add(x + rectangle.Left);
+                  trainSample.Add(y + rectangle.Top);
 
-                  imageCrop.CopyPixelDataTo(imageCropPixels);
+                  for (int y2 = y + rectangle.Top - halfFeatureWindowSize - 1; y2 < y + rectangle.Top + halfFeatureWindowSize; y2++)
+                  {
+                     if (y2 >= 0)
+                     {
+                        int x2 = x + rectangle.Left - halfFeatureWindowSize - 1;
+                        int sliceLength = featureWindowSize;
 
-                  backgroundTrainData = backgroundTrainData.AddSample(imageCropPixelsData.Select<byte, double>(s => s), otherClass);
+                        if (x2 < 0)
+                        {
+                           trainSample.Add(0);
+                           x2++;
+                        }
+                        else
+                        {
+                           sliceLength++;
+                        }
+
+                        foreach (ulong integralValue in integralImage.DangerousGetRowSpan(y2).Slice(x2, sliceLength))
+                        {
+                           trainSample.Add(integralValue);
+                        }
+                     }
+                     else
+                     {
+                        trainSample.AddRange(Enumerable.Repeat<double>(0, featureWindowSize + 1));
+                     }
+                  }
+
+                  backgroundTrainData = backgroundTrainData.AddSample(trainSample, otherClass);
+                  trainSample.Clear();
                }
             }
          }
 
-         trainData = trainData.AddSample(backgroundTrainData.Samples[0], backgroundTrainData.Labels[0]);
+         trainSample.Add(trainData.Samples.Count);
+         trainSample.AddRange(backgroundTrainData.Samples[0]);
+         trainData = trainData.AddSample(trainSample, backgroundTrainData.Labels[0]);
+         trainSample.Clear();
 
          DataTransformer dataTransformers = null;
 
@@ -177,37 +238,47 @@ namespace AmaigomaTests
          dataTransformers += new TempDataTransformer(13).ConvertAll;
          dataTransformers += new TempDataTransformer(15).ConvertAll;
 
-         pakiraGenerator.MinimumSampleCount = 1000;
-
-         pakiraGenerator.CertaintyScore = 4.0;
-
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainData.Samples[0]);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
-         SabotenCache sabotenCache = new(backgroundTrainData.Samples[0]);
+         trainSample.Add(-1);
+         trainSample.AddRange(backgroundTrainData.Samples[0]);
+         SabotenCache sabotenCache = new(trainSample);
          double resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
+         trainSample.Clear();
 
-         sabotenCache = new(backgroundTrainData.Samples[1]);
+         trainSample.Add(-1);
+         trainSample.AddRange(backgroundTrainData.Samples[1]);
+         sabotenCache = new(trainSample);
          resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
+         trainSample.Clear();
 
-         sabotenCache = new(backgroundTrainData.Samples[20000]);
+         trainSample.Add(-1);
+         trainSample.AddRange(backgroundTrainData.Samples[20000]);
+         sabotenCache = new(trainSample);
          resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
+         trainSample.Clear();
 
          foreach (List<double> sample in backgroundTrainData.Samples)
          {
-            sabotenCache = new(sample);
+            trainSample.Add(trainData.Samples.Count);
+            trainSample.AddRange(sample);
+            sabotenCache = new(trainSample);
             resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
 
             if (resultClass != otherClass)
             {
-               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainData(ImmutableList<List<double>>.Empty.Add(sample), ImmutableList<double>.Empty.Add(otherClass)));
+               trainData = trainData.AddSample(trainSample, otherClass);
+               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainData(ImmutableList<List<double>>.Empty.Add(trainSample), ImmutableList<double>.Empty.Add(otherClass)));
 
                PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(sabotenCache);
 
                pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValues.Count().ShouldBe(1);
                pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue.ShouldBe(otherClass);
             }
+
+            trainSample.Clear();
          }
       }
    }

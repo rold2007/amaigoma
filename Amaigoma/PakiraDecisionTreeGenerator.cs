@@ -1,7 +1,4 @@
-﻿using MathNet.Numerics.Distributions;
-using MathNet.Numerics.LinearAlgebra.Double;
-using MathNet.Numerics.Statistics;
-using Shouldly;
+﻿using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -9,6 +6,25 @@ using System.Linq;
 
 namespace Amaigoma
 {
+   public static class IEnumerableExtensions
+   {
+      // TODO This is totally inefficient. Calling ToArray on the enumerable makes us lose all the benefits of an enumerable. This method could be transferred to PakiraDecisionTreeModel in order to have accces to the feature indices count. It may even replace FeatureIndices() altogether
+      // Obtained from https://stackoverflow.com/a/1287572/263228
+      public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source, Random rng)
+      {
+         T[] elements = source.ToArray();
+         for (int i = elements.Length - 1; i >= 0; i--)
+         {
+            // Swap element "i" with a random earlier element it (or itself)
+            // ... except we don't really need to swap it fully, as we can
+            // return it immediately, and afterwards it's irrelevant.
+            int swapIndex = rng.Next(i + 1);
+            yield return elements[swapIndex];
+            elements[swapIndex] = elements[i];
+         }
+      }
+   }
+
    public sealed record TrainData
    {
       public ImmutableList<List<double>> Samples { get; } = ImmutableList<List<double>>.Empty;
@@ -73,25 +89,15 @@ namespace Amaigoma
 
       public static readonly int UNKNOWN_CLASS_INDEX = -1;
       public static readonly int randomSeed = new Random().Next();
-      private static readonly int MINIMUM_SAMPLE_COUNT = 1000;
-      private static readonly double DEFAULT_CERTAINTY_SCORE = 2.0;
-      private static readonly PassThroughTransformer DefaultDataTransformer = new();
       private readonly Random RandomSource = new(randomSeed);
-      private readonly DiscreteUniform discreteUniform;
 
       public PakiraDecisionTreeGenerator()
       {
-         MinimumSampleCount = MINIMUM_SAMPLE_COUNT;
-         CertaintyScore = DEFAULT_CERTAINTY_SCORE;
-         discreteUniform = new DiscreteUniform(0, 255, RandomSource);
       }
-
-      public int MinimumSampleCount { get; set; }
-
-      public double CertaintyScore { get; set; }
 
       public double UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
 
+      // TODO Need to also support an interface with SabotenCache instead of TrainData because sometimes we want to train on data which is already prefetched
       public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainData trainData)
       {
          ImmutableList<SabotenCache> trainSamplesCache = pakiraDecisionTreeModel.PrefetchAll(trainData.Samples.Select(d => new SabotenCache(d)));
@@ -111,8 +117,6 @@ namespace Amaigoma
          if (pakiraDecisionTreeModel.Tree.Root == null)
          {
             TrainDataCache trainDataCache = new(trainSamplesCache, immutableTrainLabels);
-
-            pakiraDecisionTreeModel = InitializeDistributionSamples(pakiraDecisionTreeModel, trainData);
 
             pakiraDecisionTreeModel = BuildInitialTree(pakiraDecisionTreeModel, trainDataCache);
          }
@@ -147,47 +151,6 @@ namespace Amaigoma
          public PakiraLeaf Leaf;
          public TrainDataCache TrainSamplesCache;
       };
-
-      private PakiraDecisionTreeModel InitializeDistributionSamples(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainData trainData)
-      {
-         List<double> trainSample = trainData.Samples[0];
-         int featureCount = trainSample.Count();
-         ImmutableList<SabotenCache> distributionSamples = ImmutableList<SabotenCache>.Empty;
-
-         for (int i = 0; i < MinimumSampleCount; i++)
-         {
-            SabotenCache newSampleCache = new(DenseVector.Create(featureCount, (dataIndex) =>
-            {
-               return discreteUniform.Sample();
-            }
-          ));
-            distributionSamples = distributionSamples.Add(newSampleCache);
-         }
-
-         distributionSamples = pakiraDecisionTreeModel.PrefetchAll(distributionSamples);
-
-         ImmutableList<double> dataDistributionSamplesMean = ImmutableList<double>.Empty;
-         ImmutableList<double> dataDistributionSamplesInvertedStandardDeviation = ImmutableList<double>.Empty;
-
-         foreach (int featureIndex in pakiraDecisionTreeModel.FeatureIndices())
-         {
-            ImmutableList<double> featureDataDistributionSample = distributionSamples.Select<SabotenCache, double>(sample =>
-            {
-               return sample[featureIndex];
-            }
-            ).ToImmutableList();
-
-            (double featureDataDistributionSampleMean, double featureDataDistributionSampleStandardDeviation) = featureDataDistributionSample.MeanStandardDeviation();
-            double invertedFeatureDataDistributionSampleStandardDeviation = 1 / featureDataDistributionSampleStandardDeviation;
-
-            dataDistributionSamplesMean = dataDistributionSamplesMean.Add(featureDataDistributionSampleMean);
-            dataDistributionSamplesInvertedStandardDeviation = dataDistributionSamplesInvertedStandardDeviation.Add(invertedFeatureDataDistributionSampleStandardDeviation);
-         }
-
-         pakiraDecisionTreeModel = pakiraDecisionTreeModel.DataDistributionSamplesStatistics(dataDistributionSamplesMean, dataDistributionSamplesInvertedStandardDeviation);
-
-         return pakiraDecisionTreeModel;
-      }
 
       private PakiraNode PrepareNode(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainDataCache trainDataCache)
       {
@@ -302,17 +265,16 @@ namespace Amaigoma
       {
          ImmutableList<SabotenCache> extractedTrainSamplesCache = processNodeTrainSamplesCache.Samples;
 
-         double bestScore = double.MinValue;
+         double bestScore = -1.0;
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
 
-         foreach (int featureIndex in pakiraDecisionTreeModel.FeatureIndices())
-         {
-            double featureDataDistributionSampleMean = pakiraDecisionTreeModel.DataDistributionSamplesMean[featureIndex];
-            double invertedFeatureDataDistributionSampleStandardDeviation = pakiraDecisionTreeModel.DataDistributionSamplesInvertedStandardDeviation[featureIndex];
+         IEnumerable<int> randomFeatureIndices = pakiraDecisionTreeModel.FeatureIndices().Shuffle(RandomSource);
 
-            ImmutableDictionary<double, Tuple<double, double>> minimumLabelScores = ImmutableDictionary<double, Tuple<double, double>>.Empty;
-            ImmutableDictionary<double, Tuple<double, double>> maximumLabelScores = ImmutableDictionary<double, Tuple<double, double>>.Empty;
+         foreach (int featureIndex in randomFeatureIndices)
+         {
+            Tuple<double, ImmutableHashSet<double>> minimumValues = new Tuple<double, ImmutableHashSet<double>>(double.MaxValue, ImmutableHashSet<double>.Empty);
+            Tuple<double, ImmutableHashSet<double>> maximumValues = new Tuple<double, ImmutableHashSet<double>>(double.MinValue, ImmutableHashSet<double>.Empty);
 
             for (int i = 0; i < extractedTrainSamplesCache.Count; i++)
             {
@@ -320,52 +282,34 @@ namespace Amaigoma
                double trainLabel = processNodeTrainSamplesCache.Labels[i];
                double trainSampleValue = trainSample[featureIndex];
 
-               double score = (trainSampleValue - featureDataDistributionSampleMean) * invertedFeatureDataDistributionSampleStandardDeviation;
+               if (trainSampleValue <= minimumValues.Item1)
+               {
+                  ImmutableHashSet<double> labels = (trainSampleValue < minimumValues.Item1) ? ImmutableHashSet<double>.Empty : minimumValues.Item2;
 
-               if (minimumLabelScores.TryGetValue(trainLabel, out Tuple<double, double> currentMinimumPotentialScoreValue))
-               {
-                  if (score < currentMinimumPotentialScoreValue.Item1)
-                  {
-                     minimumLabelScores = minimumLabelScores.SetItem(trainLabel, new Tuple<double, double>(score, trainSampleValue));
-                  }
-                  else if (score > maximumLabelScores[trainLabel].Item1)
-                  {
-                     maximumLabelScores = maximumLabelScores.SetItem(trainLabel, new Tuple<double, double>(score, trainSampleValue));
-                  }
+                  minimumValues = new Tuple<double, ImmutableHashSet<double>>(trainSampleValue, labels.Add(trainLabel));
                }
-               else
+
+               if (trainSampleValue >= maximumValues.Item1)
                {
-                  minimumLabelScores = minimumLabelScores.SetItem(trainLabel, new Tuple<double, double>(score, trainSampleValue));
-                  maximumLabelScores = maximumLabelScores.SetItem(trainLabel, new Tuple<double, double>(score, trainSampleValue));
+                  ImmutableHashSet<double> labels = (trainSampleValue > maximumValues.Item1) ? ImmutableHashSet<double>.Empty : maximumValues.Item2;
+
+                  maximumValues = new Tuple<double, ImmutableHashSet<double>>(trainSampleValue, labels.Add(trainLabel));
                }
             }
 
-            if (minimumLabelScores.Count() == extractedTrainSamplesCache.Count())
-            {
-               minimumLabelScores = ImmutableDictionary<double, Tuple<double, double>>.Empty.AddRange(minimumLabelScores.Take(1));
-            }
+            double score = maximumValues.Item1 - minimumValues.Item1;
 
-            foreach (KeyValuePair<double, Tuple<double, double>> labelMinimumPotentialScorePair in minimumLabelScores)
+            if (score > bestScore)
             {
-               double minimumPotentialScore = labelMinimumPotentialScorePair.Value.Item1;
-
-               foreach (KeyValuePair<double, Tuple<double, double>> labelMaximumPotentialScorePair in maximumLabelScores.Where((labelMaximumLabelScores) => labelMaximumLabelScores.Key != labelMinimumPotentialScorePair.Key))
+               if ((bestFeature == -1) || (minimumValues.Item2.Count != maximumValues.Item2.Count) || (!minimumValues.Item2.SymmetricExcept(maximumValues.Item2).IsEmpty))
                {
-                  double maximumPotentialScore = labelMaximumPotentialScorePair.Value.Item1;
-                  double score = Math.Abs(maximumPotentialScore - minimumPotentialScore);
+                  bestScore = score;
+                  bestFeature = featureIndex;
+                  bestFeatureSplit = minimumValues.Item1 + score / 2.0;
 
-                  if (score > bestScore)
-                  {
-                     bestScore = score;
-                     bestFeature = featureIndex;
-                     bestFeatureSplit = (labelMaximumPotentialScorePair.Value.Item2 + labelMinimumPotentialScorePair.Value.Item2) / 2.0;
-                  }
+                  // UNDONE Need to investigate why this break; is causing fails in the tests
+                  //break;
                }
-            }
-
-            if (bestScore >= CertaintyScore)
-            {
-               break;
             }
          }
 

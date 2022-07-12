@@ -1,5 +1,5 @@
 ﻿using Amaigoma;
-using MathNet.Numerics.LinearAlgebra;
+//using MathNet.Numerics.LinearAlgebra;
 using Shouldly;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Memory;
@@ -134,16 +134,16 @@ namespace AmaigomaConsole
          //dataTransformers += new TempDataTransformer(21).ConvertAll;
          //dataTransformers += new TempDataTransformer(23).ConvertAll;
 
-         pakiraGenerator.MinimumSampleCount = 10;
+         //pakiraGenerator.MinimumSampleCount = 10;
          //pakiraGenerator.MinimumSampleCount = 50;
-         pakiraGenerator.MinimumSampleCount = 100;
+         //pakiraGenerator.MinimumSampleCount = 100;
          //pakiraGenerator.MinimumSampleCount = 200;
          //pakiraGenerator.MinimumSampleCount = 500;
-         pakiraGenerator.MinimumSampleCount = 1000;
+         //pakiraGenerator.MinimumSampleCount = 1000;
          //pakiraGenerator.MinimumSampleCount = 10000;
 
-         pakiraGenerator.CertaintyScore = 1.0;
-         pakiraGenerator.CertaintyScore = 4.0;
+         //pakiraGenerator.CertaintyScore = 1.0;
+         //pakiraGenerator.CertaintyScore = 4.0;
          //pakiraGenerator.CertaintyScore = double.MaxValue;
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainData.Samples[0]);
@@ -154,7 +154,7 @@ namespace AmaigomaConsole
 
          ///*
          CropProcessor cropProcessor;
-         double resultClass;
+         //double resultClass;
          Image<L8> completeAResult = completeA.Clone();
 
          //completeAResult = new Image<L8>(completeA.Width, completeA.Height, dontCarePixel);
@@ -175,22 +175,22 @@ namespace AmaigomaConsole
 
                   croppedImage.CopyPixelDataTo(imagePixels);
 
-                  Vector<double> croppedSample = Vector<double>.Build.Dense(imagePixels.Length);
+                  //Vector<double> croppedSample = Vector<double>.Build.Dense(imagePixels.Length);
 
-                  for (int pixelIndex = 0; pixelIndex < imagePixels.Length; pixelIndex++)
-                  {
-                     croppedSample.At(pixelIndex, imagePixels[pixelIndex]);
-                  }
+                  //for (int pixelIndex = 0; pixelIndex < imagePixels.Length; pixelIndex++)
+                  //{
+                  //   croppedSample.At(pixelIndex, imagePixels[pixelIndex]);
+                  //}
 
-                  SabotenCache croppedSampleCache = new(croppedSample);
+                  //SabotenCache croppedSampleCache = new(croppedSample);
 
-                  resultClass = pakiraDecisionTreeModel.PredictLeaf(croppedSampleCache).PakiraLeaf.LabelValue;
+                  //resultClass = pakiraDecisionTreeModel.PredictLeaf(croppedSampleCache).PakiraLeaf.LabelValue;
 
-                  if (resultClass == 0)
+                  //if (resultClass == 0)
                   {
                      //completeAResult[x + halfFeatureWindowSize, y + halfFeatureWindowSize] = blackPixel;
                   }
-                  else if (resultClass == 255)
+                  //else if (resultClass == 255)
                   {
                      //string resultClassString = resultClass.ToString();
 
