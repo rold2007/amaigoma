@@ -254,10 +254,10 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeGreaterThanOrEqualTo(3, "If the test fails because of this, the number can be reduced as long as it stays 'high'. Instead, the tree depth could also be validated.");
-         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[0]).LabelValue.ShouldBe(trainData.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[1]).LabelValue.ShouldBe(trainData.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[2]).LabelValue.ShouldBe(trainData.Labels[2]);
+         for (int i = 0; i < trainData.Samples.Count; i++)
+         {
+            pakiraDecisionTreeModel.PredictLeaf(trainData.Samples[i]).LabelValue.ShouldBe(trainData.Labels[i], "i=" + i.ToString());
+         }
       }
 
       [Fact]

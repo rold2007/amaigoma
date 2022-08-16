@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
+// UNDONE Bring back the code coverage to 100%
+// UNDONE Add priority to all tasks to simplify ordering
 namespace Amaigoma
 {
    public static class IEnumerableExtensions
@@ -97,7 +99,7 @@ namespace Amaigoma
 
       public double UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
 
-      // TODO Need to also support an interface with SabotenCache instead of TrainData because sometimes we want to train on data which is already prefetched
+      // HACK Need to also support an interface with SabotenCache instead of TrainData because sometimes we want to train on data which is already prefetched
       public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainData trainData)
       {
          ImmutableList<SabotenCache> trainSamplesCache = pakiraDecisionTreeModel.PrefetchAll(trainData.Samples.Select(d => new SabotenCache(d)));
@@ -265,10 +267,10 @@ namespace Amaigoma
       {
          ImmutableList<SabotenCache> extractedTrainSamplesCache = processNodeTrainSamplesCache.Samples;
 
-         double bestScore = -1.0;
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
 
+         // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices
          IEnumerable<int> randomFeatureIndices = pakiraDecisionTreeModel.FeatureIndices().Shuffle(RandomSource);
 
          foreach (int featureIndex in randomFeatureIndices)
@@ -299,17 +301,19 @@ namespace Amaigoma
 
             double score = maximumValues.Item1 - minimumValues.Item1;
 
-            if (score > bestScore)
-            {
-               if ((bestFeature == -1) || (minimumValues.Item2.Count != maximumValues.Item2.Count) || (!minimumValues.Item2.SymmetricExcept(maximumValues.Item2).IsEmpty))
-               {
-                  bestScore = score;
-                  bestFeature = featureIndex;
-                  bestFeatureSplit = minimumValues.Item1 + score / 2.0;
+            // Accept quickly any feature which splits some data in two
+            bool quickAccept = ((score > 0) && ((minimumValues.Item2.Count != maximumValues.Item2.Count) || (!minimumValues.Item2.SymmetricExcept(maximumValues.Item2).IsEmpty)));
+            bool updateBestFeature = (bestFeature == -1) || quickAccept;
 
-                  // UNDONE Need to investigate why this break; is causing fails in the tests
-                  //break;
-               }
+            if (updateBestFeature)
+            {
+               bestFeature = featureIndex;
+               bestFeatureSplit = minimumValues.Item1 + score / 2.0;
+            }
+
+            if (quickAccept)
+            {
+               break;
             }
          }
 

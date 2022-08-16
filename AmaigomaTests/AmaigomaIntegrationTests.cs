@@ -17,6 +17,7 @@ namespace AmaigomaTests
 {
    using DataTransformer = System.Converter<IEnumerable<double>, IEnumerable<double>>;
 
+   // UNDONE Use Skia to add more advanced features ?
    internal class TempDataTransformer
    {
       private int WindowSize
@@ -260,6 +261,7 @@ namespace AmaigomaTests
          resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
          trainSample.Clear();
 
+         // UNDONE Add method to compute tree quality (true positives, etc.)
          foreach (List<double> sample in backgroundTrainData.Samples)
          {
             trainSample.Add(trainData.Samples.Count);
