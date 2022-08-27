@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-// UNDONE Bring back the code coverage to 100%
-// UNDONE Add priority to all tasks to simplify ordering
+// UNDONE Add a README.md file
+// Remove AmaigomaConsole as it is not updated anymore. Replaced by the integration test(s). Update the readme.
 namespace Amaigoma
 {
    public static class IEnumerableExtensions

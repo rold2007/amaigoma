@@ -31,9 +31,6 @@ namespace Amaigoma
 
       private ImmutableDictionary<PakiraLeaf, TrainDataCache> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, TrainDataCache>.Empty;
 
-      public ImmutableList<double> DataDistributionSamplesMean { get; } = ImmutableList<double>.Empty;
-      public ImmutableList<double> DataDistributionSamplesInvertedStandardDeviation { get; } = ImmutableList<double>.Empty;
-
       public PakiraDecisionTreeModel(IEnumerable<double> dataSample) : this(PakiraTree.Empty, new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample)
       {
       }
@@ -48,29 +45,27 @@ namespace Amaigoma
          TanukiTransformers = new TanukiTransformers(dataTransformers, dataSample);
       }
 
-      private PakiraDecisionTreeModel(PakiraTree tree, TanukiTransformers tanukiTransformers, ImmutableDictionary<PakiraLeaf, TrainDataCache> leafTrainDataCache, ImmutableList<double> dataDistributionSamplesMean, ImmutableList<double> dataDistributionSamplesInvertedStandardDeviation)
+      private PakiraDecisionTreeModel(PakiraTree tree, TanukiTransformers tanukiTransformers, ImmutableDictionary<PakiraLeaf, TrainDataCache> leafTrainDataCache)
       {
          Tree = tree;
          TanukiTransformers = tanukiTransformers;
          LeafTrainDataCache = leafTrainDataCache;
-         DataDistributionSamplesMean = dataDistributionSamplesMean;
-         DataDistributionSamplesInvertedStandardDeviation = dataDistributionSamplesInvertedStandardDeviation;
       }
 
       public PakiraDecisionTreeModel UpdateTree(PakiraTree tree)
       {
-         return new PakiraDecisionTreeModel(tree, TanukiTransformers, LeafTrainDataCache, DataDistributionSamplesMean, DataDistributionSamplesInvertedStandardDeviation);
+         return new PakiraDecisionTreeModel(tree, TanukiTransformers, LeafTrainDataCache);
       }
 
       public PakiraDecisionTreeModel AddTrainDataCache(PakiraLeaf pakiraLeaf, TrainDataCache trainDataCache)
       {
          if (LeafTrainDataCache.TryGetValue(pakiraLeaf, out TrainDataCache leafTrainDataCache))
          {
-            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.SetItem(pakiraLeaf, leafTrainDataCache.AddSamples(trainDataCache)), DataDistributionSamplesMean, DataDistributionSamplesInvertedStandardDeviation);
+            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.SetItem(pakiraLeaf, leafTrainDataCache.AddSamples(trainDataCache)));
          }
          else
          {
-            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.Add(pakiraLeaf, trainDataCache), DataDistributionSamplesMean, DataDistributionSamplesInvertedStandardDeviation);
+            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.Add(pakiraLeaf, trainDataCache));
          }
       }
 
@@ -83,19 +78,7 @@ namespace Amaigoma
       {
          LeafTrainDataCache.ContainsKey(pakiraLeaf).ShouldBeTrue();
 
-         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.Remove(pakiraLeaf), DataDistributionSamplesMean, DataDistributionSamplesInvertedStandardDeviation);
-      }
-
-      public PakiraDecisionTreeModel DataDistributionSamplesStatistics(ImmutableList<double> dataDistributionSamplesMean, ImmutableList<double> dataDistributionSamplesInvertedStandardDeviation)
-      {
-         dataDistributionSamplesMean.ShouldNotBeEmpty();
-         dataDistributionSamplesInvertedStandardDeviation.ShouldNotBeEmpty();
-         DataDistributionSamplesMean.ShouldBeEmpty("Not sure yet if this case should be handled or not.");
-         DataDistributionSamplesInvertedStandardDeviation.ShouldBeEmpty("Not sure yet if this case should be handled or not.");
-         dataDistributionSamplesMean.Count.ShouldBe(TanukiTransformers.TotalOutputSamples);
-         dataDistributionSamplesInvertedStandardDeviation.Count.ShouldBe(TanukiTransformers.TotalOutputSamples);
-
-         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache, dataDistributionSamplesMean, dataDistributionSamplesInvertedStandardDeviation);
+         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.Remove(pakiraLeaf));
       }
 
       public IEnumerable<int> FeatureIndices()
