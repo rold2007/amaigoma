@@ -1,6 +1,6 @@
-# Project Description
+# Amaigoma
 
-This library is a playground for new machine learning algorithms leveraging numl.net.
+This library is a playground for new machine learning algorithms using decision trees.
 
 It will have the following features:
 - Online training. Adding more data to training doesn't require to train the model from scratch.

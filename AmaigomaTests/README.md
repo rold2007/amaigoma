@@ -1,3 +1,3 @@
 # Project Description
 
-Test project for Amaigoma library.
+Tests project for Amaigoma library.
