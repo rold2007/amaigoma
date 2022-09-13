@@ -5,8 +5,6 @@ VisualStudioVersion = 17.3.32811.315
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Amaigoma", "Amaigoma\Amaigoma.csproj", "{09B404A2-5112-4B42-8DAD-9B77C3734D25}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AmaigomaConsole", "AmaigomaConsole\AmaigomaConsole.csproj", "{39B4F315-FB9D-418C-9619-4387A337378C}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AmaigomaTests", "AmaigomaTests\AmaigomaTests.csproj", "{9F44F507-A5DF-4CA0-A140-21AFB95B7AE8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{93823D39-EC11-45BB-84A6-BB3A6C546B45}"
@@ -25,10 +23,6 @@ Global
 		{09B404A2-5112-4B42-8DAD-9B77C3734D25}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{09B404A2-5112-4B42-8DAD-9B77C3734D25}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{09B404A2-5112-4B42-8DAD-9B77C3734D25}.Release|Any CPU.Build.0 = Release|Any CPU
-		{39B4F315-FB9D-418C-9619-4387A337378C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{39B4F315-FB9D-418C-9619-4387A337378C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{39B4F315-FB9D-418C-9619-4387A337378C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{39B4F315-FB9D-418C-9619-4387A337378C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9F44F507-A5DF-4CA0-A140-21AFB95B7AE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9F44F507-A5DF-4CA0-A140-21AFB95B7AE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F44F507-A5DF-4CA0-A140-21AFB95B7AE8}.Release|Any CPU.ActiveCfg = Release|Any CPU

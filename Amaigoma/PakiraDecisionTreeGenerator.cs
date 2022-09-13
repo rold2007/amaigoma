@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-// UNDONE Add a README.md file
-// Remove AmaigomaConsole as it is not updated anymore. Replaced by the integration test(s). Update the readme.
 namespace Amaigoma
 {
    public static class IEnumerableExtensions
