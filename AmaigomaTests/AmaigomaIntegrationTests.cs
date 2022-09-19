@@ -36,38 +36,26 @@ namespace AmaigomaTests
          WindowSizeSquared = windowSize * windowSize;
       }
 
+      // TODO Add a unit test for this code to make sure it returns the proper result and share it in a separate class so that it can be used elsewhere
       public IEnumerable<double> ConvertAll(IEnumerable<double> list)
       {
          ImmutableList<double> features = ImmutableList<double>.Empty;
 
          const int sizeX = 16;
          const int sizeY = 16;
-         const int halfSizeX = sizeX / 2;
-         const int halfSizeY = sizeY / 2;
-
-         int positionX = Convert.ToInt32(list.ElementAt(1));
-         int positionY = Convert.ToInt32(list.ElementAt(2));
 
          double[] otherIntegral = list.Skip(3).ToArray();
 
          for (int y = 0; y < sizeY - WindowSize; y += WindowSize)
          {
-            int offsetY = y + positionY - halfSizeY - 1;
-
             for (int x = 0; x < sizeX - WindowSize; x += WindowSize)
             {
-               int offsetX = x + positionX - halfSizeX - 1;
-
-               // TODO Simplify this code
-               x++;
-               y++;
-
                double sum;
 
-               sum = otherIntegral[(x + WindowSize - 1) + ((sizeX + 1) * (y + WindowSize - 1))];
-               sum -= otherIntegral[(x - 1) + ((sizeX + 1) * (y + WindowSize - 1))];
-               sum -= otherIntegral[(x + WindowSize - 1) + ((sizeX + 1) * (y - 1))];
-               sum += otherIntegral[(x - 1) + ((sizeX + 1) * (y - 1))];
+               sum = otherIntegral[x + WindowSize + ((sizeX + 1) * (y + WindowSize))];
+               sum -= otherIntegral[x + ((sizeX + 1) * (y + WindowSize))];
+               sum -= otherIntegral[x + WindowSize + ((sizeX + 1) * y)];
+               sum += otherIntegral[x + ((sizeX + 1) * y)];
 
                features = features.Add(sum / WindowSizeSquared);
             }
@@ -262,6 +250,7 @@ namespace AmaigomaTests
          trainSample.Clear();
 
          // UNDONE Add method to compute tree quality (true positives, etc.)
+         // UNDONE There are 250k samples... That's a little bit too much. Use biggest blobs of false positives ? Blob is possible with Skia ?
          foreach (List<double> sample in backgroundTrainData.Samples)
          {
             trainSample.Add(trainData.Samples.Count);
