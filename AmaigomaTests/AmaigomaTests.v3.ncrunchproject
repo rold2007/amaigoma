@@ -1,5 +1,9 @@
 ﻿<ProjectConfiguration>
   <Settings>
     <DefaultTestTimeout>5000</DefaultTestTimeout>
+    <HiddenComponentWarnings>
+      <Value>NCrunchAssemblyDepsResolutionFailure</Value>
+      <Value>NetCoreNetStandardLocalSystem</Value>
+    </HiddenComponentWarnings>
   </Settings>
 </ProjectConfiguration>
