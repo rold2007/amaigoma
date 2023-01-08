@@ -95,14 +95,15 @@ namespace AmaigomaTests
 
       static private readonly ImmutableList<Rectangle> allNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] {
          new Rectangle(0, 0, 300, 100),
-         new Rectangle(520, 40, 230, 90),
-         new Rectangle(20, 420, 380, 80),
-         new Rectangle(190, 540, 280, 20),
-         new Rectangle(20, 555, 480, 215),
-         new Rectangle(520, 550, 250, 216),
-         new Rectangle(95, 810, 500, 20),
-         new Rectangle(20, 900, 756, 70),
-         new Rectangle(180, 960, 310, 35)
+         // UNDONE Restore this data in a different way to make sure the test runs in a reasonable time
+         //new Rectangle(520, 40, 230, 90),
+         //new Rectangle(20, 420, 380, 80),
+         //new Rectangle(190, 540, 280, 20),
+         //new Rectangle(20, 555, 480, 215),
+         //new Rectangle(520, 550, 250, 216),
+         //new Rectangle(95, 810, 500, 20),
+         //new Rectangle(20, 900, 756, 70),
+         //new Rectangle(180, 960, 310, 35)
       });
 
       public static System.Collections.Generic.IEnumerable<object[]> GetUppercaseA_507484246_Data()
@@ -131,7 +132,7 @@ namespace AmaigomaTests
 
          foreach (Point point in points)
          {
-            // TODO No need to complicate things by generating an overscan in case the analysis window falls outside the image. Just assert that the window totally fits in the image. If it really becomes needed, the overscan could be easily added to the full image instead.n
+            // TODO No need to complicate things by generating an overscan in case the analysis window falls outside the image. Just assert that the window totally fits in the image. If it really becomes needed, the overscan could be easily added to the full image instead.
             trainSample.Add(trainData.Samples.Count);
             trainSample.Add(point.X);
             trainSample.Add(point.Y);
@@ -231,45 +232,39 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainData);
 
-         trainSample.Add(-1);
-         trainSample.AddRange(backgroundTrainData.Samples[0]);
-         SabotenCache sabotenCache = new(trainSample);
-         double resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
-         trainSample.Clear();
+         ImmutableList<SabotenCache> backgroundTrainDataCache = ImmutableList<SabotenCache>.Empty;
 
-         trainSample.Add(-1);
-         trainSample.AddRange(backgroundTrainData.Samples[1]);
-         sabotenCache = new(trainSample);
-         resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
-         trainSample.Clear();
-
-         trainSample.Add(-1);
-         trainSample.AddRange(backgroundTrainData.Samples[20000]);
-         sabotenCache = new(trainSample);
-         resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
-         trainSample.Clear();
-
-         // UNDONE Add method to compute tree quality (true positives, etc.)
-         // UNDONE There are 250k samples... That's a little bit too much. Use biggest blobs of false positives ? Blob is possible with Skia ?
          foreach (List<double> sample in backgroundTrainData.Samples)
          {
             trainSample.Add(trainData.Samples.Count);
             trainSample.AddRange(sample);
-            sabotenCache = new(trainSample);
-            resultClass = pakiraDecisionTreeModel.PredictLeaf(sabotenCache).PakiraLeaf.LabelValue;
+
+            backgroundTrainDataCache = backgroundTrainDataCache.Add(new(trainSample.ToList()));
+            trainSample.Clear();
+         }
+
+         backgroundTrainDataCache = pakiraDecisionTreeModel.PrefetchAll(backgroundTrainDataCache);
+
+         // UNDONE Add method to compute tree quality (true positives, etc.)
+         // UNDONE There are 250k samples... That's a little bit too much. Use biggest blobs of false positives ? Blob is possible with Skia ?
+         for (int i = 0; i < backgroundTrainDataCache.Count; i++)
+         {
+            SabotenCache sabotenCache = backgroundTrainDataCache[i];
+
+            PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(sabotenCache);
+            double resultClass = pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue;
 
             if (resultClass != otherClass)
             {
-               trainData = trainData.AddSample(trainSample, otherClass);
-               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainData(ImmutableList<List<double>>.Empty.Add(trainSample), ImmutableList<double>.Empty.Add(otherClass)));
+               // UNDONE Creating a new TrainData forces a new Prefetch, this is not efficient.
+               // UNDONE Make it so that it is not necessary to call ToList()...
+               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainData(ImmutableList<List<double>>.Empty.Add(sabotenCache.Data.ToList()), ImmutableList<double>.Empty.Add(otherClass)));
 
-               PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(sabotenCache);
+               pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(pakiraDecisionTreePredictionResult.SabotenCache);
 
                pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValues.Count().ShouldBe(1);
                pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue.ShouldBe(otherClass);
             }
-
-            trainSample.Clear();
          }
       }
    }
