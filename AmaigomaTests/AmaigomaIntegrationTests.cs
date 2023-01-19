@@ -256,9 +256,7 @@ namespace AmaigomaTests
 
             if (resultClass != otherClass)
             {
-               // UNDONE Creating a new TrainData forces a new Prefetch, this is not efficient.
-               // UNDONE Make it so that it is not necessary to call ToList()...
-               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainData(ImmutableList<List<double>>.Empty.Add(sabotenCache.Data.ToList()), ImmutableList<double>.Empty.Add(otherClass)));
+               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(sabotenCache), ImmutableList<double>.Empty.Add(otherClass)));
 
                pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(pakiraDecisionTreePredictionResult.SabotenCache);
 

@@ -97,13 +97,10 @@ namespace Amaigoma
 
       public double UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
 
-      // HACK Need to also support an interface with SabotenCache instead of TrainData because sometimes we want to train on data which is already prefetched
-      public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainData trainData)
+      public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainDataCache trainDataCache)
       {
-         ImmutableList<SabotenCache> trainSamplesCache = pakiraDecisionTreeModel.PrefetchAll(trainData.Samples.Select(d => new SabotenCache(d)));
-         ImmutableList<double> immutableTrainLabels = trainData.Labels;
-
-         foreach (SabotenCache sabotenCache in trainSamplesCache)
+         // Validate the data only once
+         foreach (SabotenCache sabotenCache in trainDataCache.Samples)
          {
             foreach (int featureIndex in pakiraDecisionTreeModel.FeatureIndices())
             {
@@ -116,21 +113,28 @@ namespace Amaigoma
 
          if (pakiraDecisionTreeModel.Tree.Root == null)
          {
-            TrainDataCache trainDataCache = new(trainSamplesCache, immutableTrainLabels);
-
             pakiraDecisionTreeModel = BuildInitialTree(pakiraDecisionTreeModel, trainDataCache);
          }
          else
          {
-            for (int trainSampleIndex = 0; trainSampleIndex < trainSamplesCache.Count; trainSampleIndex++)
+            for (int trainSampleIndex = 0; trainSampleIndex < trainDataCache.Samples.Count; trainSampleIndex++)
             {
-               PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(trainSamplesCache[trainSampleIndex]);
+               // TODO Create a new PredictLeaf() which doesn't call Prefetch() to optimize this slightly
+               PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[trainSampleIndex]);
 
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraDecisionTreePredictionResult.PakiraLeaf, new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(pakiraDecisionTreePredictionResult.SabotenCache), ImmutableList<double>.Empty.Add(immutableTrainLabels[trainSampleIndex])));
+               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraDecisionTreePredictionResult.PakiraLeaf, new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(pakiraDecisionTreePredictionResult.SabotenCache), ImmutableList<double>.Empty.Add(trainDataCache.Labels[trainSampleIndex])));
             }
          }
 
          return BuildTree(pakiraDecisionTreeModel);
+      }
+
+      public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainData trainData)
+      {
+         ImmutableList<SabotenCache> trainSamplesCache = pakiraDecisionTreeModel.PrefetchAll(trainData.Samples.Select(d => new SabotenCache(d)));
+         TrainDataCache trainDataCache = new TrainDataCache(trainSamplesCache, trainData.Labels);
+
+         return Generate(pakiraDecisionTreeModel, trainDataCache);
       }
 
       private static bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)
@@ -268,7 +272,7 @@ namespace Amaigoma
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
 
-         // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices
+         // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices sequentially
          IEnumerable<int> randomFeatureIndices = pakiraDecisionTreeModel.FeatureIndices().Shuffle(RandomSource);
 
          foreach (int featureIndex in randomFeatureIndices)
