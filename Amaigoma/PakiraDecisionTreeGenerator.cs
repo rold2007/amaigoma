@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
+// UNDONE Bring back test coverage to 100%
 namespace Amaigoma
 {
    public static class IEnumerableExtensions
@@ -25,39 +26,16 @@ namespace Amaigoma
       }
    }
 
-   public sealed record TrainData
-   {
-      public ImmutableList<List<double>> Samples { get; } = ImmutableList<List<double>>.Empty;
-      public ImmutableList<double> Labels { get; } = ImmutableList<double>.Empty;
-
-      public TrainData()
-      {
-      }
-
-      public TrainData(ImmutableList<List<double>> samples, ImmutableList<double> labels)
-      {
-         Samples = samples;
-         Labels = labels;
-      }
-
-      public TrainData AddSample(IEnumerable<double> sample, double label)
-      {
-         List<double> listSample = sample.ToList();
-
-         if (!Samples.IsEmpty)
-         {
-            listSample.Count.ShouldBe(Samples[0].Count);
-         }
-
-         return new TrainData(Samples.Add(listSample), Labels.Add(label));
-      }
-   }
-
    public sealed record TrainDataCache
    {
       public ImmutableList<SabotenCache> Samples { get; } = ImmutableList<SabotenCache>.Empty;
       public ImmutableList<double> Labels { get; } = ImmutableList<double>.Empty;
 
+      public TrainDataCache()
+      {
+      }
+
+      // UNDONE Add new constructor which takes a SabotenCache and one double to simplify all calls to the current constructor. Mostly done in the unit tests
       public TrainDataCache(ImmutableList<SabotenCache> samples, ImmutableList<double> labels)
       {
          Samples = samples;
@@ -127,14 +105,6 @@ namespace Amaigoma
          }
 
          return BuildTree(pakiraDecisionTreeModel);
-      }
-
-      public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainData trainData)
-      {
-         ImmutableList<SabotenCache> trainSamplesCache = pakiraDecisionTreeModel.PrefetchAll(trainData.Samples.Select(d => new SabotenCache(d)));
-         TrainDataCache trainDataCache = new TrainDataCache(trainSamplesCache, trainData.Labels);
-
-         return Generate(pakiraDecisionTreeModel, trainDataCache);
       }
 
       private static bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)

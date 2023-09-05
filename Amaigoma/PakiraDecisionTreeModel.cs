@@ -31,6 +31,7 @@ namespace Amaigoma
 
       private ImmutableDictionary<PakiraLeaf, TrainDataCache> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, TrainDataCache>.Empty;
 
+      // TODO Replace dataSample parameter by TrainDataCache. But we need a way to make sure we have at least one sanmple in it, otherwise TanukiTransformers will crash.
       public PakiraDecisionTreeModel(IEnumerable<double> dataSample) : this(PakiraTree.Empty, new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample)
       {
       }
@@ -89,6 +90,11 @@ namespace Amaigoma
       public ImmutableList<SabotenCache> PrefetchAll(IEnumerable<SabotenCache> dataSamples)
       {
          return dataSamples.PrefetchAll(TanukiTransformers).ToImmutableList();
+      }
+
+      public TrainDataCache PrefetchAll(TrainDataCache trainDataCache)
+      {
+         return trainDataCache.PrefetchAll(TanukiTransformers);
       }
 
       /// <summary>Predicts the given y coordinate.</summary>

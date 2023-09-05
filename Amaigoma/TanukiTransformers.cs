@@ -11,6 +11,7 @@ namespace Amaigoma
       private readonly ImmutableList<Tuple<Range, Converter<IEnumerable<double>, IEnumerable<double>>>> dataTransformers = ImmutableList<Tuple<Range, Converter<IEnumerable<double>, IEnumerable<double>>>>.Empty;
       private readonly Comparer<Tuple<Range, Converter<IEnumerable<double>, IEnumerable<double>>>> rangeComparer = Comparer<Tuple<Range, Converter<IEnumerable<double>, IEnumerable<double>>>>.Create((x, y) => x.Item1.Start.Value.CompareTo(y.Item1.Start.Value));
 
+      // TODO Refactor to be able to remove dataSample parameter. We could simply give a parameters count and generate a list of value?
       public TanukiTransformers(Converter<IEnumerable<double>, IEnumerable<double>> converters, IEnumerable<double> dataSample)
       {
          Delegate[] delegates = converters.GetInvocationList();
