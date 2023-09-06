@@ -35,11 +35,28 @@ namespace Amaigoma
       {
       }
 
-      // UNDONE Add new constructor which takes a SabotenCache and one double to simplify all calls to the current constructor. Mostly done in the unit tests
+      public TrainDataCache(SabotenCache sample, double label)
+      {
+         Samples = Samples.Add(sample);
+         Labels = Labels.Add(label);
+      }
+
       public TrainDataCache(ImmutableList<SabotenCache> samples, ImmutableList<double> labels)
       {
+         samples.Count.ShouldBe(labels.Count);
+
          Samples = samples;
          Labels = labels;
+      }
+
+      public TrainDataCache AddSample(IEnumerable<double> data, double label)
+      {
+         return AddSamples(new TrainDataCache(new SabotenCache(data), label));
+      }
+
+      public TrainDataCache AddSample(SabotenCache sample, double label)
+      {
+         return AddSamples(new TrainDataCache(sample, label));
       }
 
       public TrainDataCache AddSamples(TrainDataCache samples)
@@ -100,7 +117,7 @@ namespace Amaigoma
                // TODO Create a new PredictLeaf() which doesn't call Prefetch() to optimize this slightly
                PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[trainSampleIndex]);
 
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraDecisionTreePredictionResult.PakiraLeaf, new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(pakiraDecisionTreePredictionResult.SabotenCache), ImmutableList<double>.Empty.Add(trainDataCache.Labels[trainSampleIndex])));
+               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraDecisionTreePredictionResult.PakiraLeaf, new TrainDataCache(pakiraDecisionTreePredictionResult.SabotenCache, trainDataCache.Labels[trainSampleIndex]));
             }
          }
 

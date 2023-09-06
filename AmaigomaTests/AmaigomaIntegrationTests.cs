@@ -166,7 +166,7 @@ namespace AmaigomaTests
                }
             }
 
-            trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(trainSample)), ImmutableList<double>.Empty.Add(uppercaseAClass)));
+            trainDataCache = trainDataCache.AddSample(trainSample, uppercaseAClass);
             trainSample = new();
          }
 
@@ -207,7 +207,7 @@ namespace AmaigomaTests
                      }
                   }
 
-                  backgroundTrainDataCache = backgroundTrainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(trainSample)), ImmutableList<double>.Empty.Add(otherClass)));
+                  backgroundTrainDataCache = backgroundTrainDataCache.AddSample(trainSample, otherClass);
                   trainSample = new();
                }
             }
@@ -215,7 +215,7 @@ namespace AmaigomaTests
 
          trainSample.Add(trainDataCache.Samples.Count);
          trainSample.AddRange(backgroundTrainDataCache.Samples[0].Data);
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(trainSample)), ImmutableList<double>.Empty.Add(backgroundTrainDataCache.Labels[0])));
+         trainDataCache = trainDataCache.AddSample(trainSample, backgroundTrainDataCache.Labels[0]);
          trainSample = new();
 
          DataTransformer dataTransformers = null;
@@ -241,7 +241,7 @@ namespace AmaigomaTests
             trainSample.Add(trainDataCache.Samples.Count);
             trainSample.AddRange(sample.Data);
 
-            updatedBackgroundTrainDataCache = updatedBackgroundTrainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(trainSample)), ImmutableList<double>.Empty.Add(otherClass)));
+            updatedBackgroundTrainDataCache = updatedBackgroundTrainDataCache.AddSample(trainSample, otherClass);
             trainSample = new();
          }
 
@@ -256,7 +256,7 @@ namespace AmaigomaTests
 
             if (resultClass != otherClass)
             {
-               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(sabotenCache), ImmutableList<double>.Empty.Add(otherClass)));
+               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(sabotenCache, otherClass));
 
                pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(pakiraDecisionTreePredictionResult.SabotenCache);
 

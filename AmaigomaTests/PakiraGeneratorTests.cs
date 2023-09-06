@@ -50,9 +50,9 @@ namespace AmaigomaTests
 
          TrainDataCache trainDataCache = new TrainDataCache();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 2, 90 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 250, 140 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 200, 100 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
 
@@ -78,9 +78,9 @@ namespace AmaigomaTests
 
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 2, 90 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 250, 140 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 200, 100 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
 
@@ -92,9 +92,9 @@ namespace AmaigomaTests
 
          TrainDataCache trainDataCache2 = new();
 
-         trainDataCache2 = trainDataCache2.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 3, 91 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache2 = trainDataCache2.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 128, 95 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache2 = trainDataCache2.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 201, 101 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache2 = trainDataCache2.AddSample(ImmutableList.CreateRange(new double[] { 3, 91 }), 42);
+         trainDataCache2 = trainDataCache2.AddSample(ImmutableList.CreateRange(new double[] { 128, 95 }), 54);
+         trainDataCache2 = trainDataCache2.AddSample(ImmutableList.CreateRange(new double[] { 201, 101 }), 42);
 
          trainDataCache2 = pakiraDecisionTreeModel.PrefetchAll(trainDataCache2);
 
@@ -125,9 +125,9 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 2, 3 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 20, 140 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 33, 200 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }),    42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 20, 140 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 33, 200 }), 42);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
 
@@ -148,9 +148,9 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 2, 3 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 120, 140 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 190, 200 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }),     42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
          PassThroughTransformer passThroughTransformer = new();
          MeanDistanceDataTransformer meanDistanceDataTransformer = new();
@@ -182,9 +182,9 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 25, 35 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 120, 140 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 190, 200 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
          PassThroughTransformer passThroughTransformer = new();
          MeanDistanceDataTransformer meanDistanceDataTransformer = new();
@@ -220,9 +220,9 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 25, 35 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 120, 140 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 190, 200 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
          MeanDistanceDataTransformer meanDistanceDataTransformer = new();
 
@@ -252,15 +252,15 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 2, 3 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 250, 254 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 250, 255 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 251, 253 }))), ImmutableList<double>.Empty.Add(6)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 251, 254 }))), ImmutableList<double>.Empty.Add(9)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 1, 2 }))), ImmutableList<double>.Empty.Add(96)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 2, 1 }))), ImmutableList<double>.Empty.Add(97)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 2, 2 }))), ImmutableList<double>.Empty.Add(98)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 3, 2 }))), ImmutableList<double>.Empty.Add(99)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 254 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 255 }), 42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 251, 253 }), 6);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 251, 254 }), 9);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 1, 2 }), 96);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 1 }), 97);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 2 }), 98);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 3, 2 }), 99);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
 
@@ -282,9 +282,9 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 2, 90 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 250, 140 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 200, 100 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
 
@@ -309,9 +309,9 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 2, 90 }))), ImmutableList<double>.Empty.Add(42)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 250, 140 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 250, 140 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 42);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
 
@@ -336,8 +336,8 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 250, 140 }))), ImmutableList<double>.Empty.Add(54)));
-         trainDataCache = trainDataCache.AddSamples(new TrainDataCache(ImmutableList<SabotenCache>.Empty.Add(new SabotenCache(ImmutableList.CreateRange(new double[] { 250, 140 }))), ImmutableList<double>.Empty.Add(42)));
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 42);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
 
