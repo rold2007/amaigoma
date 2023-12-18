@@ -96,18 +96,19 @@ namespace AmaigomaTests
       static private readonly ImmutableList<Rectangle> allNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] {
          new Rectangle(0, 0, 300, 100),
          // UNDONE Restore this data in a different way to make sure the test runs in a reasonable time
-         //new Rectangle(520, 40, 230, 90),
-         //new Rectangle(20, 420, 380, 80),
-         //new Rectangle(190, 540, 280, 20),
-         //new Rectangle(20, 555, 480, 215),
-         //new Rectangle(520, 550, 250, 216),
-         //new Rectangle(95, 810, 500, 20),
-         //new Rectangle(20, 900, 756, 70),
-         //new Rectangle(180, 960, 310, 35)
+         // new Rectangle(520, 40, 230, 90),
+         // new Rectangle(20, 420, 380, 80),
+         // new Rectangle(190, 540, 280, 20),
+         // new Rectangle(20, 555, 480, 215),
+         // new Rectangle(520, 550, 250, 216),
+         // new Rectangle(95, 810, 500, 20),
+         // new Rectangle(20, 900, 756, 70),
+         // new Rectangle(180, 960, 310, 35)
       });
 
       public static System.Collections.Generic.IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
+         // UNDONE Wrap all these parameters inside a class which can process more than one file and many regions/rectangles
          yield return new object[] { @"assets\text-extraction-for-ocr\507484246.tif", allUppercaseA_507484246_Points, allNotUppercaseA_507484246_Rectangles };
       }
 
@@ -130,6 +131,7 @@ namespace AmaigomaTests
          Image<L8> fullTextImage = Image.Load<L8>(fullImagePath);
          Buffer2D<ulong> integralImage = fullTextImage.CalculateIntegralImage();
 
+         // UNDONE Move the point/rectangle data extraction to a utility test class to simplify the integration test(s)
          foreach (Point point in points)
          {
             // TODO No need to complicate things by generating an overscan in case the analysis window falls outside the image. Just assert that the window totally fits in the image. If it really becomes needed, the overscan could be easily added to the full image instead.
@@ -228,12 +230,6 @@ namespace AmaigomaTests
          dataTransformers += new TempDataTransformer(13).ConvertAll;
          dataTransformers += new TempDataTransformer(15).ConvertAll;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainDataCache.Samples[0].Data);
-
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
-
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
-
          TrainDataCache updatedBackgroundTrainDataCache = new();
 
          foreach (SabotenCache sample in backgroundTrainDataCache.Samples)
@@ -245,24 +241,96 @@ namespace AmaigomaTests
             trainSample = new();
          }
 
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainDataCache.Samples[0].Data);
+
+         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
          updatedBackgroundTrainDataCache = pakiraDecisionTreeModel.PrefetchAll(updatedBackgroundTrainDataCache);
 
-         // UNDONE Add method to compute tree quality (true positives, etc.)
-         // UNDONE There are 250k samples... That's a little bit too much. Use biggest blobs of false positives ? Blob is possible with Skia ?
-         foreach (SabotenCache sabotenCache in updatedBackgroundTrainDataCache.Samples)
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
+
+         // TODO Evaluate the possibility of using shallow trees to serve as sub-routines. The features could be chosen based on the
+         // best discrimination, like it was done a while ago. This will result in categories instead of a scalar so the leaves will need to be recombined
+         // to provide a binary (scalar) answer. Many strategies could be use to combine leaves. All the left ones vs right ones, random?
+         int previousRegenerateTreeCount = -1;
+         int previousRegenerateTreeCountBatch = -1;
+         int regenerateTreeCount = 0;
+         bool processBackgroundTrainData = true;
+         ImmutableHashSet<PakiraLeaf> leaves = ImmutableHashSet<PakiraLeaf>.Empty;
+         int batchSize = 0;
+         int validationSetSize = 1000;
+
+         IEnumerable<SabotenCache> validationDataSet = updatedBackgroundTrainDataCache.Samples.Skip(updatedBackgroundTrainDataCache.Samples.Count - validationSetSize);
+
+         while (processBackgroundTrainData)
          {
-            PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(sabotenCache);
-            double resultClass = pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue;
+            previousRegenerateTreeCount = regenerateTreeCount;
+            processBackgroundTrainData = false;
 
-            if (resultClass != otherClass)
+            // UNDONE Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the Test classes, inside the main library
+            // UNDONE Validate the leaves/false positives on the VALIDATION+TEST sets
+            // UNDONE Note this methodology somewhere: When the validation set contains too many unevaluated leaves we need to apply one of the following solution:
+            // - Increase validation set size
+            // - Optimize the tree size by replacing nodes with better discriminating nodes, thus reducing the number of leaves and/or the depth of the tree
+            // - Other?
+            for (int i = 0; i < updatedBackgroundTrainDataCache.Samples.Count - validationSetSize; i += batchSize)
             {
-               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(sabotenCache, otherClass));
+               batchSize = Math.Min(100, Math.Max(20, pakiraDecisionTreeModel.Tree.GetLeaves().Count()));
+               IEnumerable<SabotenCache> batch = updatedBackgroundTrainDataCache.Samples.Skip(i).Take(batchSize);
 
-               pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(pakiraDecisionTreePredictionResult.SabotenCache);
+               bool processBatch = true;
 
-               pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValues.Count().ShouldBe(1);
-               pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue.ShouldBe(otherClass);
+               while (processBatch)
+               {
+                  previousRegenerateTreeCountBatch = regenerateTreeCount;
+
+                  foreach (SabotenCache sabotenCache in batch)
+                  {
+                     PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(sabotenCache);
+                     double resultClass = pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue;
+
+                     if (resultClass != otherClass)
+                     {
+                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(sabotenCache, otherClass));
+
+                        pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(pakiraDecisionTreePredictionResult.SabotenCache);
+
+                        pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValues.Count().ShouldBe(1);
+                        pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue.ShouldBe(otherClass);
+
+                        regenerateTreeCount++;
+
+                        IEnumerable<KeyValuePair<PakiraNode, PakiraLeaf>> nodeLeaves = pakiraDecisionTreeModel.Tree.GetLeaves();
+
+                        foreach (KeyValuePair<PakiraNode, PakiraLeaf> nodeLeaf in nodeLeaves)
+                        {
+                           leaves = leaves.Add(nodeLeaf.Value);
+                        }
+
+                        int countBefore = leaves.Count;
+
+                        foreach (SabotenCache validationSample in validationDataSet)
+                        {
+                           PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult2 = pakiraDecisionTreeModel.PredictLeaf(validationSample);
+
+                           leaves = leaves.Remove(pakiraDecisionTreePredictionResult2.PakiraLeaf);
+
+                           if (leaves.Count == 0)
+                           {
+                              break;
+                           }
+                        }
+
+                        int countAfter = leaves.Count;
+
+                        leaves = leaves.Clear();
+                     }
+                  }
+
+                  processBatch = (previousRegenerateTreeCountBatch != regenerateTreeCount);
+               }
             }
+
+            processBackgroundTrainData = (previousRegenerateTreeCount != regenerateTreeCount);
          }
       }
    }
