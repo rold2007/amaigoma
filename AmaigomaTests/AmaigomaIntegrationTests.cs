@@ -13,6 +13,12 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 
+// UNDONE January 15th 2024: New algorithm idea. The strenght of each node can be validated if, and only if, there are enough leaves under it to apply
+// the logic of swapping the node condition and validating the success rate on train data. For nodes which do not have enough leaves under, this process
+// will probably not give reliable results. The solution is probably to prune these nodes. This will force some leaves to have more than one class. So
+// more trees need to be created, this way each data may eventually fall in a leaf with a single class. Not sure how to determine how many trees are needed
+// to prevent having data to always fall in a multi-class leaf. Maybe a priority list of trees can be created, and each time a tree returns a multiclass
+// it should lower its priority. This will not prevent infinit multiclass leaves, but it may help select the tree which returns a multiclass leaf less often. 
 namespace AmaigomaTests
 {
    using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
@@ -65,9 +71,40 @@ namespace AmaigomaTests
       }
    }
 
+   public class IntegrationTestDataSet
+   {
+      public string filename;
+      public ImmutableList<Rectangle> regions;
+      public ImmutableList<double> classes;
+
+      public IntegrationTestDataSet(string filename, ImmutableList<Rectangle> regions, ImmutableList<double> classes)
+      {
+         regions.Count.ShouldBe(classes.Count);
+
+         this.filename = filename;
+         this.regions = regions;
+         this.classes = classes;
+      }
+   }
+
+   public struct DataSet
+   {
+      public List<IntegrationTestDataSet> train = new List<IntegrationTestDataSet>();
+      public List<IntegrationTestDataSet> validation = new List<IntegrationTestDataSet>();
+      public List<IntegrationTestDataSet> test = new List<IntegrationTestDataSet>();
+
+      public DataSet()
+      {
+      }
+   }
+
    // TODO The integration test could output interesting positions to be validated and added to the test
    public class AmaigomaIntegrationTests
    {
+      static double uppercaseAClass = 1;
+      static double otherClass = 2;
+
+      // UNDONE Move these points to the rectangles list and apply them to the train/validation/test sets
       static private readonly ImmutableList<Point> allUppercaseA_507484246_Points = ImmutableList<Point>.Empty.AddRange(new Point[] {
          new Point(83, 150),
          new Point(624, 140),
@@ -94,6 +131,7 @@ namespace AmaigomaTests
       });
 
       static private readonly ImmutableList<Rectangle> allNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] {
+         new Rectangle(83, 150, 1, 1),
          new Rectangle(0, 0, 300, 100),
          // UNDONE Restore this data in a different way to make sure the test runs in a reasonable time
          // new Rectangle(520, 40, 230, 90),
@@ -106,118 +144,97 @@ namespace AmaigomaTests
          // new Rectangle(180, 960, 310, 35)
       });
 
+      static private readonly ImmutableList<double> allNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[] {
+         uppercaseAClass,
+         otherClass,
+         // otherClass,
+         // otherClass,
+         // otherClass,
+         // otherClass,
+         // otherClass,
+         // otherClass,
+         // otherClass,
+         // otherClass
+      });
+
       public static System.Collections.Generic.IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
-         // UNDONE Wrap all these parameters inside a class which can process more than one file and many regions/rectangles
-         yield return new object[] { @"assets\text-extraction-for-ocr\507484246.tif", allUppercaseA_507484246_Points, allNotUppercaseA_507484246_Rectangles };
+         DataSet dataSet = new DataSet();
+         IntegrationTestDataSet integrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", allNotUppercaseA_507484246_Rectangles, allNotUppercaseA_507484246_Classes);
+
+         dataSet.train.Add(integrationTestDataSet);
+
+         yield return new object[] { dataSet };
       }
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       [Timeout(60000)]
-      public void UppercaseA_507484246(string imagePath, ImmutableList<Point> points, ImmutableList<Rectangle> rectangles)
+      public void UppercaseA_507484246(DataSet dataSet)
       {
-         const double uppercaseAClass = 1;
-         const double otherClass = 2;
-         const int featureWindowSize = 16;
+         string imagePath = dataSet.train[0].filename;
+         ImmutableList<Rectangle> rectangles = dataSet.train[0].regions;
+         ImmutableList<double> classes = dataSet.train[0].classes;
+
+         rectangles.Count.ShouldBe(classes.Count);
+
+         const int featureWindowSize = 17;
          const int halfFeatureWindowSize = featureWindowSize / 2;
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), @"..\..\..\" + imagePath);
 
          PakiraDecisionTreeGenerator pakiraGenerator = new();
          TrainDataCache trainDataCache = new();
-         TrainDataCache backgroundTrainDataCache = new();
-         List<double> trainSample = new();
+         List<double> trainSample;
 
-         Image<L8> fullTextImage = Image.Load<L8>(fullImagePath);
-         Buffer2D<ulong> integralImage = fullTextImage.CalculateIntegralImage();
+         Image<L8> imageWithOverscan;
 
-         // UNDONE Move the point/rectangle data extraction to a utility test class to simplify the integration test(s)
-         foreach (Point point in points)
          {
-            // TODO No need to complicate things by generating an overscan in case the analysis window falls outside the image. Just assert that the window totally fits in the image. If it really becomes needed, the overscan could be easily added to the full image instead.
-            trainSample.Add(trainDataCache.Samples.Count);
-            trainSample.Add(point.X);
-            trainSample.Add(point.Y);
+            Image<L8> fullTextImage = Image.Load<L8>(fullImagePath);
+            // TODO Need to support different background values
+            imageWithOverscan = new Image<L8>(fullTextImage.Width + featureWindowSize, fullTextImage.Height + featureWindowSize, new L8(255));
 
-            // TODO This code needs to be moved to a new method and also used by the Rectangle loop below
-            for (int y = point.Y - halfFeatureWindowSize - 1; y < point.Y + halfFeatureWindowSize; y++)
-            {
-               if (y >= 0)
-               {
-                  int x = point.X - halfFeatureWindowSize - 1;
-                  int sliceLength = featureWindowSize;
-
-                  if (x < 0)
-                  {
-                     trainSample.Add(0);
-                     x++;
-                  }
-                  else
-                  {
-                     sliceLength++;
-                  }
-
-                  foreach (ulong integralValue in integralImage.DangerousGetRowSpan(y).Slice(x, sliceLength))
-                  {
-                     trainSample.Add(integralValue);
-                  }
-               }
-               else
-               {
-                  trainSample.AddRange(Enumerable.Repeat<double>(0, featureWindowSize + 1));
-               }
-            }
-
-            trainDataCache = trainDataCache.AddSample(trainSample, uppercaseAClass);
-            trainSample = new();
+            // TODO Move this to a globally available helper method
+            imageWithOverscan.Mutate(x => x.DrawImage(fullTextImage, new Point(halfFeatureWindowSize, halfFeatureWindowSize), 1.0f));
          }
+
+         Buffer2D<ulong> integralImage = imageWithOverscan.CalculateIntegralImage();
+
+         // TODO Move the rectangles and classes in a dictionnary to get both values at the same time in the foreach
+         int classesIndex = 0;
 
          foreach (Rectangle rectangle in rectangles)
          {
-            for (int y = halfFeatureWindowSize; y < rectangle.Height - halfFeatureWindowSize; y++)
+            double trainClass = classes[classesIndex];
+
+            for (int y = rectangle.Top; y < rectangle.Bottom; y++)
             {
-               for (int x = halfFeatureWindowSize; x < rectangle.Width - halfFeatureWindowSize; x++)
+               for (int x = rectangle.Left; x < rectangle.Right; x++)
                {
-                  trainSample.Add(x + rectangle.Left);
-                  trainSample.Add(y + rectangle.Top);
+                  trainSample = new() { x, y };
 
-                  for (int y2 = y + rectangle.Top - halfFeatureWindowSize - 1; y2 < y + rectangle.Top + halfFeatureWindowSize; y2++)
+                  int top = y + halfFeatureWindowSize;
+                  int xPosition = x + halfFeatureWindowSize;
+
+                  xPosition.ShouldBePositive();
+
+                  for (int y2 = -halfFeatureWindowSize; y2 <= halfFeatureWindowSize; y2++)
                   {
-                     if (y2 >= 0)
-                     {
-                        int x2 = x + rectangle.Left - halfFeatureWindowSize - 1;
-                        int sliceLength = featureWindowSize;
+                     int yPosition = top + y2;
 
-                        if (x2 < 0)
-                        {
-                           trainSample.Add(0);
-                           x2++;
-                        }
-                        else
-                        {
-                           sliceLength++;
-                        }
+                     yPosition.ShouldBePositive();
 
-                        foreach (ulong integralValue in integralImage.DangerousGetRowSpan(y2).Slice(x2, sliceLength))
-                        {
-                           trainSample.Add(integralValue);
-                        }
-                     }
-                     else
+                     foreach (ulong integralValue in integralImage.DangerousGetRowSpan(yPosition).Slice(xPosition, featureWindowSize))
                      {
-                        trainSample.AddRange(Enumerable.Repeat<double>(0, featureWindowSize + 1));
+                        trainSample.Add(integralValue);
                      }
                   }
 
-                  backgroundTrainDataCache = backgroundTrainDataCache.AddSample(trainSample, otherClass);
-                  trainSample = new();
+                  trainDataCache = trainDataCache.AddSample(trainSample, trainClass);
+                  classesIndex++;
                }
             }
          }
 
-         trainSample.Add(trainDataCache.Samples.Count);
-         trainSample.AddRange(backgroundTrainDataCache.Samples[0].Data);
-         trainDataCache = trainDataCache.AddSample(trainSample, backgroundTrainDataCache.Labels[0]);
          trainSample = new();
 
          DataTransformer dataTransformers = null;
@@ -230,21 +247,9 @@ namespace AmaigomaTests
          dataTransformers += new TempDataTransformer(13).ConvertAll;
          dataTransformers += new TempDataTransformer(15).ConvertAll;
 
-         TrainDataCache updatedBackgroundTrainDataCache = new();
-
-         foreach (SabotenCache sample in backgroundTrainDataCache.Samples)
-         {
-            trainSample.Add(trainDataCache.Samples.Count);
-            trainSample.AddRange(sample.Data);
-
-            updatedBackgroundTrainDataCache = updatedBackgroundTrainDataCache.AddSample(trainSample, otherClass);
-            trainSample = new();
-         }
-
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainDataCache.Samples[0].Data);
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
-         updatedBackgroundTrainDataCache = pakiraDecisionTreeModel.PrefetchAll(updatedBackgroundTrainDataCache);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
 
@@ -257,9 +262,10 @@ namespace AmaigomaTests
          bool processBackgroundTrainData = true;
          ImmutableHashSet<PakiraLeaf> leaves = ImmutableHashSet<PakiraLeaf>.Empty;
          int batchSize = 0;
-         int validationSetSize = 1000;
+         // int validationSetSize = 1000;
 
-         IEnumerable<SabotenCache> validationDataSet = updatedBackgroundTrainDataCache.Samples.Skip(updatedBackgroundTrainDataCache.Samples.Count - validationSetSize);
+         // IEnumerable<SabotenCache> validationDataSet = updatedBackgroundTrainDataCache.Samples.Skip(updatedBackgroundTrainDataCache.Samples.Count - validationSetSize);
+         IEnumerable<SabotenCache> validationDataSet = trainDataCache.Samples;
 
          while (processBackgroundTrainData)
          {
@@ -272,10 +278,10 @@ namespace AmaigomaTests
             // - Increase validation set size
             // - Optimize the tree size by replacing nodes with better discriminating nodes, thus reducing the number of leaves and/or the depth of the tree
             // - Other?
-            for (int i = 0; i < updatedBackgroundTrainDataCache.Samples.Count - validationSetSize; i += batchSize)
+            for (int i = 0; i < trainDataCache.Samples.Count; i += batchSize)
             {
                batchSize = Math.Min(100, Math.Max(20, pakiraDecisionTreeModel.Tree.GetLeaves().Count()));
-               IEnumerable<SabotenCache> batch = updatedBackgroundTrainDataCache.Samples.Skip(i).Take(batchSize);
+               IEnumerable<SabotenCache> batch = trainDataCache.Samples.Skip(i).Take(batchSize);
 
                bool processBatch = true;
 
