@@ -104,67 +104,149 @@ namespace AmaigomaTests
       static double uppercaseAClass = 1;
       static double otherClass = 2;
 
-      // UNDONE Move these points to the rectangles list and apply them to the train/validation/test sets
-      static private readonly ImmutableList<Point> allUppercaseA_507484246_Points = ImmutableList<Point>.Empty.AddRange(new Point[] {
-         new Point(83, 150),
-         new Point(624, 140),
-         new Point(670, 140),
-         new Point(688, 140),
-         new Point(36, 196),
-         new Point(192, 197),
-         new Point(181, 213),
-         new Point(576, 216),
-         new Point(603, 217),
-         new Point(658, 217),
-         new Point(109, 333),
-         new Point(127, 333),
-         new Point(228, 334),
-         new Point(283, 335),
-         new Point(153, 408),
-         new Point(217, 519),
-         new Point(155, 549),
-         new Point(218, 790),
-         new Point(411, 836),
-         new Point(137, 851),
-         new Point(257, 851),
-         new Point(605, 852)
-      });
-
-      static private readonly ImmutableList<Rectangle> allNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] {
+      static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
+       {
          new Rectangle(83, 150, 1, 1),
          new Rectangle(0, 0, 300, 100),
-         // UNDONE Restore this data in a different way to make sure the test runs in a reasonable time
-         // new Rectangle(520, 40, 230, 90),
-         // new Rectangle(20, 420, 380, 80),
-         // new Rectangle(190, 540, 280, 20),
-         // new Rectangle(20, 555, 480, 215),
-         // new Rectangle(520, 550, 250, 216),
-         // new Rectangle(95, 810, 500, 20),
-         // new Rectangle(20, 900, 756, 70),
-         // new Rectangle(180, 960, 310, 35)
       });
 
-      static private readonly ImmutableList<double> allNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[] {
+      static private readonly ImmutableList<double> trainNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
+       {
          uppercaseAClass,
          otherClass,
-         // otherClass,
-         // otherClass,
-         // otherClass,
-         // otherClass,
-         // otherClass,
-         // otherClass,
-         // otherClass,
-         // otherClass
+      });
+
+      static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
+       {
+         new Rectangle(624, 140, 1, 1),
+         new Rectangle(670, 140, 1, 1),
+         new Rectangle(688, 140, 1, 1),
+         new Rectangle(36, 196, 1, 1),
+         new Rectangle(192, 197, 1, 1),
+         new Rectangle(181, 213, 1, 1),
+         new Rectangle(576, 216, 1, 1),
+         new Rectangle(603, 217, 1, 1),
+         new Rectangle(658, 217, 1, 1),
+         new Rectangle(109, 333, 1, 1),
+         new Rectangle(127, 333, 1, 1),
+         new Rectangle(520, 40, 230, 90),
+         new Rectangle(20, 420, 380, 80),
+         new Rectangle(190, 540, 280, 20),
+         new Rectangle(20, 555, 480, 215),
+      });
+
+      static private readonly ImmutableList<double> validationNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
+       {
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         otherClass,
+         otherClass,
+         otherClass,
+         otherClass,
+      });
+
+      static private readonly ImmutableList<Rectangle> testNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
+       {
+         new Rectangle(228, 334, 1, 1),
+         new Rectangle(283, 335, 1, 1),
+         new Rectangle(153, 408, 1, 1),
+         new Rectangle(217, 519, 1, 1),
+         new Rectangle(155, 549, 1, 1),
+         new Rectangle(218, 790, 1, 1),
+         new Rectangle(411, 836, 1, 1),
+         new Rectangle(137, 851, 1, 1),
+         new Rectangle(257, 851, 1, 1),
+         new Rectangle(605, 852, 1, 1),
+         new Rectangle(520, 550, 250, 216),
+         new Rectangle(95, 810, 500, 20),
+         new Rectangle(20, 900, 756, 70),
+         new Rectangle(180, 960, 310, 35)
+      });
+
+      static private readonly ImmutableList<double> testNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
+       {
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         otherClass,
+         otherClass,
+         otherClass,
+         otherClass,
       });
 
       public static System.Collections.Generic.IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
          DataSet dataSet = new DataSet();
-         IntegrationTestDataSet integrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", allNotUppercaseA_507484246_Rectangles, allNotUppercaseA_507484246_Classes);
+         IntegrationTestDataSet trainIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", trainNotUppercaseA_507484246_Rectangles, trainNotUppercaseA_507484246_Classes);
+         IntegrationTestDataSet validationIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", validationNotUppercaseA_507484246_Rectangles, validationNotUppercaseA_507484246_Classes);
+         IntegrationTestDataSet testIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", testNotUppercaseA_507484246_Rectangles, testNotUppercaseA_507484246_Classes);
 
-         dataSet.train.Add(integrationTestDataSet);
+         dataSet.train.Add(trainIntegrationTestDataSet);
+         dataSet.validation.Add(validationIntegrationTestDataSet);
+         dataSet.test.Add(testIntegrationTestDataSet);
 
          yield return new object[] { dataSet };
+      }
+
+      TrainDataCache LoadDataSamples(TrainDataCache dataCache, ImmutableList<Rectangle> rectangles, ImmutableList<double> classes, Buffer2D<ulong> integralImage, int featureWindowSize)
+      {
+         int halfFeatureWindowSize = featureWindowSize / 2;
+         List<double> sample;
+
+         // TODO Move the rectangles and classes in a dictionary to get both values at the same time in the foreach
+         int classesIndex = 0;
+
+         foreach (Rectangle rectangle in rectangles)
+         {
+            double sampleClass = classes[classesIndex];
+
+            for (int y = rectangle.Top; y < rectangle.Bottom; y++)
+            {
+               for (int x = rectangle.Left; x < rectangle.Right; x++)
+               {
+                  sample = new() { x, y };
+
+                  int top = y + halfFeatureWindowSize;
+                  int xPosition = x + halfFeatureWindowSize;
+
+                  xPosition.ShouldBePositive();
+
+                  for (int y2 = -halfFeatureWindowSize; y2 <= halfFeatureWindowSize; y2++)
+                  {
+                     int yPosition = top + y2;
+
+                     yPosition.ShouldBeGreaterThanOrEqualTo(0);
+
+                     foreach (ulong integralValue in integralImage.DangerousGetRowSpan(yPosition).Slice(xPosition - halfFeatureWindowSize, featureWindowSize))
+                     {
+                        sample.Add(integralValue);
+                     }
+                  }
+
+                  dataCache = dataCache.AddSample(sample, sampleClass);
+               }
+            }
+
+            classesIndex++;
+         }
+
+         return dataCache;
       }
 
       [Theory]
@@ -173,18 +255,22 @@ namespace AmaigomaTests
       public void UppercaseA_507484246(DataSet dataSet)
       {
          string imagePath = dataSet.train[0].filename;
-         ImmutableList<Rectangle> rectangles = dataSet.train[0].regions;
-         ImmutableList<double> classes = dataSet.train[0].classes;
+         ImmutableList<Rectangle> trainRectangles = dataSet.train[0].regions;
+         ImmutableList<double> trainClasses = dataSet.train[0].classes;
+         ImmutableList<Rectangle> validationRectangles = dataSet.validation[0].regions;
+         ImmutableList<double> validationClasses = dataSet.validation[0].classes;
+         ImmutableList<Rectangle> testRectangles = dataSet.test[0].regions;
+         ImmutableList<double> testClasses = dataSet.test[0].classes;
 
-         rectangles.Count.ShouldBe(classes.Count);
+         trainRectangles.Count.ShouldBe(trainClasses.Count);
+         validationRectangles.Count.ShouldBe(validationClasses.Count);
+         testRectangles.Count.ShouldBe(testClasses.Count);
 
          const int featureWindowSize = 17;
          const int halfFeatureWindowSize = featureWindowSize / 2;
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), @"..\..\..\" + imagePath);
 
          PakiraDecisionTreeGenerator pakiraGenerator = new();
-         TrainDataCache trainDataCache = new();
-         List<double> trainSample;
 
          Image<L8> imageWithOverscan;
 
@@ -199,43 +285,9 @@ namespace AmaigomaTests
 
          Buffer2D<ulong> integralImage = imageWithOverscan.CalculateIntegralImage();
 
-         // TODO Move the rectangles and classes in a dictionnary to get both values at the same time in the foreach
-         int classesIndex = 0;
-
-         foreach (Rectangle rectangle in rectangles)
-         {
-            double trainClass = classes[classesIndex];
-
-            for (int y = rectangle.Top; y < rectangle.Bottom; y++)
-            {
-               for (int x = rectangle.Left; x < rectangle.Right; x++)
-               {
-                  trainSample = new() { x, y };
-
-                  int top = y + halfFeatureWindowSize;
-                  int xPosition = x + halfFeatureWindowSize;
-
-                  xPosition.ShouldBePositive();
-
-                  for (int y2 = -halfFeatureWindowSize; y2 <= halfFeatureWindowSize; y2++)
-                  {
-                     int yPosition = top + y2;
-
-                     yPosition.ShouldBePositive();
-
-                     foreach (ulong integralValue in integralImage.DangerousGetRowSpan(yPosition).Slice(xPosition, featureWindowSize))
-                     {
-                        trainSample.Add(integralValue);
-                     }
-                  }
-
-                  trainDataCache = trainDataCache.AddSample(trainSample, trainClass);
-                  classesIndex++;
-               }
-            }
-         }
-
-         trainSample = new();
+         TrainDataCache trainDataCache = LoadDataSamples(new TrainDataCache(), trainRectangles, trainClasses, integralImage, featureWindowSize);
+         TrainDataCache validationDataCache = LoadDataSamples(new TrainDataCache(), validationRectangles, validationClasses, integralImage, featureWindowSize);
+         TrainDataCache testDataCache = LoadDataSamples(new TrainDataCache(), testRectangles, testClasses, integralImage, featureWindowSize);
 
          DataTransformer dataTransformers = null;
 
@@ -250,8 +302,10 @@ namespace AmaigomaTests
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainDataCache.Samples[0].Data);
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
+         validationDataCache = pakiraDecisionTreeModel.PrefetchAll(validationDataCache);
+         testDataCache = pakiraDecisionTreeModel.PrefetchAll(testDataCache);
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(trainDataCache.Samples[0], trainDataCache.Labels[0]));
 
          // TODO Evaluate the possibility of using shallow trees to serve as sub-routines. The features could be chosen based on the
          // best discrimination, like it was done a while ago. This will result in categories instead of a scalar so the leaves will need to be recombined
@@ -265,7 +319,8 @@ namespace AmaigomaTests
          // int validationSetSize = 1000;
 
          // IEnumerable<SabotenCache> validationDataSet = updatedBackgroundTrainDataCache.Samples.Skip(updatedBackgroundTrainDataCache.Samples.Count - validationSetSize);
-         IEnumerable<SabotenCache> validationDataSet = trainDataCache.Samples;
+         ImmutableList<SabotenCache> validationDataSet = validationDataCache.Samples;
+         ImmutableList<double> validationLabels = validationDataCache.Labels;
 
          while (processBackgroundTrainData)
          {
@@ -281,7 +336,8 @@ namespace AmaigomaTests
             for (int i = 0; i < trainDataCache.Samples.Count; i += batchSize)
             {
                batchSize = Math.Min(100, Math.Max(20, pakiraDecisionTreeModel.Tree.GetLeaves().Count()));
-               IEnumerable<SabotenCache> batch = trainDataCache.Samples.Skip(i).Take(batchSize);
+               IEnumerable<SabotenCache> batchSamples = trainDataCache.Samples.Skip(i).Take(batchSize);
+               IEnumerable<double> batchLabels = trainDataCache.Labels.Skip(i).Take(batchSize);
 
                bool processBatch = true;
 
@@ -289,19 +345,21 @@ namespace AmaigomaTests
                {
                   previousRegenerateTreeCountBatch = regenerateTreeCount;
 
-                  foreach (SabotenCache sabotenCache in batch)
+                  foreach (var item in batchSamples.Zip(batchLabels, (sabotenCache, label) => new { sabotenCache, label }))
                   {
+                     SabotenCache sabotenCache = item.sabotenCache;
+                     double label = item.label;
                      PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(sabotenCache);
                      double resultClass = pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue;
 
-                     if (resultClass != otherClass)
+                     if (resultClass != label)
                      {
-                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(sabotenCache, otherClass));
+                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(sabotenCache, label));
 
                         pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(pakiraDecisionTreePredictionResult.SabotenCache);
 
                         pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValues.Count().ShouldBe(1);
-                        pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue.ShouldBe(otherClass);
+                        pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue.ShouldBe(label);
 
                         regenerateTreeCount++;
 
@@ -314,16 +372,25 @@ namespace AmaigomaTests
 
                         int countBefore = leaves.Count;
 
+                        // TODO Move the rectangles and classes in a dictionary to get both values at the same time in the foreach
+                        int validationDataSetIndex = 0;
+
                         foreach (SabotenCache validationSample in validationDataSet)
                         {
                            PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult2 = pakiraDecisionTreeModel.PredictLeaf(validationSample);
+                           double sampleClass = validationLabels[validationDataSetIndex];
 
-                           leaves = leaves.Remove(pakiraDecisionTreePredictionResult2.PakiraLeaf);
-
-                           if (leaves.Count == 0)
+                           if (pakiraDecisionTreePredictionResult2.PakiraLeaf.LabelValue != sampleClass)
                            {
-                              break;
+                              leaves = leaves.Remove(pakiraDecisionTreePredictionResult2.PakiraLeaf);
+
+                              if (leaves.Count == 0)
+                              {
+                                 break;
+                              }
                            }
+
+                           validationDataSetIndex++;
                         }
 
                         int countAfter = leaves.Count;

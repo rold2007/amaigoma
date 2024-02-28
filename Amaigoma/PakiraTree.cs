@@ -68,6 +68,29 @@ namespace Amaigoma
          }
       }
 
+      public PakiraTree ReplaceLeaf(PakiraNode parentNode, PakiraLeaf removedLeaf, PakiraLeaf addedLeaf)
+      {
+         Root.ShouldNotBeNull();
+
+         ImmutableDictionary<PakiraNode, PakiraLeaf> updatedLeftLeaves;
+         ImmutableDictionary<PakiraNode, PakiraLeaf> updatedRightLeaves;
+
+         if (leftLeaves.Contains(parentNode, removedLeaf))
+         {
+            updatedLeftLeaves = leftLeaves.SetItem(parentNode, addedLeaf);
+            updatedRightLeaves = rightLeaves;
+         }
+         else
+         {
+            rightLeaves.ShouldContainKeyAndValue(parentNode, removedLeaf);
+
+            updatedLeftLeaves = leftLeaves;
+            updatedRightLeaves = rightLeaves.SetItem(parentNode, addedLeaf);
+         }
+
+         return new PakiraTree(Root, leftNodes, rightNodes, updatedLeftLeaves, updatedRightLeaves);
+      }
+
       public PakiraTree ReplaceLeaf(PakiraNode parentNode, PakiraLeaf leaf, PakiraTree pakiraTree)
       {
          Root.ShouldNotBeNull();
