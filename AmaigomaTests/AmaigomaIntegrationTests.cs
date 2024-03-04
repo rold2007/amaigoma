@@ -98,6 +98,12 @@ namespace AmaigomaTests
       }
    }
 
+   public struct AccuracyResult
+   {
+      public int leavesCountBefore;
+      public int leavesCountAfter;
+   }
+
    // TODO The integration test could output interesting positions to be validated and added to the test
    public class AmaigomaIntegrationTests
    {
@@ -249,6 +255,40 @@ namespace AmaigomaTests
          return dataCache;
       }
 
+      AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainDataCache dataCache)
+      {
+         ImmutableList<double> labels = dataCache.Labels;
+         ImmutableHashSet<PakiraLeaf> leaves = ImmutableHashSet<PakiraLeaf>.Empty.Union(pakiraDecisionTreeModel.Tree.GetLeaves().Select(x => x.Value));
+         AccuracyResult accuracyResult = new AccuracyResult();
+
+         accuracyResult.leavesCountBefore = leaves.Count;
+
+         // TODO Move the rectangles and classes in a dictionary to get both values at the same time in the foreach
+         int validationDataSetIndex = 0;
+
+         foreach (SabotenCache sample in dataCache.Samples)
+         {
+            PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult2 = pakiraDecisionTreeModel.PredictLeaf(sample);
+            double sampleClass = labels[validationDataSetIndex];
+
+            if (pakiraDecisionTreePredictionResult2.PakiraLeaf.LabelValue != sampleClass)
+            {
+               leaves = leaves.Remove(pakiraDecisionTreePredictionResult2.PakiraLeaf);
+
+               if (leaves.Count == 0)
+               {
+                  break;
+               }
+            }
+
+            validationDataSetIndex++;
+         }
+
+         accuracyResult.leavesCountAfter = leaves.Count;
+
+         return accuracyResult;
+      }
+
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       [Timeout(60000)]
@@ -314,13 +354,13 @@ namespace AmaigomaTests
          int previousRegenerateTreeCountBatch = -1;
          int regenerateTreeCount = 0;
          bool processBackgroundTrainData = true;
-         ImmutableHashSet<PakiraLeaf> leaves = ImmutableHashSet<PakiraLeaf>.Empty;
          int batchSize = 0;
-         // int validationSetSize = 1000;
 
-         // IEnumerable<SabotenCache> validationDataSet = updatedBackgroundTrainDataCache.Samples.Skip(updatedBackgroundTrainDataCache.Samples.Count - validationSetSize);
          ImmutableList<SabotenCache> validationDataSet = validationDataCache.Samples;
          ImmutableList<double> validationLabels = validationDataCache.Labels;
+         AccuracyResult validationAccuracyResult;
+         AccuracyResult testAccuracyResult;
+         AccuracyResult trainAccuracyResult;
 
          while (processBackgroundTrainData)
          {
@@ -362,40 +402,6 @@ namespace AmaigomaTests
                         pakiraDecisionTreePredictionResult.PakiraLeaf.LabelValue.ShouldBe(label);
 
                         regenerateTreeCount++;
-
-                        IEnumerable<KeyValuePair<PakiraNode, PakiraLeaf>> nodeLeaves = pakiraDecisionTreeModel.Tree.GetLeaves();
-
-                        foreach (KeyValuePair<PakiraNode, PakiraLeaf> nodeLeaf in nodeLeaves)
-                        {
-                           leaves = leaves.Add(nodeLeaf.Value);
-                        }
-
-                        int countBefore = leaves.Count;
-
-                        // TODO Move the rectangles and classes in a dictionary to get both values at the same time in the foreach
-                        int validationDataSetIndex = 0;
-
-                        foreach (SabotenCache validationSample in validationDataSet)
-                        {
-                           PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult2 = pakiraDecisionTreeModel.PredictLeaf(validationSample);
-                           double sampleClass = validationLabels[validationDataSetIndex];
-
-                           if (pakiraDecisionTreePredictionResult2.PakiraLeaf.LabelValue != sampleClass)
-                           {
-                              leaves = leaves.Remove(pakiraDecisionTreePredictionResult2.PakiraLeaf);
-
-                              if (leaves.Count == 0)
-                              {
-                                 break;
-                              }
-                           }
-
-                           validationDataSetIndex++;
-                        }
-
-                        int countAfter = leaves.Count;
-
-                        leaves = leaves.Clear();
                      }
                   }
 
@@ -403,7 +409,11 @@ namespace AmaigomaTests
                }
             }
 
-            processBackgroundTrainData = (previousRegenerateTreeCount != regenerateTreeCount);
+            validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationDataCache);
+            testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testDataCache);
+            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainDataCache);
+
+            processBackgroundTrainData = (trainAccuracyResult.leavesCountBefore != trainAccuracyResult.leavesCountAfter);
          }
       }
    }
