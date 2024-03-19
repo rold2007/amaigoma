@@ -4,6 +4,7 @@
     <MetricsExclusionList>
       <Value>AmaigomaConsole\AmaigomaConsole.csproj</Value>
     </MetricsExclusionList>
+    <RdiConfigured>True</RdiConfigured>
     <SolutionConfigured>True</SolutionConfigured>
   </Settings>
 </SolutionConfiguration>
