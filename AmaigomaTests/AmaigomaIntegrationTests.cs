@@ -13,12 +13,12 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 
-// UNDONE January 15th 2024: New algorithm idea. The strenght of each node can be validated if, and only if, there are enough leaves under it to apply
+// UNDONE January 15th 2024: New algorithm idea. The strength of each node can be validated if, and only if, there are enough leaves under it to apply
 // the logic of swapping the node condition and validating the success rate on train data. For nodes which do not have enough leaves under, this process
 // will probably not give reliable results. The solution is probably to prune these nodes. This will force some leaves to have more than one class. So
 // more trees need to be created, this way each data may eventually fall in a leaf with a single class. Not sure how to determine how many trees are needed
 // to prevent having data to always fall in a multi-class leaf. Maybe a priority list of trees can be created, and each time a tree returns a multiclass
-// it should lower its priority. This will not prevent infinit multiclass leaves, but it may help select the tree which returns a multiclass leaf less often. 
+// it should lower its priority. This will not prevent infinite multiclass leaves, but it may help select the tree which returns a multiclass leaf less often.
 namespace AmaigomaTests
 {
    using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
@@ -100,8 +100,8 @@ namespace AmaigomaTests
 
    public struct AccuracyResult
    {
-      public int leavesCountBefore;
-      public int leavesCountAfter;
+      public ImmutableHashSet<PakiraLeaf> leavesBefore;
+      public ImmutableHashSet<PakiraLeaf> leavesAfter;
    }
 
    // TODO The integration test could output interesting positions to be validated and added to the test
@@ -114,16 +114,6 @@ namespace AmaigomaTests
        {
          new Rectangle(83, 150, 1, 1),
          new Rectangle(0, 0, 300, 100),
-      });
-
-      static private readonly ImmutableList<double> trainNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
-       {
-         uppercaseAClass,
-         otherClass,
-      });
-
-      static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
-       {
          new Rectangle(624, 140, 1, 1),
          new Rectangle(670, 140, 1, 1),
          new Rectangle(688, 140, 1, 1),
@@ -137,25 +127,35 @@ namespace AmaigomaTests
          new Rectangle(127, 333, 1, 1),
          new Rectangle(520, 40, 230, 90),
          new Rectangle(20, 420, 380, 80),
+      });
+
+      static private readonly ImmutableList<double> trainNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
+       {
+         uppercaseAClass,
+         otherClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         uppercaseAClass,
+         otherClass,
+         otherClass,
+      });
+
+      static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
+       {
          new Rectangle(190, 540, 280, 20),
          new Rectangle(20, 555, 480, 215),
       });
 
       static private readonly ImmutableList<double> validationNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
        {
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         otherClass,
-         otherClass,
          otherClass,
          otherClass,
       });
@@ -261,7 +261,7 @@ namespace AmaigomaTests
          ImmutableHashSet<PakiraLeaf> leaves = ImmutableHashSet<PakiraLeaf>.Empty.Union(pakiraDecisionTreeModel.Tree.GetLeaves().Select(x => x.Value));
          AccuracyResult accuracyResult = new AccuracyResult();
 
-         accuracyResult.leavesCountBefore = leaves.Count;
+         accuracyResult.leavesBefore = leaves;
 
          // TODO Move the rectangles and classes in a dictionary to get both values at the same time in the foreach
          int validationDataSetIndex = 0;
@@ -284,14 +284,14 @@ namespace AmaigomaTests
             validationDataSetIndex++;
          }
 
-         accuracyResult.leavesCountAfter = leaves.Count;
+         accuracyResult.leavesAfter = leaves;
 
          return accuracyResult;
       }
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
-      [Timeout(60000)]
+      [Timeout(600000)]
       public void UppercaseA_507484246(DataSet dataSet)
       {
          string imagePath = dataSet.train[0].filename;
@@ -367,8 +367,9 @@ namespace AmaigomaTests
             previousRegenerateTreeCount = regenerateTreeCount;
             processBackgroundTrainData = false;
 
-            // UNDONE Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the Test classes, inside the main library
-            // UNDONE Validate the leaves/false positives on the VALIDATION+TEST sets
+            // UNDONE Run many tree generations to evaluate if the average accuracy is lower when the root is using a data transformer
+            // with a lower size (1 vs 15)
+            // TODO Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the Test classes, inside the main library
             // UNDONE Note this methodology somewhere: When the validation set contains too many unevaluated leaves we need to apply one of the following solution:
             // - Increase validation set size
             // - Optimize the tree size by replacing nodes with better discriminating nodes, thus reducing the number of leaves and/or the depth of the tree
@@ -409,11 +410,11 @@ namespace AmaigomaTests
                }
             }
 
+            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainDataCache);
             validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationDataCache);
             testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testDataCache);
-            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainDataCache);
 
-            processBackgroundTrainData = (trainAccuracyResult.leavesCountBefore != trainAccuracyResult.leavesCountAfter);
+            processBackgroundTrainData = (trainAccuracyResult.leavesBefore.Count != trainAccuracyResult.leavesAfter.Count);
          }
       }
    }
