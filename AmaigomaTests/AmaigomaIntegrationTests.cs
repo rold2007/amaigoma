@@ -26,12 +26,14 @@ namespace AmaigomaTests
    // TODO Use Skia to add more advanced features ?
    internal class TempDataTransformer
    {
+      public const int FeatureWindowSize = 17;
+
       private int WindowSize
       {
          get;
       }
 
-      private int WindowSizeSquared
+      private double WindowSizeSquaredInverted
       {
          get;
       }
@@ -39,31 +41,38 @@ namespace AmaigomaTests
       public TempDataTransformer(int windowSize)
       {
          WindowSize = windowSize;
-         WindowSizeSquared = windowSize * windowSize;
+         WindowSizeSquaredInverted = 1.0 / (windowSize * windowSize);
       }
 
-      // TODO Add a unit test for this code to make sure it returns the proper result and share it in a separate class so that it can be used elsewhere
+      // UNDONE Add a unit test for this code to make sure it returns the proper result and share it in a separate class so that it can be used elsewhere
       public IEnumerable<double> ConvertAll(IEnumerable<double> list)
       {
          ImmutableList<double> features = ImmutableList<double>.Empty;
 
-         const int sizeX = 16;
-         const int sizeY = 16;
+         const int sizeX = FeatureWindowSize;
+         const int sizeY = FeatureWindowSize;
+         const int width = sizeX + 1;
 
-         double[] otherIntegral = list.Skip(3).ToArray();
+         double[] integral = list.Skip(2).ToArray();
+         double sum;
 
-         for (int y = 0; y < sizeY - WindowSize; y += WindowSize)
+         // TODO These loops can be simplified (remove the -1 everywhere). But better to have a sturdy unit test before.
+         for (int y = 1; y <= (sizeY - WindowSize + 1); y += WindowSize)
          {
-            for (int x = 0; x < sizeX - WindowSize; x += WindowSize)
+            int topY = (y - 1);
+            int bottomY = (y + WindowSize - 1);
+
+            for (int x = 1; x <= (sizeX - WindowSize + 1); x += WindowSize)
             {
-               double sum;
+               int leftX = x - 1;
+               int rightX = x + WindowSize - 1;
 
-               sum = otherIntegral[x + WindowSize + ((sizeX + 1) * (y + WindowSize))];
-               sum -= otherIntegral[x + ((sizeX + 1) * (y + WindowSize))];
-               sum -= otherIntegral[x + WindowSize + ((sizeX + 1) * y)];
-               sum += otherIntegral[x + ((sizeX + 1) * y)];
+               sum = integral[rightX + (width * bottomY)];
+               sum -= integral[leftX + (width * bottomY)];
+               sum -= integral[rightX + (width * topY)];
+               sum += integral[leftX + (width * topY)];
 
-               features = features.Add(sum / WindowSizeSquared);
+               features = features.Add(sum * WindowSizeSquaredInverted);
             }
          }
 
@@ -112,40 +121,40 @@ namespace AmaigomaTests
 
       static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
        {
-         new Rectangle(83, 150, 1, 1),
-         new Rectangle(0, 0, 300, 100),
-         new Rectangle(624, 140, 1, 1),
-         new Rectangle(670, 140, 1, 1),
-         new Rectangle(688, 140, 1, 1),
-         new Rectangle(36, 196, 1, 1),
-         new Rectangle(192, 197, 1, 1),
-         new Rectangle(181, 213, 1, 1),
-         new Rectangle(576, 216, 1, 1),
-         new Rectangle(603, 217, 1, 1),
-         new Rectangle(658, 217, 1, 1),
-         new Rectangle(109, 333, 1, 1),
-         new Rectangle(127, 333, 1, 1),
-         new Rectangle(520, 40, 230, 90),
-         new Rectangle(20, 420, 380, 80),
+          new Rectangle(83, 150, 1, 1),
+          new Rectangle(0, 0, 300, 100),
+          new Rectangle(624, 140, 1, 1),
+          new Rectangle(670, 140, 1, 1),
+          new Rectangle(688, 140, 1, 1),
+          new Rectangle(36, 196, 1, 1),
+          new Rectangle(192, 197, 1, 1),
+          new Rectangle(181, 213, 1, 1),
+          new Rectangle(576, 216, 1, 1),
+          new Rectangle(603, 217, 1, 1),
+          new Rectangle(658, 217, 1, 1),
+          new Rectangle(109, 333, 1, 1),
+          new Rectangle(127, 333, 1, 1),
+          new Rectangle(520, 40, 230, 90),
+          new Rectangle(20, 420, 380, 80),
       });
 
       static private readonly ImmutableList<double> trainNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
        {
-         uppercaseAClass,
-         otherClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         otherClass,
-         otherClass,
+          uppercaseAClass,
+          otherClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          uppercaseAClass,
+          otherClass,
+          otherClass,
       });
 
       static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
@@ -233,13 +242,15 @@ namespace AmaigomaTests
 
                   xPosition.ShouldBePositive();
 
-                  for (int y2 = -halfFeatureWindowSize; y2 <= halfFeatureWindowSize; y2++)
+                  // +1 length to support first row of integral image
+                  for (int y2 = -halfFeatureWindowSize; y2 <= halfFeatureWindowSize + 1; y2++)
                   {
                      int yPosition = top + y2;
 
                      yPosition.ShouldBeGreaterThanOrEqualTo(0);
 
-                     foreach (ulong integralValue in integralImage.DangerousGetRowSpan(yPosition).Slice(xPosition - halfFeatureWindowSize, featureWindowSize))
+                     // +1 length to support first column of integral image
+                     foreach (ulong integralValue in integralImage.DangerousGetRowSpan(yPosition).Slice(xPosition - halfFeatureWindowSize, featureWindowSize + 1))
                      {
                         sample.Add(integralValue);
                      }
@@ -291,6 +302,7 @@ namespace AmaigomaTests
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
+      // UNDONE This test is becoming way too slow, even for an integration test. Simplify/optimize it
       [Timeout(600000)]
       public void UppercaseA_507484246(DataSet dataSet)
       {
@@ -306,38 +318,37 @@ namespace AmaigomaTests
          validationRectangles.Count.ShouldBe(validationClasses.Count);
          testRectangles.Count.ShouldBe(testClasses.Count);
 
-         const int featureWindowSize = 17;
-         const int halfFeatureWindowSize = featureWindowSize / 2;
+         const int halfFeatureWindowSize = TempDataTransformer.FeatureWindowSize / 2;
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), @"..\..\..\" + imagePath);
 
          PakiraDecisionTreeGenerator pakiraGenerator = new();
-
          Image<L8> imageWithOverscan;
 
          {
             Image<L8> fullTextImage = Image.Load<L8>(fullImagePath);
+
             // TODO Need to support different background values
-            imageWithOverscan = new Image<L8>(fullTextImage.Width + featureWindowSize, fullTextImage.Height + featureWindowSize, new L8(255));
+            imageWithOverscan = new Image<L8>(fullTextImage.Width + (2 * halfFeatureWindowSize) + 1, fullTextImage.Height + (2 * halfFeatureWindowSize) + 1, new L8(255));
 
             // TODO Move this to a globally available helper method
-            imageWithOverscan.Mutate(x => x.DrawImage(fullTextImage, new Point(halfFeatureWindowSize, halfFeatureWindowSize), 1.0f));
+            // There is a +1 in coordinates to make sure we have at least one row and one column that we never use at the beginning so that we never go outside the image for integral values
+            imageWithOverscan.Mutate(x => x.DrawImage(fullTextImage, new Point(halfFeatureWindowSize + 1, halfFeatureWindowSize + 1), 1.0f));
          }
 
          Buffer2D<ulong> integralImage = imageWithOverscan.CalculateIntegralImage();
 
-         TrainDataCache trainDataCache = LoadDataSamples(new TrainDataCache(), trainRectangles, trainClasses, integralImage, featureWindowSize);
-         TrainDataCache validationDataCache = LoadDataSamples(new TrainDataCache(), validationRectangles, validationClasses, integralImage, featureWindowSize);
-         TrainDataCache testDataCache = LoadDataSamples(new TrainDataCache(), testRectangles, testClasses, integralImage, featureWindowSize);
+         TrainDataCache trainDataCache = LoadDataSamples(new TrainDataCache(), trainRectangles, trainClasses, integralImage, TempDataTransformer.FeatureWindowSize);
+         TrainDataCache validationDataCache = LoadDataSamples(new TrainDataCache(), validationRectangles, validationClasses, integralImage, TempDataTransformer.FeatureWindowSize);
+         TrainDataCache testDataCache = LoadDataSamples(new TrainDataCache(), testRectangles, testClasses, integralImage, TempDataTransformer.FeatureWindowSize);
 
+         // TODO All data transformers should have the same probability of being chosen, otherwise the TempDataTransformer with a bigger windowSize will barely be selected
          DataTransformer dataTransformers = null;
 
+         dataTransformers += new TempDataTransformer(1).ConvertAll;
          dataTransformers += new TempDataTransformer(3).ConvertAll;
          dataTransformers += new TempDataTransformer(5).ConvertAll;
          dataTransformers += new TempDataTransformer(7).ConvertAll;
-         dataTransformers += new TempDataTransformer(9).ConvertAll;
-         dataTransformers += new TempDataTransformer(11).ConvertAll;
-         dataTransformers += new TempDataTransformer(13).ConvertAll;
-         dataTransformers += new TempDataTransformer(15).ConvertAll;
+         dataTransformers += new TempDataTransformer(17).ConvertAll;
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainDataCache.Samples[0].Data);
 
