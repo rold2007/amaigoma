@@ -44,7 +44,7 @@ namespace AmaigomaTests
          WindowSizeSquaredInverted = 1.0 / (windowSize * windowSize);
       }
 
-      // UNDONE Add a unit test for this code to make sure it returns the proper result and share it in a separate class so that it can be used elsewhere
+      // UNDONE 1 Add a unit test for this code to make sure it returns the proper result and share it in a separate class so that it can be used elsewhere
       public IEnumerable<double> ConvertAll(IEnumerable<double> list)
       {
          ImmutableList<double> features = ImmutableList<double>.Empty;
@@ -119,6 +119,7 @@ namespace AmaigomaTests
       static double uppercaseAClass = 1;
       static double otherClass = 2;
 
+      // UNDONE Removed some samples in Train, Validation and Test sets to be able to run faster until the performances are improved
       static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
        {
           new Rectangle(83, 150, 1, 1),
@@ -134,8 +135,8 @@ namespace AmaigomaTests
           new Rectangle(658, 217, 1, 1),
           new Rectangle(109, 333, 1, 1),
           new Rectangle(127, 333, 1, 1),
-          new Rectangle(520, 40, 230, 90),
-          new Rectangle(20, 420, 380, 80),
+          //new Rectangle(520, 40, 230, 90),
+          //new Rectangle(20, 420, 380, 80),
       });
 
       static private readonly ImmutableList<double> trainNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
@@ -153,20 +154,20 @@ namespace AmaigomaTests
           uppercaseAClass,
           uppercaseAClass,
           uppercaseAClass,
-          otherClass,
-          otherClass,
+          //otherClass,
+          //otherClass,
       });
 
       static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
        {
          new Rectangle(190, 540, 280, 20),
-         new Rectangle(20, 555, 480, 215),
+         //new Rectangle(20, 555, 480, 215),
       });
 
       static private readonly ImmutableList<double> validationNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
        {
          otherClass,
-         otherClass,
+         //otherClass,
       });
 
       static private readonly ImmutableList<Rectangle> testNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
@@ -181,10 +182,10 @@ namespace AmaigomaTests
          new Rectangle(137, 851, 1, 1),
          new Rectangle(257, 851, 1, 1),
          new Rectangle(605, 852, 1, 1),
-         new Rectangle(520, 550, 250, 216),
+         //new Rectangle(520, 550, 250, 216),
          new Rectangle(95, 810, 500, 20),
-         new Rectangle(20, 900, 756, 70),
-         new Rectangle(180, 960, 310, 35)
+         //new Rectangle(20, 900, 756, 70),
+         //new Rectangle(180, 960, 310, 35)
       });
 
       static private readonly ImmutableList<double> testNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
@@ -199,10 +200,10 @@ namespace AmaigomaTests
          uppercaseAClass,
          uppercaseAClass,
          uppercaseAClass,
+         //otherClass,
          otherClass,
-         otherClass,
-         otherClass,
-         otherClass,
+         //otherClass,
+         //otherClass,
       });
 
       public static System.Collections.Generic.IEnumerable<object[]> GetUppercaseA_507484246_Data()
@@ -219,6 +220,8 @@ namespace AmaigomaTests
          yield return new object[] { dataSet };
       }
 
+      // UNDONE 4 This is insane. It is slow and uses a LOT of memory. After everything is well unit tested. Replaced the samples
+      // by an ID and another class will be responsible to extract the needed data directly from the (integral) image when required.
       TrainDataCache LoadDataSamples(TrainDataCache dataCache, ImmutableList<Rectangle> rectangles, ImmutableList<double> classes, Buffer2D<ulong> integralImage, int featureWindowSize)
       {
          int halfFeatureWindowSize = featureWindowSize / 2;
@@ -236,6 +239,7 @@ namespace AmaigomaTests
                for (int x = rectangle.Left; x < rectangle.Right; x++)
                {
                   sample = new() { x, y };
+                  sample.EnsureCapacity(2 + (featureWindowSize + 1) * (featureWindowSize + 1));
 
                   int top = y + halfFeatureWindowSize;
                   int xPosition = x + halfFeatureWindowSize;
@@ -302,7 +306,7 @@ namespace AmaigomaTests
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
-      // UNDONE This test is becoming way too slow, even for an integration test. Simplify/optimize it
+      // UNDONE 3 This test is becoming way too slow, even for an integration test. Simplify/optimize it
       [Timeout(600000)]
       public void UppercaseA_507484246(DataSet dataSet)
       {
@@ -344,7 +348,8 @@ namespace AmaigomaTests
          // TODO All data transformers should have the same probability of being chosen, otherwise the TempDataTransformer with a bigger windowSize will barely be selected
          DataTransformer dataTransformers = null;
 
-         dataTransformers += new TempDataTransformer(1).ConvertAll;
+         // UNDONE Removed a data transformer to be able to run faster until the performances are improved
+         //dataTransformers += new TempDataTransformer(1).ConvertAll;
          dataTransformers += new TempDataTransformer(3).ConvertAll;
          dataTransformers += new TempDataTransformer(5).ConvertAll;
          dataTransformers += new TempDataTransformer(7).ConvertAll;
@@ -353,8 +358,6 @@ namespace AmaigomaTests
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainDataCache.Samples[0].Data);
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
-         validationDataCache = pakiraDecisionTreeModel.PrefetchAll(validationDataCache);
-         testDataCache = pakiraDecisionTreeModel.PrefetchAll(testDataCache);
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(trainDataCache.Samples[0], trainDataCache.Labels[0]));
 
@@ -393,6 +396,8 @@ namespace AmaigomaTests
 
                bool processBatch = true;
 
+               // TODO The validation set should be used to identify the leaves which are not predicting correctly. Then find
+               //       some data in the train set to improve these leaves
                while (processBatch)
                {
                   previousRegenerateTreeCountBatch = regenerateTreeCount;
