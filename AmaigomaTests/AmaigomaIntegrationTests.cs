@@ -21,65 +21,6 @@ using Xunit;
 // it should lower its priority. This will not prevent infinite multiclass leaves, but it may help select the tree which returns a multiclass leaf less often.
 namespace AmaigomaTests
 {
-   using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
-
-   // TODO Use Skia to add more advanced features ?
-   internal class TempDataTransformer
-   {
-      public const int FeatureWindowSize = 17;
-
-      private int WindowSize
-      {
-         get;
-      }
-
-      private double WindowSizeSquaredInverted
-      {
-         get;
-      }
-
-      public TempDataTransformer(int windowSize)
-      {
-         WindowSize = windowSize;
-         WindowSizeSquaredInverted = 1.0 / (windowSize * windowSize);
-      }
-
-      // UNDONE 1 Add a unit test for this code to make sure it returns the proper result and share it in a separate class so that it can be used elsewhere
-      public IEnumerable<double> ConvertAll(IEnumerable<double> list)
-      {
-         ImmutableList<double> features = ImmutableList<double>.Empty;
-
-         const int sizeX = FeatureWindowSize;
-         const int sizeY = FeatureWindowSize;
-         const int width = sizeX + 1;
-
-         double[] integral = list.Skip(2).ToArray();
-         double sum;
-
-         // TODO These loops can be simplified (remove the -1 everywhere). But better to have a sturdy unit test before.
-         for (int y = 1; y <= (sizeY - WindowSize + 1); y += WindowSize)
-         {
-            int topY = (y - 1);
-            int bottomY = (y + WindowSize - 1);
-
-            for (int x = 1; x <= (sizeX - WindowSize + 1); x += WindowSize)
-            {
-               int leftX = x - 1;
-               int rightX = x + WindowSize - 1;
-
-               sum = integral[rightX + (width * bottomY)];
-               sum -= integral[leftX + (width * bottomY)];
-               sum -= integral[rightX + (width * topY)];
-               sum += integral[leftX + (width * topY)];
-
-               features = features.Add(sum * WindowSizeSquaredInverted);
-            }
-         }
-
-         return features;
-      }
-   }
-
    public class IntegrationTestDataSet
    {
       public string filename;
@@ -238,7 +179,9 @@ namespace AmaigomaTests
             {
                for (int x = rectangle.Left; x < rectangle.Right; x++)
                {
-                  sample = new() { x, y };
+                  // UNDONE The pixel position was removed to simplify unit testing. Find a different way of doing it.
+                  //sample = new() { x, y };
+                  sample = new();
                   sample.EnsureCapacity(2 + (featureWindowSize + 1) * (featureWindowSize + 1));
 
                   int top = y + halfFeatureWindowSize;
@@ -322,7 +265,7 @@ namespace AmaigomaTests
          validationRectangles.Count.ShouldBe(validationClasses.Count);
          testRectangles.Count.ShouldBe(testClasses.Count);
 
-         const int halfFeatureWindowSize = TempDataTransformer.FeatureWindowSize / 2;
+         const int halfFeatureWindowSize = AverageTransformer.FeatureWindowSize / 2;
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), @"..\..\..\" + imagePath);
 
          PakiraDecisionTreeGenerator pakiraGenerator = new();
@@ -341,19 +284,19 @@ namespace AmaigomaTests
 
          Buffer2D<ulong> integralImage = imageWithOverscan.CalculateIntegralImage();
 
-         TrainDataCache trainDataCache = LoadDataSamples(new TrainDataCache(), trainRectangles, trainClasses, integralImage, TempDataTransformer.FeatureWindowSize);
-         TrainDataCache validationDataCache = LoadDataSamples(new TrainDataCache(), validationRectangles, validationClasses, integralImage, TempDataTransformer.FeatureWindowSize);
-         TrainDataCache testDataCache = LoadDataSamples(new TrainDataCache(), testRectangles, testClasses, integralImage, TempDataTransformer.FeatureWindowSize);
+         TrainDataCache trainDataCache = LoadDataSamples(new TrainDataCache(), trainRectangles, trainClasses, integralImage, AverageTransformer.FeatureWindowSize);
+         TrainDataCache validationDataCache = LoadDataSamples(new TrainDataCache(), validationRectangles, validationClasses, integralImage, AverageTransformer.FeatureWindowSize);
+         TrainDataCache testDataCache = LoadDataSamples(new TrainDataCache(), testRectangles, testClasses, integralImage, AverageTransformer.FeatureWindowSize);
 
-         // TODO All data transformers should have the same probability of being chosen, otherwise the TempDataTransformer with a bigger windowSize will barely be selected
-         DataTransformer dataTransformers = null;
+         // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
+         Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
          // UNDONE Removed a data transformer to be able to run faster until the performances are improved
-         //dataTransformers += new TempDataTransformer(1).ConvertAll;
-         dataTransformers += new TempDataTransformer(3).ConvertAll;
-         dataTransformers += new TempDataTransformer(5).ConvertAll;
-         dataTransformers += new TempDataTransformer(7).ConvertAll;
-         dataTransformers += new TempDataTransformer(17).ConvertAll;
+         //dataTransformers += new AverageTransformer(1).ConvertAll;
+         dataTransformers += new AverageTransformer(3).ConvertAll;
+         dataTransformers += new AverageTransformer(5).ConvertAll;
+         dataTransformers += new AverageTransformer(7).ConvertAll;
+         dataTransformers += new AverageTransformer(17).ConvertAll;
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainDataCache.Samples[0].Data);
 
