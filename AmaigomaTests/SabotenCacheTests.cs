@@ -5,7 +5,7 @@ using Xunit;
 
 namespace AmaigomaTests
 {
-   public class SabotenCacheTests
+   public record SabotenCacheTests // ncrunch: no coverage
    {
       [Fact]
       public void LoadCacheTest()

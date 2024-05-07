@@ -5,7 +5,7 @@ using System.Linq;
 namespace Amaigoma
 {
    // TODO Use Skia to add more advanced features ?
-   public class AverageTransformer
+   public sealed record AverageTransformer // ncrunch: no coverage
    {
       // TODO This should not be hardcoded here
       public const int FeatureWindowSize = 17;

@@ -1,6 +1,6 @@
 namespace AmaigomaTests
 {
-   public class PakiraDecisionTreeModelTests
+   public record PakiraDecisionTreeModelTests
    {
    }
 }

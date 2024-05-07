@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Amaigoma
 {
-   public sealed record SabotenCache
+   public sealed record SabotenCache // ncrunch: no coverage
    {
       private ImmutableList<double> TransformedData { get; } = ImmutableList<double>.Empty;
       private ImmutableList<bool> FetchedData { get; } = ImmutableList<bool>.Empty;

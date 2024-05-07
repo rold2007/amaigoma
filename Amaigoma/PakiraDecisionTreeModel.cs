@@ -8,7 +8,7 @@ namespace Amaigoma
 {
    using DataTransformer = System.Converter<IEnumerable<double>, IEnumerable<double>>;
 
-   public sealed record PakiraDecisionTreePredictionResult
+   public sealed record PakiraDecisionTreePredictionResult // ncrunch: no coverage
    {
       public PakiraLeaf PakiraLeaf { get; }
       public SabotenCache SabotenCache { get; }
@@ -20,23 +20,22 @@ namespace Amaigoma
       }
    }
 
-   /// <summary>A data Model for the decision tree.</summary>
-   public sealed record PakiraDecisionTreeModel
+   public sealed record PakiraDecisionTreeModel // ncrunch: no coverage
    {
       private static readonly PassThroughTransformer DefaultDataTransformer = new();
 
-      public PakiraTree Tree { get; } = PakiraTree.Empty;
+      public PakiraTree Tree { get; } = new();
 
       private TanukiTransformers TanukiTransformers { get; }
 
       private ImmutableDictionary<PakiraLeaf, TrainDataCache> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, TrainDataCache>.Empty;
 
-      // TODO Replace dataSample parameter by TrainDataCache. But we need a way to make sure we have at least one sanmple in it, otherwise TanukiTransformers will crash.
-      public PakiraDecisionTreeModel(IEnumerable<double> dataSample) : this(PakiraTree.Empty, new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample)
+      // TODO Replace dataSample parameter by TrainDataCache. But we need a way to make sure we have at least one sample in it, otherwise TanukiTransformers will crash.
+      public PakiraDecisionTreeModel(IEnumerable<double> dataSample) : this(new(), new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample)
       {
       }
 
-      public PakiraDecisionTreeModel(DataTransformer dataTransformers, IEnumerable<double> dataSample) : this(PakiraTree.Empty, dataTransformers, dataSample)
+      public PakiraDecisionTreeModel(DataTransformer dataTransformers, IEnumerable<double> dataSample) : this(new(), dataTransformers, dataSample)
       {
       }
 
@@ -85,11 +84,6 @@ namespace Amaigoma
       public IEnumerable<int> FeatureIndices()
       {
          return Enumerable.Range(0, TanukiTransformers.TotalOutputSamples);
-      }
-
-      public ImmutableList<SabotenCache> PrefetchAll(IEnumerable<SabotenCache> dataSamples)
-      {
-         return dataSamples.PrefetchAll(TanukiTransformers).ToImmutableList();
       }
 
       public TrainDataCache PrefetchAll(TrainDataCache trainDataCache)

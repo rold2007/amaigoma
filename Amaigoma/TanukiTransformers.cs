@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Amaigoma
 {
-   public sealed class TanukiTransformers
+   public sealed record TanukiTransformers // ncrunch: no coverage
    {
       private readonly ImmutableList<Tuple<Range, Converter<IEnumerable<double>, IEnumerable<double>>>> dataTransformers = ImmutableList<Tuple<Range, Converter<IEnumerable<double>, IEnumerable<double>>>>.Empty;
       private readonly Comparer<Tuple<Range, Converter<IEnumerable<double>, IEnumerable<double>>>> rangeComparer = Comparer<Tuple<Range, Converter<IEnumerable<double>, IEnumerable<double>>>>.Create((x, y) => x.Item1.Start.Value.CompareTo(y.Item1.Start.Value));

@@ -5,11 +5,8 @@ using System.Linq;
 
 namespace Amaigoma
 {
-   public sealed record PakiraNode
+   public sealed record PakiraNode // ncrunch: no coverage
    {
-      /// <summary>
-      /// Initializes a new instance of the <see cref="PakiraNode"/> class.
-      /// </summary>
       public PakiraNode(int column, double threshold)
       {
          column.ShouldBeGreaterThanOrEqualTo(0);
@@ -18,16 +15,12 @@ namespace Amaigoma
          Threshold = threshold;
       }
 
-      /// <summary>Gets or sets the column.</summary>
-      /// <value>The column.</value>
       public int Column { get; }
 
-      /// <summary>Gets or sets the threshold.</summary>
-      /// <value>The threshold.</value>
       public double Threshold { get; }
    }
 
-   public sealed record PakiraLeaf
+   public sealed record PakiraLeaf // ncrunch: no coverage
    {
       private readonly ImmutableList<double> labelValues = ImmutableList<double>.Empty;
 

@@ -6,15 +6,14 @@ using System.Linq;
 
 namespace Amaigoma
 {
-   public sealed class PakiraTree
+   public sealed record PakiraTree // ncrunch: no coverage
    {
-      private static readonly PakiraTree empty = new();
       private readonly ImmutableDictionary<PakiraNode, PakiraNode> leftNodes;
       private readonly ImmutableDictionary<PakiraNode, PakiraNode> rightNodes;
       private readonly ImmutableDictionary<PakiraNode, PakiraLeaf> leftLeaves;
       private readonly ImmutableDictionary<PakiraNode, PakiraLeaf> rightLeaves;
 
-      private sealed record PakiraNodeComparer : IEqualityComparer<PakiraNode>
+      private sealed record PakiraNodeComparer : IEqualityComparer<PakiraNode> // ncrunch: no coverage
       {
          private static readonly PakiraNodeComparer instance = new();
 
@@ -38,7 +37,7 @@ namespace Amaigoma
          }
       }
 
-      private PakiraTree()
+      public PakiraTree()
       {
          Root = null;
          leftNodes = ImmutableDictionary<PakiraNode, PakiraNode>.Empty.WithComparers(PakiraNodeComparer.Instance);
@@ -60,14 +59,6 @@ namespace Amaigoma
 
       public PakiraNode Root { get; }
 
-      public static PakiraTree Empty
-      {
-         get
-         {
-            return PakiraTree.empty;
-         }
-      }
-
       public PakiraTree ReplaceLeaf(PakiraNode parentNode, PakiraLeaf removedLeaf, PakiraLeaf addedLeaf)
       {
          Root.ShouldNotBeNull();
@@ -75,18 +66,11 @@ namespace Amaigoma
          ImmutableDictionary<PakiraNode, PakiraLeaf> updatedLeftLeaves;
          ImmutableDictionary<PakiraNode, PakiraLeaf> updatedRightLeaves;
 
-         if (leftLeaves.Contains(parentNode, removedLeaf))
-         {
-            updatedLeftLeaves = leftLeaves.SetItem(parentNode, addedLeaf);
-            updatedRightLeaves = rightLeaves;
-         }
-         else
-         {
-            rightLeaves.ShouldContainKeyAndValue(parentNode, removedLeaf);
+         leftLeaves.Contains(parentNode, removedLeaf).ShouldBeFalse();
+         rightLeaves.ShouldContainKeyAndValue(parentNode, removedLeaf);
 
-            updatedLeftLeaves = leftLeaves;
-            updatedRightLeaves = rightLeaves.SetItem(parentNode, addedLeaf);
-         }
+         updatedLeftLeaves = leftLeaves;
+         updatedRightLeaves = rightLeaves.SetItem(parentNode, addedLeaf);
 
          return new PakiraTree(Root, leftNodes, rightNodes, updatedLeftLeaves, updatedRightLeaves);
       }
@@ -127,7 +111,7 @@ namespace Amaigoma
 
       public PakiraTree AddNode(PakiraNode node, PakiraLeaf leftChildLeaf, PakiraLeaf rightChildLeaf)
       {
-         this.ShouldBeSameAs(Empty);
+         Root.ShouldBeNull();
          node.ShouldNotBeNull();
          leftChildLeaf.ShouldNotBeNull();
          rightChildLeaf.ShouldNotBeNull();

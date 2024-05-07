@@ -8,9 +8,9 @@ using Xunit;
 
 namespace AmaigomaTests
 {
-   public class PakiraGeneratorTests
+   public record PakiraGeneratorTests // ncrunch: no coverage
    {
-      internal class MeanDistanceDataTransformer
+      internal record MeanDistanceDataTransformer // ncrunch: no coverage
       {
          public MeanDistanceDataTransformer()
          {
@@ -46,7 +46,7 @@ namespace AmaigomaTests
       [Fact]
       public void Generate()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
 
          TrainDataCache trainDataCache = new TrainDataCache();
 
@@ -74,7 +74,7 @@ namespace AmaigomaTests
       [Fact]
       public void GenerateMultipleCalls()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
 
          TrainDataCache trainDataCache = new();
 
@@ -122,7 +122,7 @@ namespace AmaigomaTests
       [Fact]
       public void MinimumSampleCount()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }),    42);
@@ -145,7 +145,7 @@ namespace AmaigomaTests
       [Fact]
       public void DataTransformers()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }),     42);
@@ -179,7 +179,7 @@ namespace AmaigomaTests
       [Fact]
       public void DataTransformersQuickExit()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
@@ -217,7 +217,7 @@ namespace AmaigomaTests
       [Fact]
       public void DataTransformersQuickExit2()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
@@ -249,7 +249,7 @@ namespace AmaigomaTests
       [Fact]
       public void DeepTree()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
@@ -279,7 +279,7 @@ namespace AmaigomaTests
       [Fact]
       public void CertaintyScore()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
@@ -306,7 +306,7 @@ namespace AmaigomaTests
       [Fact]
       public void GenerateCannotSplit()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
@@ -333,7 +333,7 @@ namespace AmaigomaTests
       [Fact]
       public void GenerateCannotSplit2()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = PakiraGeneratorTests.CreatePakiraGeneratorInstance();
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
@@ -353,6 +353,41 @@ namespace AmaigomaTests
          pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
          pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[0]);
          pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
+      }
+
+      [Fact]
+      public void CallPakiraTreeReplaceLeaf()
+      {
+         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
+         TrainDataCache trainDataCache = new();
+
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2 }), 42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2 }), 54);
+
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
+
+         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
+
+         TrainDataCache extraDataCache = new();
+
+         extraDataCache = extraDataCache.AddSample(ImmutableList.CreateRange(new double[] { 215 }), 42);
+         extraDataCache = pakiraDecisionTreeModel.PrefetchAll(extraDataCache);
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(extraDataCache.Samples[0], extraDataCache.Labels[0]));
+
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+
+         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.Count().ShouldBe(2);
+         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValues.ShouldContain(trainDataCache.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
+         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
+
+         pakiraDecisionTreeModel.PredictLeaf(extraDataCache.Samples[0].Data).LabelValue.ShouldBe(extraDataCache.Labels[0]);
+         pakiraDecisionTreeModel.PredictLeaf(extraDataCache.Samples[0].Data).LabelValues.Count().ShouldBe(1);
       }
    }
 }

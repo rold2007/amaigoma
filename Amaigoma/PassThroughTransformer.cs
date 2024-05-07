@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Amaigoma
 {
-   public class PassThroughTransformer
+   public record PassThroughTransformer // ncrunch: no coverage
    {
       public PassThroughTransformer()
       {

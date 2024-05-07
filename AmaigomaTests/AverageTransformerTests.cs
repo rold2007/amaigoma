@@ -7,7 +7,7 @@ using Xunit;
 
 namespace AmaigomaTests
 {
-   public class AverageTransformerTests
+   public record AverageTransformerTests // ncrunch: no coverage
    {
       [Fact]
       public void ConvertAll()

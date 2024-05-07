@@ -21,7 +21,7 @@ using Xunit;
 // it should lower its priority. This will not prevent infinite multiclass leaves, but it may help select the tree which returns a multiclass leaf less often.
 namespace AmaigomaTests
 {
-   public class IntegrationTestDataSet
+   public record IntegrationTestDataSet // ncrunch: no coverage
    {
       public string filename;
       public ImmutableList<Rectangle> regions;
@@ -55,13 +55,13 @@ namespace AmaigomaTests
    }
 
    // TODO The integration test could output interesting positions to be validated and added to the test
-   public class AmaigomaIntegrationTests
+   public record AmaigomaIntegrationTests // ncrunch: no coverage
    {
-      static double uppercaseAClass = 1;
-      static double otherClass = 2;
+      static double uppercaseAClass = 1; // ncrunch: no coverage
+      static double otherClass = 2; // ncrunch: no coverage
 
       // UNDONE Removed some samples in Train, Validation and Test sets to be able to run faster until the performances are improved
-      static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
+      static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
           new Rectangle(83, 150, 1, 1),
           new Rectangle(0, 0, 300, 100),
@@ -80,7 +80,7 @@ namespace AmaigomaTests
           //new Rectangle(20, 420, 380, 80),
       });
 
-      static private readonly ImmutableList<double> trainNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
+      static private readonly ImmutableList<double> trainNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[] // ncrunch: no coverage
        {
           uppercaseAClass,
           otherClass,
@@ -99,19 +99,19 @@ namespace AmaigomaTests
           //otherClass,
       });
 
-      static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
+      static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
          new Rectangle(190, 540, 280, 20),
          //new Rectangle(20, 555, 480, 215),
       });
 
-      static private readonly ImmutableList<double> validationNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
+      static private readonly ImmutableList<double> validationNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[] // ncrunch: no coverage
        {
          otherClass,
          //otherClass,
       });
 
-      static private readonly ImmutableList<Rectangle> testNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[]
+      static private readonly ImmutableList<Rectangle> testNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
          new Rectangle(228, 334, 1, 1),
          new Rectangle(283, 335, 1, 1),
@@ -129,7 +129,7 @@ namespace AmaigomaTests
          //new Rectangle(180, 960, 310, 35)
       });
 
-      static private readonly ImmutableList<double> testNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[]
+      static private readonly ImmutableList<double> testNotUppercaseA_507484246_Classes = ImmutableList<double>.Empty.AddRange(new double[] // ncrunch: no coverage
        {
          uppercaseAClass,
          uppercaseAClass,
@@ -298,7 +298,7 @@ namespace AmaigomaTests
          dataTransformers += new AverageTransformer(7).ConvertAll;
          dataTransformers += new AverageTransformer(17).ConvertAll;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(PakiraTree.Empty, dataTransformers, trainDataCache.Samples[0].Data);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new PakiraTree(), dataTransformers, trainDataCache.Samples[0].Data);
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
 

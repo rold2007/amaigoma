@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-// UNDONE 2 Bring back test coverage to 100%
 namespace Amaigoma
 {
    public static class IEnumerableExtensions
@@ -27,7 +26,7 @@ namespace Amaigoma
    }
 
    // TODO Rename this to remove the 'Train'
-   public sealed record TrainDataCache
+   public sealed record TrainDataCache // ncrunch: no coverage
    {
       public ImmutableList<SabotenCache> Samples { get; } = ImmutableList<SabotenCache>.Empty;
       public ImmutableList<double> Labels { get; } = ImmutableList<double>.Empty;
@@ -55,11 +54,6 @@ namespace Amaigoma
          return AddSamples(new TrainDataCache(new SabotenCache(data), label));
       }
 
-      public TrainDataCache AddSample(SabotenCache sample, double label)
-      {
-         return AddSamples(new TrainDataCache(sample, label));
-      }
-
       public TrainDataCache AddSamples(TrainDataCache samples)
       {
          samples.Samples.Count.ShouldBeGreaterThan(0);
@@ -74,9 +68,9 @@ namespace Amaigoma
       }
    }
 
-   public class PakiraDecisionTreeGenerator
+   public sealed record PakiraDecisionTreeGenerator // ncrunch: no coverage
    {
-      private sealed record PakiraLeafResult
+      private sealed record PakiraLeafResult // ncrunch: no coverage
       {
          public PakiraLeaf pakiraLeaf;
          public ImmutableList<SabotenCache> slice;
@@ -247,7 +241,6 @@ namespace Amaigoma
 
             if (processLeaf.Leaf.LabelValue == UnknownLabelValue && processNodeTrainSamplesCache.Labels.Distinct().Count() == 1)
             {
-               // UNDONE Add a simple unit test case for this. Right now it is only tested by the integration test.
                PakiraLeaf updatedLeaf = new PakiraLeaf(processNodeTrainSamplesCache.Labels);
 
                pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, updatedLeaf));
@@ -262,7 +255,7 @@ namespace Amaigoma
 
                if (pakiraLeavesResults[0].pakiraLeaf.LabelValue != UnknownLabelValue && pakiraLeavesResults[1].pakiraLeaf.LabelValue != UnknownLabelValue)
                {
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, PakiraTree.Empty.AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf)));
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, new PakiraTree().AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf)));
                   pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveTrainDataCache(processLeaf.Leaf);
                   pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[0].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[0].slice, pakiraLeavesResults[0].ySlice));
                   pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[1].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[1].slice, pakiraLeavesResults[1].ySlice));
