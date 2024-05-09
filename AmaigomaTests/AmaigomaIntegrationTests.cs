@@ -298,7 +298,7 @@ namespace AmaigomaTests
          dataTransformers += new AverageTransformer(7).ConvertAll;
          dataTransformers += new AverageTransformer(17).ConvertAll;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new PakiraTree(), dataTransformers, trainDataCache.Samples[0].Data);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new TanukiTransformers(dataTransformers, trainDataCache.Samples[0].Data));
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
 

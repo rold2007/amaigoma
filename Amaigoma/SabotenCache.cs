@@ -28,6 +28,13 @@ namespace Amaigoma
          ImmutableList<double> transformedData;
          ImmutableList<bool> fetchedData;
 
+         // Validate the data only once
+         foreach (double trainSampleValue in newTransformedData)
+         {
+            trainSampleValue.ShouldBeGreaterThanOrEqualTo(0.0);
+            trainSampleValue.ShouldBeLessThanOrEqualTo(255.0);
+         }
+
          if (range.Start.Value == TransformedData.Count)
          {
             transformedData = TransformedData.AddRange(newTransformedData);

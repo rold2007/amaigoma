@@ -125,7 +125,7 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }),    42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 20, 140 }), 54);
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 33, 200 }), 42);
 
@@ -148,7 +148,7 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          TrainDataCache trainDataCache = new();
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }),     42);
+         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
          trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
 
@@ -160,7 +160,7 @@ namespace AmaigomaTests
          dataTransformers += passThroughTransformer.ConvertAll;
          dataTransformers += MeanDistanceDataTransformer.ConvertAll;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(dataTransformers, trainDataCache.Samples[0].Data);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new TanukiTransformers(dataTransformers, trainDataCache.Samples[0].Data));
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
 
@@ -198,7 +198,7 @@ namespace AmaigomaTests
             dataTransformers += passThroughTransformer.ConvertAll;
          }
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(dataTransformers, trainDataCache.Samples[0].Data);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new TanukiTransformers(dataTransformers, trainDataCache.Samples[0].Data));
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
 
@@ -230,7 +230,7 @@ namespace AmaigomaTests
 
          dataTransformers += MeanDistanceDataTransformer.ConvertAll;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(dataTransformers, trainDataCache.Samples[0].Data);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new TanukiTransformers(dataTransformers, trainDataCache.Samples[0].Data));
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
 

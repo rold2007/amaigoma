@@ -31,18 +31,13 @@ namespace Amaigoma
       private ImmutableDictionary<PakiraLeaf, TrainDataCache> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, TrainDataCache>.Empty;
 
       // TODO Replace dataSample parameter by TrainDataCache. But we need a way to make sure we have at least one sample in it, otherwise TanukiTransformers will crash.
-      public PakiraDecisionTreeModel(IEnumerable<double> dataSample) : this(new(), new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample)
+      public PakiraDecisionTreeModel(IEnumerable<double> dataSample) : this(new TanukiTransformers(new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample))
       {
       }
 
-      public PakiraDecisionTreeModel(DataTransformer dataTransformers, IEnumerable<double> dataSample) : this(new(), dataTransformers, dataSample)
+      public PakiraDecisionTreeModel(TanukiTransformers tanukiTransformers)
       {
-      }
-
-      public PakiraDecisionTreeModel(PakiraTree tree, DataTransformer dataTransformers, IEnumerable<double> dataSample)
-      {
-         Tree = tree;
-         TanukiTransformers = new TanukiTransformers(dataTransformers, dataSample);
+         TanukiTransformers = tanukiTransformers;
       }
 
       private PakiraDecisionTreeModel(PakiraTree tree, TanukiTransformers tanukiTransformers, ImmutableDictionary<PakiraLeaf, TrainDataCache> leafTrainDataCache)
@@ -114,11 +109,6 @@ namespace Amaigoma
          return WalkNode(sabotenCache, tree.Root);
       }
 
-      /// <summary>Walk node.</summary>
-      /// <exception cref="InvalidOperationException">Thrown when the requested operation is invalid.</exception>
-      /// <param name="v">The Vector to process.</param>
-      /// <param name="node">The node.</param>
-      /// <returns>A double.</returns>
       private Tuple<PakiraLeaf, SabotenCache> WalkNode(SabotenCache v, PakiraNode node)
       {
          do

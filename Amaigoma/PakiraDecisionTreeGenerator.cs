@@ -89,18 +89,6 @@ namespace Amaigoma
 
       public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainDataCache trainDataCache)
       {
-         // Validate the data only once
-         foreach (SabotenCache sabotenCache in trainDataCache.Samples)
-         {
-            foreach (int featureIndex in pakiraDecisionTreeModel.FeatureIndices())
-            {
-               double trainSampleValue = sabotenCache[featureIndex];
-
-               trainSampleValue.ShouldBeGreaterThanOrEqualTo(0.0);
-               trainSampleValue.ShouldBeLessThanOrEqualTo(255.0);
-            }
-         }
-
          if (pakiraDecisionTreeModel.Tree.Root == null)
          {
             pakiraDecisionTreeModel = BuildInitialTree(pakiraDecisionTreeModel, trainDataCache);
