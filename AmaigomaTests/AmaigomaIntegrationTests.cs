@@ -161,7 +161,7 @@ namespace AmaigomaTests
          yield return new object[] { dataSet };
       }
 
-      // UNDONE 4 This is insane. It is slow and uses a LOT of memory. After everything is well unit tested. Replaced the samples
+      // UNDONE 1 This is insane. It is slow and uses a LOT of memory. After everything is well unit tested. Replaced the samples
       // by an ID and another class will be responsible to extract the needed data directly from the (integral) image when required.
       TrainDataCache LoadDataSamples(TrainDataCache dataCache, ImmutableList<Rectangle> rectangles, ImmutableList<double> classes, Buffer2D<ulong> integralImage, int featureWindowSize)
       {

@@ -4,6 +4,8 @@
     <EnableRDI>True</EnableRDI>
     <MetricsExclusionList>
       <Value>AmaigomaConsole\AmaigomaConsole.csproj</Value>
+      <Value>ConfusionMatrix.cs:Amaigoma\Amaigoma.csproj</Value>
+      <Value>PakiraDecisionTreeModelTests.cs:AmaigomaTests\AmaigomaTests.csproj</Value>
     </MetricsExclusionList>
     <RdiConfigured>True</RdiConfigured>
     <SolutionConfigured>True</SolutionConfigured>
