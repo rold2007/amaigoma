@@ -30,41 +30,46 @@ namespace Amaigoma
    {
       public ImmutableList<SabotenCache> Samples { get; } = ImmutableList<SabotenCache>.Empty;
       public ImmutableList<double> Labels { get; } = ImmutableList<double>.Empty;
+      public ImmutableList<Guid> Guid { get; } = ImmutableList<Guid>.Empty;
 
       public TrainDataCache()
       {
       }
 
-      public TrainDataCache(SabotenCache sample, double label)
+      public TrainDataCache(SabotenCache sample, double label, Guid guid)
       {
          Samples = Samples.Add(sample);
          Labels = Labels.Add(label);
+         Guid = Guid.Add(guid);
       }
 
-      public TrainDataCache(ImmutableList<SabotenCache> samples, ImmutableList<double> labels)
+      public TrainDataCache(ImmutableList<SabotenCache> samples, ImmutableList<double> labels, ImmutableList<Guid> guids)
       {
-         samples.Count.ShouldBe(labels.Count);
+         labels.Count.ShouldBe(samples.Count);
+         guids.Count.ShouldBe(samples.Count);
 
          Samples = samples;
          Labels = labels;
+         Guid = guids;
       }
 
-      public TrainDataCache AddSample(IEnumerable<double> data, double label)
+      public TrainDataCache AddSample(IEnumerable<double> data, double label, Guid guid)
       {
-         return AddSamples(new TrainDataCache(new SabotenCache(data), label));
+         return AddSamples(new TrainDataCache(new SabotenCache(data), label, guid));
       }
 
       public TrainDataCache AddSamples(TrainDataCache samples)
       {
          samples.Samples.Count.ShouldBeGreaterThan(0);
          samples.Labels.Count.ShouldBeGreaterThan(0);
+         samples.Guid.Count.ShouldBeGreaterThan(0);
 
          if (!Samples.IsEmpty)
          {
             samples.Samples[0].Data.Count().ShouldBe(Samples[0].Data.Count());
          }
 
-         return new TrainDataCache(Samples.AddRange(samples.Samples), Labels.AddRange(samples.Labels));
+         return new TrainDataCache(Samples.AddRange(samples.Samples), Labels.AddRange(samples.Labels), Guid.AddRange(samples.Guid));
       }
    }
 
@@ -75,6 +80,7 @@ namespace Amaigoma
          public PakiraLeaf pakiraLeaf;
          public ImmutableList<SabotenCache> slice;
          public ImmutableList<double> ySlice;
+         public ImmutableList<Guid> guid;
       }
 
       public static readonly int UNKNOWN_CLASS_INDEX = -1;
@@ -100,7 +106,7 @@ namespace Amaigoma
                // TODO Create a new PredictLeaf() which doesn't call Prefetch() to optimize this slightly
                PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[trainSampleIndex]);
 
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraDecisionTreePredictionResult.PakiraLeaf, new TrainDataCache(pakiraDecisionTreePredictionResult.SabotenCache, trainDataCache.Labels[trainSampleIndex]));
+               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraDecisionTreePredictionResult.PakiraLeaf, new TrainDataCache(pakiraDecisionTreePredictionResult.SabotenCache, trainDataCache.Labels[trainSampleIndex], trainDataCache.Guid[trainSampleIndex]));
             }
          }
 
@@ -153,6 +159,15 @@ namespace Amaigoma
                            return ThresholdCompareLessThanOrEqual(trainSample, threshold) == theKey;
                         }
                         ).ToImmutableList();
+
+            pakiraLeavesResult[leafIndex].guid = trainDataCache.Guid.Where(
+                        (trainLabel, trainLabelIndex) =>
+                        {
+                           double trainSample = trainDataCache.Samples[trainLabelIndex][featureIndex];
+
+                           return ThresholdCompareLessThanOrEqual(trainSample, threshold) == theKey;
+                        }
+                        ).ToImmutableList();
          }
 
          for (int leafIndex = 0; leafIndex < 2; leafIndex++)
@@ -192,8 +207,8 @@ namespace Amaigoma
          PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, trainDataCache);
 
          pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf));
-         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[0].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[0].slice, pakiraLeavesResults[0].ySlice));
-         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[1].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[1].slice, pakiraLeavesResults[1].ySlice));
+         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[0].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[0].slice, pakiraLeavesResults[0].ySlice, pakiraLeavesResults[0].guid));
+         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[1].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[1].slice, pakiraLeavesResults[1].ySlice, pakiraLeavesResults[1].guid));
 
          return pakiraDecisionTreeModel;
       }
@@ -245,8 +260,8 @@ namespace Amaigoma
                {
                   pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, new PakiraTree().AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf)));
                   pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveTrainDataCache(processLeaf.Leaf);
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[0].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[0].slice, pakiraLeavesResults[0].ySlice));
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[1].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[1].slice, pakiraLeavesResults[1].ySlice));
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[0].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[0].slice, pakiraLeavesResults[0].ySlice, pakiraLeavesResults[0].guid));
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[1].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[1].slice, pakiraLeavesResults[1].ySlice, pakiraLeavesResults[1].guid));
 
                   foreach (PakiraLeafResult pakiraLeafResult in pakiraLeavesResults.Where(pakiraLeafResult => (pakiraLeafResult.pakiraLeaf.LabelValues.Count() > 1)))
                   {

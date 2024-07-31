@@ -163,6 +163,7 @@ namespace AmaigomaTests
 
       // UNDONE 1 This is insane. It is slow and uses a LOT of memory. After everything is well unit tested. Replaced the samples
       // by an ID and another class will be responsible to extract the needed data directly from the (integral) image when required.
+      // Ultimately, SabotenCache.Data should disappear.
       TrainDataCache LoadDataSamples(TrainDataCache dataCache, ImmutableList<Rectangle> rectangles, ImmutableList<double> classes, Buffer2D<ulong> integralImage, int featureWindowSize)
       {
          int halfFeatureWindowSize = featureWindowSize / 2;
@@ -203,7 +204,8 @@ namespace AmaigomaTests
                      }
                   }
 
-                  dataCache = dataCache.AddSample(sample, sampleClass);
+                  dataCache = dataCache.AddSample(sample, sampleClass, Guid.NewGuid()
+                  );
                }
             }
 
@@ -302,7 +304,7 @@ namespace AmaigomaTests
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(trainDataCache.Samples[0], trainDataCache.Labels[0]));
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(trainDataCache.Samples[0], trainDataCache.Labels[0], trainDataCache.Guid[0]));
 
          // TODO Evaluate the possibility of using shallow trees to serve as sub-routines. The features could be chosen based on the
          // best discrimination, like it was done a while ago. This will result in categories instead of a scalar so the leaves will need to be recombined
@@ -337,12 +339,17 @@ namespace AmaigomaTests
                IEnumerable<SabotenCache> batchSamples = trainDataCache.Samples.Skip(i).Take(batchSize);
                IEnumerable<double> batchLabels = trainDataCache.Labels.Skip(i).Take(batchSize);
 
+               // TODO This ToList is ugly, but for now it is good enough
+               List<Guid> batchGuid = trainDataCache.Guid.Skip(i).Take(batchSize).ToList();
+
                bool processBatch = true;
 
                // TODO The validation set should be used to identify the leaves which are not predicting correctly. Then find
                //       some data in the train set to improve these leaves
                while (processBatch)
                {
+                  int batchIndex = 0;
+
                   previousRegenerateTreeCountBatch = regenerateTreeCount;
 
                   foreach (var item in batchSamples.Zip(batchLabels, (sabotenCache, label) => new { sabotenCache, label }))
@@ -354,7 +361,9 @@ namespace AmaigomaTests
 
                      if (resultClass != label)
                      {
-                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(sabotenCache, label));
+                        Guid guid = batchGuid[batchIndex];
+
+                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(sabotenCache, label, guid));
 
                         pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(pakiraDecisionTreePredictionResult.SabotenCache);
 
@@ -363,6 +372,8 @@ namespace AmaigomaTests
 
                         regenerateTreeCount++;
                      }
+
+                     batchIndex++;
                   }
 
                   processBatch = (previousRegenerateTreeCountBatch != regenerateTreeCount);

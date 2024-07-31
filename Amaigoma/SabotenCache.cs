@@ -88,6 +88,7 @@ namespace Amaigoma
          }
       }
 
+      // UNDONE This will eventually need to be removed when the Guid is fully introduced in the data cache.
       public IEnumerable<double> Data { get; }
    }
 }

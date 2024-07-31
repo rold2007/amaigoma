@@ -24,7 +24,7 @@ namespace Amaigoma
 
       public static TrainDataCache PrefetchAll(this TrainDataCache trainDataCache, TanukiTransformers tanukiTransformers)
       {
-         return new TrainDataCache(trainDataCache.Samples.PrefetchAll(tanukiTransformers).ToImmutableList<SabotenCache>(), trainDataCache.Labels);
+         return new TrainDataCache(trainDataCache.Samples.PrefetchAll(tanukiTransformers).ToImmutableList<SabotenCache>(), trainDataCache.Labels, trainDataCache.Guid);
       }
 
       private static SabotenCache PrefetchAll(this SabotenCache dataSample, ImmutableList<Tuple<Range, Converter<IEnumerable<double>, IEnumerable<double>>>> dataTransformers)
