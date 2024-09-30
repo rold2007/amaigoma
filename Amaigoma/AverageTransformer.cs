@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Amaigoma
@@ -26,7 +27,7 @@ namespace Amaigoma
          WindowSizeSquaredInverted = 1.0 / (windowSize * windowSize);
       }
 
-      // UNDONE Use Benchmark.net to try to improve the benchmark of this method
+      // TODO Use Benchmark.net to try to improve the benchmark of this method
       public IEnumerable<double> ConvertAll(IEnumerable<double> list)
       {
          ImmutableList<double> features = ImmutableList<double>.Empty;
@@ -34,7 +35,6 @@ namespace Amaigoma
          const int sizeX = FeatureWindowSize;
          const int sizeY = FeatureWindowSize;
          const int width = sizeX + 1;
-
          double[] integral = list.ToArray();
          double sum;
 

@@ -15,7 +15,7 @@ namespace Amaigoma
 
       private sealed record PakiraNodeComparer : IEqualityComparer<PakiraNode> // ncrunch: no coverage
       {
-         private static readonly PakiraNodeComparer instance = new();
+         private static readonly PakiraNodeComparer instance = new(); // ncrunch: no coverage
 
          public static PakiraNodeComparer Instance
          {

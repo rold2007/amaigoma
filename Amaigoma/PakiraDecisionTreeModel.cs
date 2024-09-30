@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Amaigoma
 {
-   using DataTransformer = System.Converter<IEnumerable<double>, IEnumerable<double>>;
+   using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
 
    public sealed record PakiraDecisionTreePredictionResult // ncrunch: no coverage
    {
@@ -22,10 +22,12 @@ namespace Amaigoma
 
    public sealed record PakiraDecisionTreeModel // ncrunch: no coverage
    {
-      private static readonly PassThroughTransformer DefaultDataTransformer = new();
+      private static readonly PassThroughTransformer DefaultDataExtractor = new(); // ncrunch: no coverage
+      private static readonly PassThroughTransformer DefaultDataTransformer = new(); // ncrunch: no coverage
 
       public PakiraTree Tree { get; } = new();
 
+      private DataTransformer TanukiExtractor { get; }
       private TanukiTransformers TanukiTransformers { get; }
 
       private ImmutableDictionary<PakiraLeaf, TrainDataCache> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, TrainDataCache>.Empty;
@@ -35,9 +37,17 @@ namespace Amaigoma
       {
       }
 
-      public PakiraDecisionTreeModel(TanukiTransformers tanukiTransformers)
+      // TODO Replace the "new DataTransformer" by a static member
+      public PakiraDecisionTreeModel(TanukiTransformers tanukiTransformers) : this(tanukiTransformers, DefaultDataExtractor.ConvertAll)
+      {
+      }
+
+      // TODO To follow the ETL order, better to invert these parameters (extractor vs transformer)
+      public PakiraDecisionTreeModel(TanukiTransformers tanukiTransformers, DataTransformer dataExtractor)
       {
          TanukiTransformers = tanukiTransformers;
+         // UNDONE Really needed or only inside TanukiTransformer?
+         TanukiExtractor = dataExtractor;
       }
 
       private PakiraDecisionTreeModel(PakiraTree tree, TanukiTransformers tanukiTransformers, ImmutableDictionary<PakiraLeaf, TrainDataCache> leafTrainDataCache)
@@ -116,6 +126,7 @@ namespace Amaigoma
             // Get the index of the feature for this node.
             int col = node.Column;
 
+            // UNDONE Apply TanukiExtractor here
             v = v.Prefetch(col, TanukiTransformers);
 
             PakiraNode subNode;

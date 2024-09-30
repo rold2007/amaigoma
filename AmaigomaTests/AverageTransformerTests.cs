@@ -49,7 +49,7 @@ namespace AmaigomaTests
             }
 
             List<double> convertedValues = averageTransformer.ConvertAll(integral).ToList<double>();
-            
+
             computedValues.Clear();
 
             for (int offsetY = 0; (offsetY + windowSize) <= AverageTransformer.FeatureWindowSize; offsetY += windowSize)

@@ -13,7 +13,7 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 
-// UNDONE January 15th 2024: New algorithm idea. The strength of each node can be validated if, and only if, there are enough leaves under it to apply
+// TODO January 15th 2024: New algorithm idea. The strength of each node can be validated if, and only if, there are enough leaves under it to apply
 // the logic of swapping the node condition and validating the success rate on train data. For nodes which do not have enough leaves under, this process
 // will probably not give reliable results. The solution is probably to prune these nodes. This will force some leaves to have more than one class. So
 // more trees need to be created, this way each data may eventually fall in a leaf with a single class. Not sure how to determine how many trees are needed
@@ -21,6 +21,8 @@ using Xunit;
 // it should lower its priority. This will not prevent infinite multiclass leaves, but it may help select the tree which returns a multiclass leaf less often.
 namespace AmaigomaTests
 {
+   using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
+
    public record IntegrationTestDataSet // ncrunch: no coverage
    {
       public string filename;
@@ -34,6 +36,19 @@ namespace AmaigomaTests
          this.filename = filename;
          this.regions = regions;
          this.classes = classes;
+      }
+   }
+
+   // UNDONE Need a better class name
+   public record TheDataExtractor // ncrunch: no coverage
+   {
+      public TheDataExtractor()
+      {
+      }
+
+      public IEnumerable<double> ConvertAll(IEnumerable<double> list)
+      {
+         return list.SkipLast(1);
       }
    }
 
@@ -60,7 +75,7 @@ namespace AmaigomaTests
       static double uppercaseAClass = 1; // ncrunch: no coverage
       static double otherClass = 2; // ncrunch: no coverage
 
-      // UNDONE Removed some samples in Train, Validation and Test sets to be able to run faster until the performances are improved
+      // TODO Removed some samples in Train, Validation and Test sets to be able to run faster until the performances are improved
       static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
           new Rectangle(83, 150, 1, 1),
@@ -161,6 +176,9 @@ namespace AmaigomaTests
          yield return new object[] { dataSet };
       }
 
+      // UNDONE Simulate a Guid
+      static double theGuid = 1000;
+
       // UNDONE 1 This is insane. It is slow and uses a LOT of memory. After everything is well unit tested. Replaced the samples
       // by an ID and another class will be responsible to extract the needed data directly from the (integral) image when required.
       // Ultimately, SabotenCache.Data should disappear.
@@ -180,7 +198,7 @@ namespace AmaigomaTests
             {
                for (int x = rectangle.Left; x < rectangle.Right; x++)
                {
-                  // UNDONE The pixel position was removed to simplify unit testing. Find a different way of doing it.
+                  // TODO The pixel position was removed to simplify unit testing. Find a different way of doing it.
                   //sample = new() { x, y };
                   sample = new();
                   sample.EnsureCapacity(2 + (featureWindowSize + 1) * (featureWindowSize + 1));
@@ -204,8 +222,10 @@ namespace AmaigomaTests
                      }
                   }
 
-                  dataCache = dataCache.AddSample(sample, sampleClass, Guid.NewGuid()
-                  );
+                  // UNDONE The Guid is added to the sample because Converter<> only accepts one input. This will be removed when the sample is not needed anymore.
+                  sample.Add(theGuid++);
+
+                  dataCache = dataCache.AddSample(sample, sampleClass);
                }
             }
 
@@ -251,7 +271,7 @@ namespace AmaigomaTests
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
-      // UNDONE 3 This test is becoming way too slow, even for an integration test. Simplify/optimize it
+      // TODO 3 This test is becoming way too slow, even for an integration test. Simplify/optimize it
       [Timeout(600000)]
       public void UppercaseA_507484246(DataSet dataSet)
       {
@@ -291,20 +311,23 @@ namespace AmaigomaTests
          TrainDataCache testDataCache = LoadDataSamples(new TrainDataCache(), testRectangles, testClasses, integralImage, AverageTransformer.FeatureWindowSize);
 
          // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
-         Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
+         DataTransformer dataTransformers = null;
 
-         // UNDONE Removed a data transformer to be able to run faster until the performances are improved
+         // TODO Removed a data transformer to be able to run faster until the performances are improved
          //dataTransformers += new AverageTransformer(1).ConvertAll;
          dataTransformers += new AverageTransformer(3).ConvertAll;
-         dataTransformers += new AverageTransformer(5).ConvertAll;
-         dataTransformers += new AverageTransformer(7).ConvertAll;
-         dataTransformers += new AverageTransformer(17).ConvertAll;
+         //dataTransformers += new AverageTransformer(5).ConvertAll;
+         //dataTransformers += new AverageTransformer(7).ConvertAll;
+         //dataTransformers += new AverageTransformer(17).ConvertAll;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new TanukiTransformers(dataTransformers, trainDataCache.Samples[0].Data));
+         TheDataExtractor theDataExtractor = new TheDataExtractor();
+
+         // UNDONE Add the Guid as a double value at the end of Samples because we cannot add two inputs to Converter<>
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new TanukiTransformers(dataTransformers, trainDataCache.Samples[0].Data, theDataExtractor.ConvertAll));
 
          trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(trainDataCache.Samples[0], trainDataCache.Labels[0], trainDataCache.Guid[0]));
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(trainDataCache.Samples[0], trainDataCache.Labels[0]));
 
          // TODO Evaluate the possibility of using shallow trees to serve as sub-routines. The features could be chosen based on the
          // best discrimination, like it was done a while ago. This will result in categories instead of a scalar so the leaves will need to be recombined
@@ -326,10 +349,10 @@ namespace AmaigomaTests
             previousRegenerateTreeCount = regenerateTreeCount;
             processBackgroundTrainData = false;
 
-            // UNDONE Run many tree generations to evaluate if the average accuracy is lower when the root is using a data transformer
+            // TODO Run many tree generations to evaluate if the average accuracy is lower when the root is using a data transformer
             // with a lower size (1 vs 15)
             // TODO Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the Test classes, inside the main library
-            // UNDONE Note this methodology somewhere: When the validation set contains too many unevaluated leaves we need to apply one of the following solution:
+            // TODO Note this methodology somewhere: When the validation set contains too many unevaluated leaves we need to apply one of the following solution:
             // - Increase validation set size
             // - Optimize the tree size by replacing nodes with better discriminating nodes, thus reducing the number of leaves and/or the depth of the tree
             // - Other?
@@ -338,9 +361,6 @@ namespace AmaigomaTests
                batchSize = Math.Min(100, Math.Max(20, pakiraDecisionTreeModel.Tree.GetLeaves().Count()));
                IEnumerable<SabotenCache> batchSamples = trainDataCache.Samples.Skip(i).Take(batchSize);
                IEnumerable<double> batchLabels = trainDataCache.Labels.Skip(i).Take(batchSize);
-
-               // TODO This ToList is ugly, but for now it is good enough
-               List<Guid> batchGuid = trainDataCache.Guid.Skip(i).Take(batchSize).ToList();
 
                bool processBatch = true;
 
@@ -361,9 +381,7 @@ namespace AmaigomaTests
 
                      if (resultClass != label)
                      {
-                        Guid guid = batchGuid[batchIndex];
-
-                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(sabotenCache, label, guid));
+                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(sabotenCache, label));
 
                         pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(pakiraDecisionTreePredictionResult.SabotenCache);
 
