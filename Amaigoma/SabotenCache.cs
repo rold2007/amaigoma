@@ -11,14 +11,12 @@ namespace Amaigoma
       private ImmutableList<double> TransformedData { get; } = ImmutableList<double>.Empty;
       private ImmutableList<bool> FetchedData { get; } = ImmutableList<bool>.Empty;
 
-      public SabotenCache(IEnumerable<double> data)
+      public SabotenCache()
       {
-         Data = data;
       }
 
-      private SabotenCache(IEnumerable<double> data, ImmutableList<double> transformedData, ImmutableList<bool> fetchedData)
+      private SabotenCache(ImmutableList<double> transformedData, ImmutableList<bool> fetchedData)
       {
-         Data = data;
          TransformedData = transformedData;
          FetchedData = fetchedData;
       }
@@ -61,7 +59,7 @@ namespace Amaigoma
             fetchedData = fetchedData.InsertRange(range.Start.Value, Enumerable.Repeat(true, range.End.Value - range.Start.Value));
          }
 
-         return new SabotenCache(Data, transformedData, fetchedData);
+         return new SabotenCache(transformedData, fetchedData);
       }
 
       public bool CacheHit(int index)
@@ -87,8 +85,5 @@ namespace Amaigoma
             return TransformedData[index];
          }
       }
-
-      // UNDONE This will eventually need to be removed when the Guid is fully introduced in the data cache.
-      public IEnumerable<double> Data { get; }
    }
 }

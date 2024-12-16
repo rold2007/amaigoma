@@ -34,6 +34,7 @@ namespace AmaigomaTests
          }
       }
 
+      // TODO This should be done automatically upon initialization of each test
       public static PakiraDecisionTreeGenerator CreatePakiraGeneratorInstance()
       {
          PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator = new();
@@ -47,110 +48,115 @@ namespace AmaigomaTests
       public void Generate()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         TrainDataCache trainDataCache = new TrainDataCache();
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2, 90 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 250, 140 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 200, 100 }));
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
+         labels = labels.Add(42);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
-
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
       }
 
       [Fact]
       public void GenerateMultipleCalls()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         TrainDataCache trainDataCache = new();
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2, 90 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 250, 140 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 200, 100 }));
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
+         labels = labels.Add(42);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
-
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
-
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         TrainDataCache trainDataCache2 = new();
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
 
-         trainDataCache2 = trainDataCache2.AddSample(ImmutableList.CreateRange(new double[] { 3, 91 }), 42);
-         trainDataCache2 = trainDataCache2.AddSample(ImmutableList.CreateRange(new double[] { 128, 95 }), 54);
-         trainDataCache2 = trainDataCache2.AddSample(ImmutableList.CreateRange(new double[] { 201, 101 }), 42);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
 
-         trainDataCache2 = pakiraDecisionTreeModel.PrefetchAll(trainDataCache2);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 3, 91 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 128, 95 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 201, 101 }));
+         labels = labels.Add(42);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache2);
+         TanukiTransformers tanukiTransformers2 = new TanukiTransformers(data, labels);
 
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(3, 3), tanukiTransformers2);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache2.Samples[0].Data).LabelValue.ShouldBe(trainDataCache2.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache2.Samples[1].Data).LabelValue.ShouldBe(trainDataCache2.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache2.Samples[2].Data).LabelValue.ShouldBe(trainDataCache2.Labels[2]);
+         PakiraTreeWalker pakiraTreeWalker2 = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers2);
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache2.Samples[0]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache2.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache2.Samples[1]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache2.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache2.Samples[2]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache2.Labels[2]);
-      }
-
-      [Fact]
-      public void MinimumSampleCount()
-      {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
-         TrainDataCache trainDataCache = new();
-
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 20, 140 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 33, 200 }), 42);
-
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
-
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
-
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
-
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
-
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         pakiraTreeWalker2.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker2.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker2.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker2.PredictLeaf(3).LabelValues.First().ShouldBe(labels[3]);
+         pakiraTreeWalker2.PredictLeaf(4).LabelValues.First().ShouldBe(labels[4]);
+         pakiraTreeWalker2.PredictLeaf(5).LabelValues.First().ShouldBe(labels[5]);
+         pakiraTreeWalker2.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker2.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker2.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker2.PredictLeaf(3).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker2.PredictLeaf(4).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker2.PredictLeaf(5).LabelValues.Count().ShouldBe(1);
       }
 
       [Fact]
       public void DataTransformers()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
-         TrainDataCache trainDataCache = new();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2, 3 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 120, 140 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 190, 200 }));
+
+         labels = labels.Add(42);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
 
          PassThroughTransformer passThroughTransformer = new();
          MeanDistanceDataTransformer meanDistanceDataTransformer = new();
@@ -160,17 +166,20 @@ namespace AmaigomaTests
          dataTransformers += passThroughTransformer.ConvertAll;
          dataTransformers += MeanDistanceDataTransformer.ConvertAll;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new TanukiTransformers(dataTransformers, trainDataCache.Samples[0].Data));
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
-
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
-
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
 
          // The data transformers should allow to produce a very shallow tree
          pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(1);
@@ -180,11 +189,16 @@ namespace AmaigomaTests
       public void DataTransformersQuickExit()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
-         TrainDataCache trainDataCache = new();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 25, 35 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 120, 140 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 190, 200 }));
+
+         labels = labels.Add(42);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
 
          PassThroughTransformer passThroughTransformer = new();
          MeanDistanceDataTransformer meanDistanceDataTransformer = new();
@@ -198,17 +212,20 @@ namespace AmaigomaTests
             dataTransformers += passThroughTransformer.ConvertAll;
          }
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new TanukiTransformers(dataTransformers, trainDataCache.Samples[0].Data));
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
-
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
-
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
 
          // The data transformers should allow to produce a very shallow tree
          pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(1, 5);
@@ -218,11 +235,16 @@ namespace AmaigomaTests
       public void DataTransformersQuickExit2()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
-         TrainDataCache trainDataCache = new();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 25, 35 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 120, 140 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 190, 200 }), 42);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 25, 35 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 120, 140 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 190, 200 }));
+
+         labels = labels.Add(42);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
 
          MeanDistanceDataTransformer meanDistanceDataTransformer = new();
 
@@ -230,17 +252,20 @@ namespace AmaigomaTests
 
          dataTransformers += MeanDistanceDataTransformer.ConvertAll;
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(new TanukiTransformers(dataTransformers, trainDataCache.Samples[0].Data));
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
-
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
-
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
 
          // The data transformers should allow to produce a very shallow tree
          pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(1);
@@ -250,29 +275,49 @@ namespace AmaigomaTests
       public void DeepTree()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
-         TrainDataCache trainDataCache = new();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 3 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 254 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 255 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 251, 253 }), 6);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 251, 254 }), 9);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 1, 2 }), 96);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 1 }), 97);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 2 }), 98);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 3, 2 }), 99);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2, 3 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 250, 254 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 250, 255 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 251, 253 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 251, 254 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 1, 2 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2, 1 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2, 2 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 3, 2 }));
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
+         labels = labels.Add(42);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
+         labels = labels.Add(6);
+         labels = labels.Add(9);
+         labels = labels.Add(96);
+         labels = labels.Add(97);
+         labels = labels.Add(98);
+         labels = labels.Add(99);
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         for (int i = 0; i < trainDataCache.Samples.Count; i++)
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+
+         for (int i = 0; i < data.Count; i++)
          {
-            pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[i].Data).LabelValue.ShouldBe(trainDataCache.Labels[i], "i=" + i.ToString());
+            pakiraTreeWalker.PredictLeaf(i).LabelValues.First().ShouldBe(labels[i], "i=" + i.ToString());
+            pakiraTreeWalker.PredictLeaf(i).LabelValues.Count().ShouldBe(1);
          }
       }
 
@@ -280,114 +325,139 @@ namespace AmaigomaTests
       public void CertaintyScore()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
-         TrainDataCache trainDataCache = new();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 200, 100 }), 42);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2, 90 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 250, 140 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 200, 100 }));
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
+         labels = labels.Add(42);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2]).PakiraLeaf.LabelValue.ShouldBe(trainDataCache.Labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
       }
 
       [Fact]
       public void GenerateCannotSplit()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
-         TrainDataCache trainDataCache = new();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2, 90 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 42);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2, 90 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 250, 140 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 250, 140 }));
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
+         labels = labels.Add(42);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.Count().ShouldBe(2);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValues.Count().ShouldBe(2);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[2]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[2].Data).LabelValues.ShouldContain(trainDataCache.Labels[2]);
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(2);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(2);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[1]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[2]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.ShouldContain(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.ShouldContain(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
       }
 
       [Fact]
       public void GenerateCannotSplit2()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
-         TrainDataCache trainDataCache = new();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 54);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 250, 140 }), 42);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 250, 140 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 250, 140 }));
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
+         labels = labels.Add(54);
+         labels = labels.Add(42);
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.Count().ShouldBe(2);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValues.ShouldContain(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(2);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(2);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.ShouldContain(labels[0]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.ShouldContain(labels[1]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[1]);
       }
 
       [Fact]
       public void CallPakiraTreeReplaceLeaf()
       {
          PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
-         TrainDataCache trainDataCache = new();
+         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2 }), 42);
-         trainDataCache = trainDataCache.AddSample(ImmutableList.CreateRange(new double[] { 2 }), 54);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2 }));
+         data = data.Add(ImmutableList.CreateRange(new double[] { 2 }));
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new(trainDataCache.Samples[0].Data);
+         labels = labels.Add(42);
+         labels = labels.Add(54);
 
-         trainDataCache = pakiraDecisionTreeModel.PrefetchAll(trainDataCache);
+         TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainDataCache);
-
-         TrainDataCache extraDataCache = new();
-
-         extraDataCache = extraDataCache.AddSample(ImmutableList.CreateRange(new double[] { 215 }), 42);
-         extraDataCache = pakiraDecisionTreeModel.PrefetchAll(extraDataCache);
-
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new TrainDataCache(extraDataCache.Samples[0], extraDataCache.Labels[0]));
-
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValue.ShouldBe(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.Count().ShouldBe(2);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValues.ShouldContain(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[0].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[1].Data).LabelValues.ShouldContain(trainDataCache.Labels[1]);
+         data = data.Add(ImmutableList.CreateRange(new double[] { 215 }));
 
-         pakiraDecisionTreeModel.PredictLeaf(extraDataCache.Samples[0].Data).LabelValue.ShouldBe(extraDataCache.Labels[0]);
-         pakiraDecisionTreeModel.PredictLeaf(extraDataCache.Samples[0].Data).LabelValues.Count().ShouldBe(1);
+         labels = labels.Add(42);
+
+         TanukiTransformers tanukiTransformers2 = new TanukiTransformers(data, labels);
+
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(2, 1), tanukiTransformers2);
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(2);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(2);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.ShouldContain(labels[0]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.ShouldContain(labels[1]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[1]);
+
+         PakiraTreeWalker pakiraTreeWalker2 = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers2);
+
+         pakiraTreeWalker2.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker2.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
       }
    }
 }

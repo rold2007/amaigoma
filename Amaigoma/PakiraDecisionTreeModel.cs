@@ -2,142 +2,104 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 
 namespace Amaigoma
 {
-   using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
-
-   public sealed record PakiraDecisionTreePredictionResult // ncrunch: no coverage
-   {
-      public PakiraLeaf PakiraLeaf { get; }
-      public SabotenCache SabotenCache { get; }
-
-      public PakiraDecisionTreePredictionResult(PakiraLeaf pakiraLeaf, SabotenCache sabotenCache)
-      {
-         PakiraLeaf = pakiraLeaf;
-         SabotenCache = sabotenCache;
-      }
-   }
-
    public sealed record PakiraDecisionTreeModel // ncrunch: no coverage
    {
-      private static readonly PassThroughTransformer DefaultDataExtractor = new(); // ncrunch: no coverage
-      private static readonly PassThroughTransformer DefaultDataTransformer = new(); // ncrunch: no coverage
-
       public PakiraTree Tree { get; } = new();
 
-      private DataTransformer TanukiExtractor { get; }
-      private TanukiTransformers TanukiTransformers { get; }
+      private ImmutableDictionary<PakiraLeaf, ImmutableList<int>> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, ImmutableList<int>>.Empty;
 
-      private ImmutableDictionary<PakiraLeaf, TrainDataCache> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, TrainDataCache>.Empty;
-
-      // TODO Replace dataSample parameter by TrainDataCache. But we need a way to make sure we have at least one sample in it, otherwise TanukiTransformers will crash.
-      public PakiraDecisionTreeModel(IEnumerable<double> dataSample) : this(new TanukiTransformers(new DataTransformer(DefaultDataTransformer.ConvertAll), dataSample))
+      public PakiraDecisionTreeModel()
       {
       }
 
-      // TODO Replace the "new DataTransformer" by a static member
-      public PakiraDecisionTreeModel(TanukiTransformers tanukiTransformers) : this(tanukiTransformers, DefaultDataExtractor.ConvertAll)
-      {
-      }
-
-      // TODO To follow the ETL order, better to invert these parameters (extractor vs transformer)
-      public PakiraDecisionTreeModel(TanukiTransformers tanukiTransformers, DataTransformer dataExtractor)
-      {
-         TanukiTransformers = tanukiTransformers;
-         // UNDONE Really needed or only inside TanukiTransformer?
-         TanukiExtractor = dataExtractor;
-      }
-
-      private PakiraDecisionTreeModel(PakiraTree tree, TanukiTransformers tanukiTransformers, ImmutableDictionary<PakiraLeaf, TrainDataCache> leafTrainDataCache)
+      private PakiraDecisionTreeModel(PakiraTree tree, ImmutableDictionary<PakiraLeaf, ImmutableList<int>> leafTrainDataCache)
       {
          Tree = tree;
-         TanukiTransformers = tanukiTransformers;
          LeafTrainDataCache = leafTrainDataCache;
       }
 
       public PakiraDecisionTreeModel UpdateTree(PakiraTree tree)
       {
-         return new PakiraDecisionTreeModel(tree, TanukiTransformers, LeafTrainDataCache);
+         return new PakiraDecisionTreeModel(tree, LeafTrainDataCache);
       }
 
-      public PakiraDecisionTreeModel AddTrainDataCache(PakiraLeaf pakiraLeaf, TrainDataCache trainDataCache)
+      public PakiraDecisionTreeModel AddDataSample(PakiraLeaf pakiraLeaf, ImmutableList<int> ids)
       {
-         if (LeafTrainDataCache.TryGetValue(pakiraLeaf, out TrainDataCache leafTrainDataCache))
+         if (LeafTrainDataCache.TryGetValue(pakiraLeaf, out ImmutableList<int> leafTrainDataCache))
          {
-            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.SetItem(pakiraLeaf, leafTrainDataCache.AddSamples(trainDataCache)));
+            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.SetItem(pakiraLeaf, leafTrainDataCache.AddRange(ids)));
          }
          else
          {
-            return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.Add(pakiraLeaf, trainDataCache));
+            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.Add(pakiraLeaf, ids));
          }
       }
 
-      public TrainDataCache TrainDataCache(PakiraLeaf pakiraLeaf)
+      public ImmutableList<int> DataSamples(PakiraLeaf pakiraLeaf)
       {
          return LeafTrainDataCache[pakiraLeaf];
       }
 
-      public PakiraDecisionTreeModel RemoveTrainDataCache(PakiraLeaf pakiraLeaf)
+      public PakiraDecisionTreeModel RemoveDataSample(PakiraLeaf pakiraLeaf)
       {
          LeafTrainDataCache.ContainsKey(pakiraLeaf).ShouldBeTrue();
 
-         return new PakiraDecisionTreeModel(Tree, TanukiTransformers, LeafTrainDataCache.Remove(pakiraLeaf));
+         return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.Remove(pakiraLeaf));
+      }
+   }
+
+   // TODO Move this to a new file.
+   public sealed record PakiraTreeWalker // ncrunch: no coverage
+   {
+      private PakiraTree Tree { get; }
+      private TanukiTransformers TanukiTransformers { get; }
+
+      public PakiraTreeWalker(PakiraTree tree, TanukiTransformers tanukiTransformers)
+      {
+         Tree = tree;
+         TanukiTransformers = tanukiTransformers;
       }
 
-      public IEnumerable<int> FeatureIndices()
+      public PakiraLeaf PredictLeaf(int id)
       {
-         return Enumerable.Range(0, TanukiTransformers.TotalOutputSamples);
+         return WalkNode(id).Item1;
       }
 
-      public TrainDataCache PrefetchAll(TrainDataCache trainDataCache)
+      private Tuple<PakiraLeaf, SabotenCache> WalkNode(int id)
       {
-         return trainDataCache.PrefetchAll(TanukiTransformers);
-      }
+         PakiraNode node = Tree.Root;
+         IEnumerable<double> dataSample = null;
+         SabotenCache sabotenCache = TanukiTransformers.TanukiSabotenCacheExtractor(id);
 
-      /// <summary>Predicts the given y coordinate.</summary>
-      /// <param name="y">The Vector to process.</param>
-      /// <returns>A node.</returns>
-      public PakiraLeaf PredictLeaf(IEnumerable<double> y)
-      {
-         return WalkNode(new SabotenCache(y), Tree).Item1;
-      }
-
-      /// <summary>Predicts the given y coordinate.</summary>
-      /// <param name="y">The Vector to process.</param>
-      /// <returns>A node.</returns>
-      public PakiraDecisionTreePredictionResult PredictLeaf(SabotenCache sabotenCache)
-      {
-         Tuple<PakiraLeaf, SabotenCache> walkNodeResult = WalkNode(sabotenCache, Tree);
-
-         return new PakiraDecisionTreePredictionResult(walkNodeResult.Item1, walkNodeResult.Item2);
-      }
-
-      private Tuple<PakiraLeaf, SabotenCache> WalkNode(SabotenCache sabotenCache, PakiraTree tree)
-      {
-         return WalkNode(sabotenCache, tree.Root);
-      }
-
-      private Tuple<PakiraLeaf, SabotenCache> WalkNode(SabotenCache v, PakiraNode node)
-      {
          do
          {
             // Get the index of the feature for this node.
             int col = node.Column;
 
-            // UNDONE Apply TanukiExtractor here
-            v = v.Prefetch(col, TanukiTransformers);
+            if (!sabotenCache.CacheHit(col))
+            {
+               if (dataSample == null)
+               {
+                  dataSample = TanukiTransformers.TanukiDataExtractor(id);
+               }
+
+               sabotenCache = sabotenCache.Prefetch(TanukiTransformers, dataSample, col);
+            }
 
             PakiraNode subNode;
 
-            if (v[col] <= node.Threshold)
+            if (sabotenCache[col] <= node.Threshold)
             {
                subNode = Tree.GetLeftNodeSafe(node);
 
                if (subNode == null)
                {
-                  return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetLeftLeaf(node), v);
+                  TanukiTransformers.TanukiSabotenCacheLoad(id, sabotenCache);
+
+                  return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetLeftLeaf(node), sabotenCache);
                }
             }
             else
@@ -146,7 +108,9 @@ namespace Amaigoma
 
                if (subNode == null)
                {
-                  return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetRightLeaf(node), v);
+                  TanukiTransformers.TanukiSabotenCacheLoad(id, sabotenCache);
+
+                  return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetRightLeaf(node), sabotenCache);
                }
             }
 

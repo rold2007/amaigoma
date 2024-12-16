@@ -25,57 +25,12 @@ namespace Amaigoma
       }
    }
 
-   // TODO Rename this to remove the 'Train'
-   public sealed record TrainDataCache // ncrunch: no coverage
-   {
-      public ImmutableList<SabotenCache> Samples { get; } = ImmutableList<SabotenCache>.Empty;
-      public ImmutableList<double> Labels { get; } = ImmutableList<double>.Empty;
-
-      public TrainDataCache()
-      {
-      }
-
-      public TrainDataCache(SabotenCache sample, double label)
-      {
-         Samples = Samples.Add(sample);
-         Labels = Labels.Add(label);
-      }
-
-      public TrainDataCache(ImmutableList<SabotenCache> samples, ImmutableList<double> labels)
-      {
-         labels.Count.ShouldBe(samples.Count);
-
-         Samples = samples;
-         Labels = labels;
-      }
-
-      public TrainDataCache AddSample(IEnumerable<double> data, double label)
-      {
-         return AddSamples(new TrainDataCache(new SabotenCache(data), label));
-      }
-
-      public TrainDataCache AddSamples(TrainDataCache samples)
-      {
-         samples.Samples.Count.ShouldBeGreaterThan(0);
-         samples.Labels.Count.ShouldBeGreaterThan(0);
-
-         if (!Samples.IsEmpty)
-         {
-            samples.Samples[0].Data.Count().ShouldBe(Samples[0].Data.Count());
-         }
-
-         return new TrainDataCache(Samples.AddRange(samples.Samples), Labels.AddRange(samples.Labels));
-      }
-   }
-
    public sealed record PakiraDecisionTreeGenerator // ncrunch: no coverage
    {
       private sealed record PakiraLeafResult // ncrunch: no coverage
       {
          public PakiraLeaf pakiraLeaf;
-         public ImmutableList<SabotenCache> slice;
-         public ImmutableList<double> ySlice;
-         public ImmutableList<Guid> guid;
+         public ImmutableList<int> ids;
       }
 
       public static readonly int UNKNOWN_CLASS_INDEX = -1; // ncrunch: no coverage
@@ -86,26 +41,28 @@ namespace Amaigoma
       {
       }
 
-      public double UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
+      public int UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
 
-      public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainDataCache trainDataCache)
+      public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
       {
          if (pakiraDecisionTreeModel.Tree.Root == null)
          {
-            pakiraDecisionTreeModel = BuildInitialTree(pakiraDecisionTreeModel, trainDataCache);
+            pakiraDecisionTreeModel = BuildInitialTree(pakiraDecisionTreeModel, ids, tanukiTransformers);
          }
          else
          {
-            for (int trainSampleIndex = 0; trainSampleIndex < trainDataCache.Samples.Count; trainSampleIndex++)
+            PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+
+            foreach (int id in ids)
             {
                // TODO Create a new PredictLeaf() which doesn't call Prefetch() to optimize this slightly
-               PakiraDecisionTreePredictionResult pakiraDecisionTreePredictionResult = pakiraDecisionTreeModel.PredictLeaf(trainDataCache.Samples[trainSampleIndex]);
+               PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
 
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraDecisionTreePredictionResult.PakiraLeaf, new TrainDataCache(pakiraDecisionTreePredictionResult.SabotenCache, trainDataCache.Labels[trainSampleIndex]));
+               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeafResult, ImmutableList<int>.Empty.Add(id));
             }
          }
 
-         return BuildTree(pakiraDecisionTreeModel);
+         return BuildTree(pakiraDecisionTreeModel, tanukiTransformers);
       }
 
       private static bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)
@@ -115,7 +72,7 @@ namespace Amaigoma
 
       private struct ProcessLeaf
       {
-         public ProcessLeaf(PakiraNode parentNode, PakiraLeaf leaf, TrainDataCache trainSamplesCache)
+         public ProcessLeaf(PakiraNode parentNode, PakiraLeaf leaf, ImmutableList<int> trainSamplesCache)
          {
             ParentNode = parentNode;
             Leaf = leaf;
@@ -124,19 +81,31 @@ namespace Amaigoma
 
          public PakiraNode ParentNode;
          public PakiraLeaf Leaf;
-         public TrainDataCache TrainSamplesCache;
+         public ImmutableList<int> TrainSamplesCache;
       };
 
-      private PakiraNode PrepareNode(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainDataCache trainDataCache)
+      private PakiraNode PrepareNode(IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
       {
-         Tuple<int, double> tuple = GetBestSplit(trainDataCache, pakiraDecisionTreeModel);
+         Tuple<int, double> tuple = GetBestSplit(ids, tanukiTransformers);
 
          return new PakiraNode(tuple.Item1, tuple.Item2);
       }
 
-      private PakiraLeafResult[] PrepareLeaves(int featureIndex, double threshold, TrainDataCache trainDataCache)
+      private PakiraLeafResult[] PrepareLeaves(int featureIndex, double threshold, IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
       {
          PakiraLeafResult[] pakiraLeavesResult = new PakiraLeafResult[2];
+
+         foreach (int id in ids)
+         {
+            SabotenCache sabotenCache = tanukiTransformers.TanukiSabotenCacheExtractor(id);
+
+            if (!sabotenCache.CacheHit(featureIndex))
+            {
+               IEnumerable<double> data = tanukiTransformers.TanukiDataExtractor(id);
+               sabotenCache = sabotenCache.Prefetch(tanukiTransformers, data, featureIndex);
+               tanukiTransformers.TanukiSabotenCacheLoad(id, sabotenCache);
+            }
+         }
 
          for (int leafIndex = 0; leafIndex < 2; leafIndex++)
          {
@@ -144,36 +113,22 @@ namespace Amaigoma
 
             pakiraLeavesResult[leafIndex] = new PakiraLeafResult();
 
-            pakiraLeavesResult[leafIndex].slice = trainDataCache.Samples.Where(column => ThresholdCompareLessThanOrEqual(column[featureIndex], threshold) == theKey).ToImmutableList();
-
-            pakiraLeavesResult[leafIndex].ySlice = trainDataCache.Labels.Where(
-                        (trainLabel, trainLabelIndex) =>
-                        {
-                           double trainSample = trainDataCache.Samples[trainLabelIndex][featureIndex];
-
-                           return ThresholdCompareLessThanOrEqual(trainSample, threshold) == theKey;
-                        }
-                        ).ToImmutableList();
+            pakiraLeavesResult[leafIndex].ids = ImmutableList<int>.Empty.AddRange(ids.Where(id =>
+                                    {
+                                       return ThresholdCompareLessThanOrEqual(tanukiTransformers.TanukiSabotenCacheExtractor(id)[featureIndex], threshold) == theKey;
+                                    }));
          }
 
          for (int leafIndex = 0; leafIndex < 2; leafIndex++)
          {
-            if (pakiraLeavesResult[leafIndex].slice.Count() > 0)
+            if (pakiraLeavesResult[leafIndex].ids.Count() > 0)
             {
-               ImmutableList<double> distinctValues = pakiraLeavesResult[leafIndex].ySlice.Distinct().ToImmutableList();
+               ImmutableHashSet<int> labels = ImmutableHashSet.CreateRange(pakiraLeavesResult[leafIndex].ids.Select(id =>
+                        {
+                           return tanukiTransformers.TanukiLabelExtractor(id);
+                        }));
 
-               // only one answer, set leaf
-               if (distinctValues.Count == 1)
-               {
-                  double leafValue = pakiraLeavesResult[leafIndex].ySlice.First();
-
-                  pakiraLeavesResult[leafIndex].pakiraLeaf = new PakiraLeaf(leafValue);
-               }
-               // otherwise continue to build tree
-               else
-               {
-                  pakiraLeavesResult[leafIndex].pakiraLeaf = new PakiraLeaf(distinctValues);
-               }
+               pakiraLeavesResult[leafIndex].pakiraLeaf = new PakiraLeaf(labels);
             }
             else
             {
@@ -185,73 +140,95 @@ namespace Amaigoma
          return pakiraLeavesResult;
       }
 
-      private PakiraDecisionTreeModel BuildInitialTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TrainDataCache trainDataCache)
+      private PakiraDecisionTreeModel BuildInitialTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
       {
          pakiraDecisionTreeModel.Tree.Root.ShouldBeNull();
 
-         PakiraNode pakiraNode = PrepareNode(pakiraDecisionTreeModel, trainDataCache);
-         PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, trainDataCache);
+         PakiraNode pakiraNode = PrepareNode(ids, tanukiTransformers);
+         PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, ids, tanukiTransformers);
 
          pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf));
-         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[0].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[0].slice, pakiraLeavesResults[0].ySlice));
-         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[1].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[1].slice, pakiraLeavesResults[1].ySlice));
+         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[0].ids);
+         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeavesResults[1].pakiraLeaf, pakiraLeavesResults[1].ids);
 
          return pakiraDecisionTreeModel;
       }
 
-      private PakiraDecisionTreeModel BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel)
+      private PakiraDecisionTreeModel BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TanukiTransformers tanukiTransformers)
       {
          ImmutableStack<ProcessLeaf> processLeaves = ImmutableStack<ProcessLeaf>.Empty;
+         ImmutableHashSet<PakiraLeaf> multipleLabelsLeaves = ImmutableHashSet<PakiraLeaf>.Empty;
 
          // Identify all the leaves to retrain
          foreach (KeyValuePair<PakiraNode, PakiraLeaf> pakiraNodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves().Where(pakiraNodeLeaf =>
          {
-            ImmutableList<double> labels = pakiraDecisionTreeModel.TrainDataCache(pakiraNodeLeaf.Value).Labels;
-
-            if (labels.Count == 1)
+            // TODO his logic can certainly be simplified without using a HashSet since we exit early as soon as we have 2 items
+            if (pakiraNodeLeaf.Value.LabelValues.Count() == 1)
             {
-               pakiraNodeLeaf.Value.LabelValues.Count().ShouldBe(1);
-               return labels[0] != pakiraNodeLeaf.Value.LabelValue;
+               ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(pakiraNodeLeaf.Value);
+
+               if (ids.Count > 0)
+               {
+                  ImmutableHashSet<int> uniqueLabels = ImmutableHashSet<int>.Empty;
+
+                  foreach (int id in ids)
+                  {
+                     uniqueLabels = uniqueLabels.Add(tanukiTransformers.TanukiLabelExtractor(id));
+
+                     if (uniqueLabels.Count > 1)
+                     {
+                        multipleLabelsLeaves = multipleLabelsLeaves.Add(pakiraNodeLeaf.Value);
+                        return true;
+                     }
+                  }
+
+                  uniqueLabels.Count().ShouldBe(1);
+                  return uniqueLabels.First() != pakiraNodeLeaf.Value.LabelValues.First();
+               }
             }
             else
             {
-               return (labels.Distinct().Count() > 1);
+               return true;
             }
+
+            return false;
          }))
          {
-            processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNodeLeaf.Key, pakiraNodeLeaf.Value, pakiraDecisionTreeModel.TrainDataCache(pakiraNodeLeaf.Value)));
+            processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNodeLeaf.Key, pakiraNodeLeaf.Value, pakiraDecisionTreeModel.DataSamples(pakiraNodeLeaf.Value)));
          }
 
          while (!processLeaves.IsEmpty)
          {
             processLeaves = processLeaves.Pop(out ProcessLeaf processLeaf);
 
-            TrainDataCache processNodeTrainSamplesCache = processLeaf.TrainSamplesCache;
+            ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(processLeaf.Leaf);
 
-            if (processLeaf.Leaf.LabelValue == UnknownLabelValue && processNodeTrainSamplesCache.Labels.Distinct().Count() == 1)
+            if (processLeaf.Leaf.LabelValues.First() == UnknownLabelValue && !multipleLabelsLeaves.Contains(processLeaf.Leaf))
             {
-               PakiraLeaf updatedLeaf = new PakiraLeaf(processNodeTrainSamplesCache.Labels);
+               ImmutableHashSet<int> labels = ImmutableHashSet.CreateRange(ids.Select(id => tanukiTransformers.TanukiLabelExtractor(id)));
+               PakiraLeaf updatedLeaf = new PakiraLeaf(labels);
 
                pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, updatedLeaf));
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveTrainDataCache(processLeaf.Leaf);
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(updatedLeaf, processNodeTrainSamplesCache);
+               pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(processLeaf.Leaf);
+               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(updatedLeaf, ids);
             }
             else
             {
-               PakiraNode pakiraNode = PrepareNode(pakiraDecisionTreeModel, processNodeTrainSamplesCache);
+               PakiraNode pakiraNode = PrepareNode(ids, tanukiTransformers);
 
-               PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, processNodeTrainSamplesCache);
+               PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, ids, tanukiTransformers);
 
-               if (pakiraLeavesResults[0].pakiraLeaf.LabelValue != UnknownLabelValue && pakiraLeavesResults[1].pakiraLeaf.LabelValue != UnknownLabelValue)
+               if ((pakiraLeavesResults[0].pakiraLeaf.LabelValues.First() != UnknownLabelValue) && pakiraLeavesResults[1].pakiraLeaf.LabelValues.First() != UnknownLabelValue)
                {
                   pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, new PakiraTree().AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf)));
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveTrainDataCache(processLeaf.Leaf);
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[0].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[0].slice, pakiraLeavesResults[0].ySlice));
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddTrainDataCache(pakiraLeavesResults[1].pakiraLeaf, new TrainDataCache(pakiraLeavesResults[1].slice, pakiraLeavesResults[1].ySlice));
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(processLeaf.Leaf);
+
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[0].ids);
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeavesResults[1].pakiraLeaf, pakiraLeavesResults[1].ids);
 
                   foreach (PakiraLeafResult pakiraLeafResult in pakiraLeavesResults.Where(pakiraLeafResult => (pakiraLeafResult.pakiraLeaf.LabelValues.Count() > 1)))
                   {
-                     processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNode, pakiraLeafResult.pakiraLeaf, pakiraDecisionTreeModel.TrainDataCache(pakiraLeafResult.pakiraLeaf)));
+                     processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNode, pakiraLeafResult.pakiraLeaf, pakiraDecisionTreeModel.DataSamples(pakiraLeafResult.pakiraLeaf)));
                   }
                }
             }
@@ -262,46 +239,53 @@ namespace Amaigoma
          return pakiraDecisionTreeModel;
       }
 
-      private Tuple<int, double> GetBestSplit(TrainDataCache processNodeTrainSamplesCache, PakiraDecisionTreeModel pakiraDecisionTreeModel)
+      private Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
       {
-         ImmutableList<SabotenCache> extractedTrainSamplesCache = processNodeTrainSamplesCache.Samples;
-
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
 
-         // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices sequentially
-         IEnumerable<int> randomFeatureIndices = pakiraDecisionTreeModel.FeatureIndices().Shuffle(RandomSource);
+         // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices sequentially. or all data transformers sequentially
+         // and then randomly within each transformer.
+         IEnumerable<int> randomFeatureIndices = Enumerable.Range(0, tanukiTransformers.TotalOutputSamples).Shuffle(RandomSource);
 
          foreach (int featureIndex in randomFeatureIndices)
          {
             Tuple<double, ImmutableHashSet<double>> minimumValues = new Tuple<double, ImmutableHashSet<double>>(double.MaxValue, ImmutableHashSet<double>.Empty);
             Tuple<double, ImmutableHashSet<double>> maximumValues = new Tuple<double, ImmutableHashSet<double>>(double.MinValue, ImmutableHashSet<double>.Empty);
 
-            for (int i = 0; i < extractedTrainSamplesCache.Count; i++)
+            foreach (int id in ids)
             {
-               SabotenCache trainSample = extractedTrainSamplesCache[i];
-               double trainLabel = processNodeTrainSamplesCache.Labels[i];
-               double trainSampleValue = trainSample[featureIndex];
+               SabotenCache sabotenCache = tanukiTransformers.TanukiSabotenCacheExtractor(id);
 
-               if (trainSampleValue <= minimumValues.Item1)
+               if (!sabotenCache.CacheHit(featureIndex))
                {
-                  ImmutableHashSet<double> labels = (trainSampleValue < minimumValues.Item1) ? ImmutableHashSet<double>.Empty : minimumValues.Item2;
-
-                  minimumValues = new Tuple<double, ImmutableHashSet<double>>(trainSampleValue, labels.Add(trainLabel));
+                  IEnumerable<double> data = tanukiTransformers.TanukiDataExtractor(id);
+                  sabotenCache = sabotenCache.Prefetch(tanukiTransformers, data, featureIndex);
+                  tanukiTransformers.TanukiSabotenCacheLoad(id, sabotenCache);
                }
 
-               if (trainSampleValue >= maximumValues.Item1)
-               {
-                  ImmutableHashSet<double> labels = (trainSampleValue > maximumValues.Item1) ? ImmutableHashSet<double>.Empty : maximumValues.Item2;
+               int trainLabel = tanukiTransformers.TanukiLabelExtractor(id);
+               double dataSampleValue = sabotenCache[featureIndex];
 
-                  maximumValues = new Tuple<double, ImmutableHashSet<double>>(trainSampleValue, labels.Add(trainLabel));
+               if (dataSampleValue <= minimumValues.Item1)
+               {
+                  ImmutableHashSet<double> labels = (dataSampleValue < minimumValues.Item1) ? ImmutableHashSet<double>.Empty : minimumValues.Item2;
+
+                  minimumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(trainLabel));
+               }
+
+               if (dataSampleValue >= maximumValues.Item1)
+               {
+                  ImmutableHashSet<double> labels = (dataSampleValue > maximumValues.Item1) ? ImmutableHashSet<double>.Empty : maximumValues.Item2;
+
+                  maximumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(trainLabel));
                }
             }
 
             double score = maximumValues.Item1 - minimumValues.Item1;
 
             // Accept quickly any feature which splits some data in two
-            bool quickAccept = ((score > 0) && ((minimumValues.Item2.Count != maximumValues.Item2.Count) || (!minimumValues.Item2.SymmetricExcept(maximumValues.Item2).IsEmpty)));
+            bool quickAccept = (score > 0) && ((minimumValues.Item2.Count != maximumValues.Item2.Count) || (!minimumValues.Item2.SymmetricExcept(maximumValues.Item2).IsEmpty));
             bool updateBestFeature = (bestFeature == -1) || quickAccept;
 
             if (updateBestFeature)

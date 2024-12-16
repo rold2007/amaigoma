@@ -6,36 +6,121 @@ using System.Linq;
 
 namespace Amaigoma
 {
+   using DataExtractor = Converter<int, IEnumerable<double>>;
    using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
+   using LabelExtractor = Converter<int, int>;
+   using SabotenCacheExtractor = Converter<int, SabotenCache>;
+   using SabotenCacheLoad = Action<int, SabotenCache>;
 
-   public sealed record TanukiTransformers // ncrunch: no coverage
+   // TODO Move this to a new file.
+   public record IndexedDataExtractor // ncrunch: no coverage
    {
-      private static readonly PassThroughTransformer DefaultDataExtractor = new(); // ncrunch: no coverage
-      private readonly ImmutableList<Tuple<Range, DataTransformer>> dataTransformers = ImmutableList<Tuple<Range, DataTransformer>>.Empty;
-      private readonly Comparer<Tuple<Range, DataTransformer>> rangeComparer = Comparer<Tuple<Range, DataTransformer>>.Create((x, y) => x.Item1.Start.Value.CompareTo(y.Item1.Start.Value));
+      ImmutableList<ImmutableList<double>> DataSamples;
 
-      public DataTransformer TanukiExtractor { get; private set; }
+      public IndexedDataExtractor(ImmutableList<ImmutableList<double>> dataSamples)
+      {
+         DataSamples = dataSamples;
+      }
 
-      public TanukiTransformers(DataTransformer converters, IEnumerable<double> dataSample) : this(converters, dataSample, DefaultDataExtractor.ConvertAll)
+      public IEnumerable<double> ConvertAll(int id)
+      {
+         return DataSamples[id];
+      }
+   }
+
+   // TODO Move this to a new file.
+   public record PassThroughDataTransformer // ncrunch: no coverage
+   {
+      public PassThroughDataTransformer()
       {
       }
 
-      // TODO Refactor to be able to remove dataSample parameter. We could simply give a parameters count and generate a list of value?
-      public TanukiTransformers(DataTransformer converters, IEnumerable<double> dataSample, DataTransformer extractor)
+      public IEnumerable<double> ConvertAll(IEnumerable<double> sample)
       {
-         TanukiExtractor = extractor;
+         return sample;
+      }
+   }
 
-         Delegate[] delegates = converters.GetInvocationList();
+   public record SimpleSabotenCacheExtractor // ncrunch: no coverage
+   {
+      ImmutableDictionary<int, SabotenCache> sabotenCache = ImmutableDictionary<int, SabotenCache>.Empty;
+
+      public SimpleSabotenCacheExtractor()
+      {
+      }
+
+      public SabotenCache Extract(int id)
+      {
+         if (!sabotenCache.ContainsKey(id))
+         {
+            sabotenCache = sabotenCache.Add(id, new SabotenCache());
+         }
+
+         return sabotenCache[id];
+      }
+
+      public void Load(int id, SabotenCache sabotenCache)
+      {
+         this.sabotenCache = this.sabotenCache.SetItem(id, sabotenCache);
+      }
+   }
+
+   // TODO Move this to a new file.
+   public record IndexedLabelExtractor // ncrunch: no coverage
+   {
+      ImmutableList<int> Labels;
+
+      public IndexedLabelExtractor(ImmutableList<int> labels)
+      {
+         Labels = labels;
+      }
+
+      public int ConvertAll(int id)
+      {
+         return Labels[id];
+      }
+   }
+
+   // TODO Rename to TanukiETL
+   public sealed record TanukiTransformers // ncrunch: no coverage
+   {
+      private readonly ImmutableList<Tuple<Range, DataTransformer>> dataTransformers = ImmutableList<Tuple<Range, DataTransformer>>.Empty;
+      private readonly Comparer<Tuple<Range, DataTransformer>> rangeComparer = Comparer<Tuple<Range, DataTransformer>>.Create((x, y) => x.Item1.Start.Value.CompareTo(y.Item1.Start.Value));
+
+      public DataExtractor TanukiDataExtractor { get; private set; }
+      public DataTransformer TanukiDataTransformer { get; private set; }
+      public LabelExtractor TanukiLabelExtractor { get; private set; }
+      public SabotenCacheExtractor TanukiSabotenCacheExtractor { get; private set; }
+      public SabotenCacheLoad TanukiSabotenCacheLoad { get; private set; }
+
+      // TODO Refactor to be able to remove dataSample parameter. We could simply give a parameters count and generate a list of value?
+      public TanukiTransformers(int id, DataExtractor dataExtractor, DataTransformer dataTransformer, LabelExtractor labelExtractor) : this(dataExtractor(id), dataExtractor, dataTransformer, labelExtractor)
+      {
+      }
+
+      public TanukiTransformers(ImmutableList<ImmutableList<double>> dataSamples, ImmutableList<int> labels) : this(dataSamples[0] as IEnumerable<double>, new IndexedDataExtractor(dataSamples).ConvertAll, new PassThroughDataTransformer().ConvertAll, new IndexedLabelExtractor(labels).ConvertAll)
+      {
+      }
+
+      private TanukiTransformers(IEnumerable<double> dataSample, DataExtractor dataExtractor, DataTransformer dataTransformer, LabelExtractor labelExtractor)
+      {
+         SimpleSabotenCacheExtractor simpleSabotenCacheExtractor = new();
+
+         TanukiDataExtractor = dataExtractor;
+         TanukiDataTransformer = dataTransformer;
+         TanukiLabelExtractor = labelExtractor;
+         TanukiSabotenCacheExtractor = simpleSabotenCacheExtractor.Extract;
+         TanukiSabotenCacheLoad = simpleSabotenCacheExtractor.Load;
+
+         Delegate[] dataTransformerDelegates = TanukiDataTransformer.GetInvocationList();
 
          Index start = new();
          Index end;
 
-         IEnumerable<double> extractedDataSample = extractor(dataSample);
-
-         foreach (Delegate dataTransformer in delegates)
+         foreach (Delegate dataTransformerDelegate in dataTransformerDelegates)
          {
-            DataTransformer converter = dataTransformer as DataTransformer;
-            int transformedDataCount = converter(extractedDataSample).Count();
+            DataTransformer converter = dataTransformerDelegate as DataTransformer;
+            int transformedDataCount = converter(dataSample).Count();
 
             end = new Index(start.Value + transformedDataCount);
 

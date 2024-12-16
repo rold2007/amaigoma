@@ -1,4 +1,5 @@
 ﻿using Shouldly;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -22,27 +23,19 @@ namespace Amaigoma
 
    public sealed record PakiraLeaf // ncrunch: no coverage
    {
-      private readonly ImmutableList<double> labelValues = ImmutableList<double>.Empty;
+      private readonly ImmutableList<int> labelValues = ImmutableList<int>.Empty;
 
-      public PakiraLeaf(double labelValue)
+      public PakiraLeaf(int labelValue)
       {
          labelValues = labelValues.Add(labelValue);
       }
 
-      public PakiraLeaf(IEnumerable<double> labelValues)
+      public PakiraLeaf(IEnumerable<int> labelValues)
       {
          this.labelValues = this.labelValues.AddRange(labelValues);
       }
 
-      public double LabelValue
-      {
-         get
-         {
-            return labelValues[0];
-         }
-      }
-
-      public IEnumerable<double> LabelValues
+      public IEnumerable<int> LabelValues
       {
          get
          {
