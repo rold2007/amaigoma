@@ -28,15 +28,15 @@ namespace AmaigomaTests
    {
       public string filename;
       public ImmutableList<Rectangle> regions;
-      public ImmutableList<int> classes;
+      public ImmutableList<int> labels;
 
-      public IntegrationTestDataSet(string filename, ImmutableList<Rectangle> regions, ImmutableList<int> classes)
+      public IntegrationTestDataSet(string filename, ImmutableList<Rectangle> regions, ImmutableList<int> labels)
       {
-         regions.Count.ShouldBe(classes.Count);
+         regions.Count.ShouldBe(labels.Count);
 
          this.filename = filename;
          this.regions = regions;
-         this.classes = classes;
+         this.labels = labels;
       }
    }
 
@@ -114,8 +114,8 @@ namespace AmaigomaTests
    // TODO The integration test could output interesting positions to be validated and added to the test
    public record AmaigomaIntegrationTests // ncrunch: no coverage
    {
-      static readonly int uppercaseAClass = 1; // ncrunch: no coverage
-      static readonly int otherClass = 2; // ncrunch: no coverage
+      static readonly int uppercaseA = 1; // ncrunch: no coverage
+      static readonly int other = 2; // ncrunch: no coverage
 
       // TODO Removed some samples in Train, Validation and Test sets to be able to run faster until the performances are improved
       static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
@@ -137,23 +137,23 @@ namespace AmaigomaTests
           //new Rectangle(20, 420, 380, 80),
       });
 
-      static private readonly ImmutableList<int> trainNotUppercaseA_507484246_Classes = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
+      static private readonly ImmutableList<int> trainNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
        {
-          uppercaseAClass,
-          otherClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          uppercaseAClass,
-          //otherClass,
-          //otherClass,
+          uppercaseA,
+          other,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          //other,
+          //other,
       });
 
       static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
@@ -162,10 +162,10 @@ namespace AmaigomaTests
          //new Rectangle(20, 555, 480, 215),
       });
 
-      static private readonly ImmutableList<int> validationNotUppercaseA_507484246_Classes = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
+      static private readonly ImmutableList<int> validationNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
        {
-         otherClass,
-         //otherClass,
+         other,
+         //other,
       });
 
       static private readonly ImmutableList<Rectangle> testNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
@@ -186,30 +186,30 @@ namespace AmaigomaTests
          //new Rectangle(180, 960, 310, 35)
       });
 
-      static private readonly ImmutableList<int> testNotUppercaseA_507484246_Classes = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
+      static private readonly ImmutableList<int> testNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
        {
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         uppercaseAClass,
-         //otherClass,
-         otherClass,
-         //otherClass,
-         //otherClass,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         //other,
+         other,
+         //other,
+         //other,
       });
 
       public static IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
          DataSet dataSet = new DataSet();
-         IntegrationTestDataSet trainIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", trainNotUppercaseA_507484246_Rectangles, trainNotUppercaseA_507484246_Classes);
-         IntegrationTestDataSet validationIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", validationNotUppercaseA_507484246_Rectangles, validationNotUppercaseA_507484246_Classes);
-         IntegrationTestDataSet testIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", testNotUppercaseA_507484246_Rectangles, testNotUppercaseA_507484246_Classes);
+         IntegrationTestDataSet trainIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", trainNotUppercaseA_507484246_Rectangles, trainNotUppercaseA_507484246);
+         IntegrationTestDataSet validationIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", validationNotUppercaseA_507484246_Rectangles, validationNotUppercaseA_507484246);
+         IntegrationTestDataSet testIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", testNotUppercaseA_507484246_Rectangles, testNotUppercaseA_507484246);
 
          dataSet.train.Add(trainIntegrationTestDataSet);
          dataSet.validation.Add(validationIntegrationTestDataSet);
@@ -225,16 +225,15 @@ namespace AmaigomaTests
          this.output = output;
       }
 
-      ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<Rectangle> rectangles, ImmutableList<int> classes, int startingIndex)
+      ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<Rectangle> rectangles, ImmutableList<int> labels, int startingIndex)
       {
          ImmutableDictionary<int, SampleData> result = ImmutableDictionary<int, SampleData>.Empty;
-         // TODO Move the rectangles and classes in a dictionary to get both values at the same time in the foreach
-         // TODO Rename "classes" to "label" everywhere
-         int classesIndex = 0;
+         // TODO Move the rectangles and labels in a dictionary to get both values at the same time in the foreach
+         int labelsIndex = 0;
 
          foreach (Rectangle rectangle in rectangles)
          {
-            int sampleClass = classes[classesIndex];
+            int sampleClass = labels[labelsIndex];
 
             for (int y = rectangle.Top; y < rectangle.Bottom; y++)
             {
@@ -245,7 +244,7 @@ namespace AmaigomaTests
                }
             }
 
-            classesIndex++;
+            labelsIndex++;
          }
 
          return result;
@@ -258,7 +257,7 @@ namespace AmaigomaTests
 
          accuracyResult.leavesBefore = leaves;
 
-         // TODO Move the rectangles and classes in a dictionary to get both values at the same time in the foreach
+         // TODO Move the rectangles and labels in a dictionary to get both values at the same time in the foreach
          PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
 
          foreach (int id in ids)
@@ -289,15 +288,15 @@ namespace AmaigomaTests
       {
          string imagePath = dataSet.train[0].filename;
          ImmutableList<Rectangle> trainRectangles = dataSet.train[0].regions;
-         ImmutableList<int> trainClasses = dataSet.train[0].classes;
+         ImmutableList<int> trainLabels = dataSet.train[0].labels;
          ImmutableList<Rectangle> validationRectangles = dataSet.validation[0].regions;
-         ImmutableList<int> validationClasses = dataSet.validation[0].classes;
+         ImmutableList<int> validationLabels = dataSet.validation[0].labels;
          ImmutableList<Rectangle> testRectangles = dataSet.test[0].regions;
-         ImmutableList<int> testClasses = dataSet.test[0].classes;
+         ImmutableList<int> testLabels = dataSet.test[0].labels;
 
-         trainRectangles.Count.ShouldBe(trainClasses.Count);
-         validationRectangles.Count.ShouldBe(validationClasses.Count);
-         testRectangles.Count.ShouldBe(testClasses.Count);
+         trainRectangles.Count.ShouldBe(trainLabels.Count);
+         validationRectangles.Count.ShouldBe(validationLabels.Count);
+         testRectangles.Count.ShouldBe(testLabels.Count);
 
          const int halfFeatureWindowSize = AverageTransformer.FeatureWindowSize / 2;
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), @"..\..\..\" + imagePath);
@@ -321,9 +320,9 @@ namespace AmaigomaTests
          ImmutableDictionary<int, SampleData> validationPositions;
          ImmutableDictionary<int, SampleData> testPositions;
 
-         trainPositions = LoadDataSamples(trainRectangles, trainClasses, 0);
-         validationPositions = LoadDataSamples(validationRectangles, validationClasses, trainPositions.Count());
-         testPositions = LoadDataSamples(testRectangles, testClasses, trainPositions.Count() + validationPositions.Count());
+         trainPositions = LoadDataSamples(trainRectangles, trainLabels, 0);
+         validationPositions = LoadDataSamples(validationRectangles, validationLabels, trainPositions.Count());
+         testPositions = LoadDataSamples(testRectangles, testLabels, trainPositions.Count() + validationPositions.Count());
 
          // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
          DataTransformer dataTransformers = null;

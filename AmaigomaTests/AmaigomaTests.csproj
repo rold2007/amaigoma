@@ -28,4 +28,10 @@
     <ProjectReference Include="..\Amaigoma\Amaigoma.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="assets\text-extraction-for-ocr\507484246.tif">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
