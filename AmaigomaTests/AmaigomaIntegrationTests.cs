@@ -299,7 +299,7 @@ namespace AmaigomaTests
          testRectangles.Count.ShouldBe(testLabels.Count);
 
          const int halfFeatureWindowSize = AverageTransformer.FeatureWindowSize / 2;
-         string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), @"..\..\..\" + imagePath);
+         string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), imagePath);
 
          PakiraDecisionTreeGenerator pakiraGenerator = new();
          Image<L8> imageWithOverscan;
