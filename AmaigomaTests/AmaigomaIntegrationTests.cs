@@ -207,9 +207,9 @@ namespace AmaigomaTests
       public static IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
          DataSet dataSet = new DataSet();
-         IntegrationTestDataSet trainIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", trainNotUppercaseA_507484246_Rectangles, trainNotUppercaseA_507484246);
-         IntegrationTestDataSet validationIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", validationNotUppercaseA_507484246_Rectangles, validationNotUppercaseA_507484246);
-         IntegrationTestDataSet testIntegrationTestDataSet = new IntegrationTestDataSet(@"assets\text-extraction-for-ocr\507484246.tif", testNotUppercaseA_507484246_Rectangles, testNotUppercaseA_507484246);
+         IntegrationTestDataSet trainIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", trainNotUppercaseA_507484246_Rectangles, trainNotUppercaseA_507484246);
+         IntegrationTestDataSet validationIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", validationNotUppercaseA_507484246_Rectangles, validationNotUppercaseA_507484246);
+         IntegrationTestDataSet testIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", testNotUppercaseA_507484246_Rectangles, testNotUppercaseA_507484246);
 
          dataSet.train.Add(trainIntegrationTestDataSet);
          dataSet.validation.Add(validationIntegrationTestDataSet);
