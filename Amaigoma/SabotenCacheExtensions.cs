@@ -7,7 +7,7 @@ namespace Amaigoma
 
    public static class SabotenCacheExtensions
    {
-      // TODO This extension method could be moved inside a static method of sabotencache and get rid of this extension class
+      // UNDONE This extension method could be moved inside a static method of sabotencache and get rid of this extension class
       public static SabotenCache Prefetch(this SabotenCache sabotenCache, TanukiTransformers tanukiTransformers, IEnumerable<double> data, int featureIndex)
       {
          // TODO Maybe the TanukiTransformers should be responsible to do the ET(L) on the data instead of getting its DataTransformer.

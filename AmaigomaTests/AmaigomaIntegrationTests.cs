@@ -14,6 +14,8 @@ using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
 
+// UNDONE Bring back code coverage to 100%
+
 // TODO January 15th 2024: New algorithm idea. The strength of each node can be validated if, and only if, there are enough leaves under it to apply
 // the logic of swapping the node condition and validating the success rate on train data. For nodes which do not have enough leaves under, this process
 // will probably not give reliable results. The solution is probably to prune these nodes. This will force some leaves to have more than one class. So
@@ -58,13 +60,16 @@ namespace AmaigomaTests
       public IEnumerable<double> ConvertAll(int id)
       {
          Point position = Samples[id].Position;
-         List<double> newSample = new(FeatureWindowSize * FeatureWindowSize);
+         List<double> newSample = new((FeatureWindowSize + 1) * (FeatureWindowSize + 1));
 
          int top = position.Y + HalfFeatureWindowSize;
          int xPosition = position.X + HalfFeatureWindowSize;
 
          xPosition.ShouldBePositive();
 
+         // UNDONE I should get rid of the data extractors. Most of the time the data transformers don't need the full data sample, except in train mode,
+         // so it is slow for nothing. The data transformer could fetch only what it needs and back it up with a SabotenCache.
+         // UNDONE Try to apply this solution to see if it is faster, although it will probably allocate more: https://github.com/SixLabors/ImageSharp/discussions/1666#discussioncomment-876494
          // +1 length to support first row of integral image
          for (int y2 = -HalfFeatureWindowSize; y2 <= HalfFeatureWindowSize + 1; y2++)
          {
@@ -334,16 +339,16 @@ namespace AmaigomaTests
          dataTransformers += new AverageTransformer(3).ConvertAll;
          // dataTransformers += new AverageTransformer(1).ConvertAll;
 
-         AverageWindowFeature theDataExtractor = new AverageWindowFeature(trainPositions, integralImage, AverageTransformer.FeatureWindowSize);
+         AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage, AverageTransformer.FeatureWindowSize);
          AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage, AverageTransformer.FeatureWindowSize);
          AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage, AverageTransformer.FeatureWindowSize);
-         TanukiTransformers tanukiTransformers = new(trainPositions.Keys.First(), theDataExtractor.ConvertAll, dataTransformers, theDataExtractor.ExtractLabel);
+         TanukiTransformers trainTanukiTransformers = new(trainPositions.Keys.First(), trainDataExtractor.ConvertAll, dataTransformers, trainDataExtractor.ExtractLabel);
          TanukiTransformers validationTanukiTransformers = new(validationPositions.Keys.First(), validationDataExtractor.ConvertAll, dataTransformers, validationDataExtractor.ExtractLabel);
          TanukiTransformers testTanukiTransformers = new(testPositions.Keys.First(), testDataExtractor.ConvertAll, dataTransformers, testDataExtractor.ExtractLabel);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { trainPositions.Keys.First() }, tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { trainPositions.Keys.First() }, trainTanukiTransformers);
 
          // TODO Evaluate the possibility of using shallow trees to serve as sub-routines. The features could be chosen based on the
          // best discrimination, like it was done a while ago. This will result in categories instead of a scalar so the leaves will need to be recombined
@@ -377,7 +382,7 @@ namespace AmaigomaTests
                IEnumerable<int> batchSamples = trainPositions.Keys.Skip(i).Take(batchSize);
 
                bool processBatch = true;
-               PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+               PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiTransformers);
 
                // TODO The validation set should be used to identify the leaves which are not predicting correctly. Then find
                //       some data in the train set to improve these leaves
@@ -394,8 +399,8 @@ namespace AmaigomaTests
 
                      if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
                      {
-                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { id }, tanukiTransformers);
-                        pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { id }, trainTanukiTransformers);
+                        pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiTransformers);
 
                         IEnumerable<int> labelValues = pakiraTreeWalker.PredictLeaf(id).LabelValues;
 
@@ -412,7 +417,7 @@ namespace AmaigomaTests
                }
             }
 
-            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, tanukiTransformers);
+            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiTransformers);
             validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiTransformers);
             testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiTransformers);
 
