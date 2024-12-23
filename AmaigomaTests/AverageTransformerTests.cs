@@ -12,38 +12,39 @@ namespace AmaigomaTests
       [Fact]
       public void ConvertAll()
       {
+         const int FeatureFullWindowSize = 17;
          int randomSeed = new Random().Next();
          Random RandomSource = new(randomSeed);
          List<double> integral = new List<double>();
          int byteIndex;
          List<double> computedValues = new List<double>();
 
-         for (int windowSize = 1; windowSize < (AverageTransformer.FeatureWindowSize + 1); windowSize++)
+         for (int windowSize = 1; windowSize < (FeatureFullWindowSize + 1); windowSize++)
          {
             double windowSizeSquaredInverted = 1.0 / (windowSize * windowSize);
 
-            AverageTransformer averageTransformer = new AverageTransformer(windowSize);
+            AverageTransformer averageTransformer = new AverageTransformer(windowSize, FeatureFullWindowSize);
 
-            byte[] bytes = new byte[AverageTransformer.FeatureWindowSize * AverageTransformer.FeatureWindowSize];
+            byte[] bytes = new byte[FeatureFullWindowSize * FeatureFullWindowSize];
 
             RandomSource.NextBytes(bytes);
 
             integral.Clear();
 
-            integral.AddRange(Enumerable.Repeat<double>(0.0, AverageTransformer.FeatureWindowSize + 1));
+            integral.AddRange(Enumerable.Repeat<double>(0.0, FeatureFullWindowSize + 1));
 
             byteIndex = 0;
 
-            for (int y = 0; y < AverageTransformer.FeatureWindowSize; y++)
+            for (int y = 0; y < FeatureFullWindowSize; y++)
             {
                integral.Add(0);
 
-               for (int x = 0; x < AverageTransformer.FeatureWindowSize; x++)
+               for (int x = 0; x < FeatureFullWindowSize; x++)
                {
                   integral.Add(bytes[byteIndex] +
-                     integral[integral.Count() - (AverageTransformer.FeatureWindowSize + 1)] +
+                     integral[integral.Count() - (FeatureFullWindowSize + 1)] +
                      integral.Last() -
-                     integral[integral.Count() - (AverageTransformer.FeatureWindowSize + 2)]);
+                     integral[integral.Count() - (FeatureFullWindowSize + 2)]);
                   byteIndex++;
                }
             }
@@ -52,9 +53,9 @@ namespace AmaigomaTests
 
             computedValues.Clear();
 
-            for (int offsetY = 0; (offsetY + windowSize) <= AverageTransformer.FeatureWindowSize; offsetY += windowSize)
+            for (int offsetY = 0; (offsetY + windowSize) <= FeatureFullWindowSize; offsetY += windowSize)
             {
-               for (int offsetX = 0; (offsetX + windowSize) <= AverageTransformer.FeatureWindowSize; offsetX += windowSize)
+               for (int offsetX = 0; (offsetX + windowSize) <= FeatureFullWindowSize; offsetX += windowSize)
                {
                   double computedValue = 0.0;
 
@@ -62,7 +63,7 @@ namespace AmaigomaTests
                   {
                      for (int x = 0; x < windowSize; x++)
                      {
-                        computedValue += bytes[offsetX + x + (offsetY + y) * AverageTransformer.FeatureWindowSize];
+                        computedValue += bytes[offsetX + x + (offsetY + y) * FeatureFullWindowSize];
                      }
                   }
 

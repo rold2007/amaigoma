@@ -291,6 +291,7 @@ namespace AmaigomaTests
       [Timeout(600000)]
       public void UppercaseA_507484246(DataSet dataSet)
       {
+         const int FeatureFullWindowSize = 17;
          string imagePath = dataSet.train[0].filename;
          ImmutableList<Rectangle> trainRectangles = dataSet.train[0].regions;
          ImmutableList<int> trainLabels = dataSet.train[0].labels;
@@ -303,7 +304,7 @@ namespace AmaigomaTests
          validationRectangles.Count.ShouldBe(validationLabels.Count);
          testRectangles.Count.ShouldBe(testLabels.Count);
 
-         const int halfFeatureWindowSize = AverageTransformer.FeatureWindowSize / 2;
+         const int halfFeatureWindowSize = FeatureFullWindowSize / 2;
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), imagePath);
 
          PakiraDecisionTreeGenerator pakiraGenerator = new();
@@ -333,15 +334,15 @@ namespace AmaigomaTests
          DataTransformer dataTransformers = null;
 
          // TODO Removed a data transformer to be able to run faster until the performances are improved
-         dataTransformers += new AverageTransformer(17).ConvertAll;
-         dataTransformers += new AverageTransformer(7).ConvertAll;
-         dataTransformers += new AverageTransformer(5).ConvertAll;
-         dataTransformers += new AverageTransformer(3).ConvertAll;
+         dataTransformers += new AverageTransformer(17, FeatureFullWindowSize).ConvertAll;
+         dataTransformers += new AverageTransformer(7, FeatureFullWindowSize).ConvertAll;
+         dataTransformers += new AverageTransformer(5, FeatureFullWindowSize).ConvertAll;
+         dataTransformers += new AverageTransformer(3, FeatureFullWindowSize).ConvertAll;
          // dataTransformers += new AverageTransformer(1).ConvertAll;
 
-         AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage, AverageTransformer.FeatureWindowSize);
-         AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage, AverageTransformer.FeatureWindowSize);
-         AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage, AverageTransformer.FeatureWindowSize);
+         AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage, FeatureFullWindowSize);
+         AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage, FeatureFullWindowSize);
+         AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage, FeatureFullWindowSize);
          TanukiTransformers trainTanukiTransformers = new(trainPositions.Keys.First(), trainDataExtractor.ConvertAll, dataTransformers, trainDataExtractor.ExtractLabel);
          TanukiTransformers validationTanukiTransformers = new(validationPositions.Keys.First(), validationDataExtractor.ConvertAll, dataTransformers, validationDataExtractor.ExtractLabel);
          TanukiTransformers testTanukiTransformers = new(testPositions.Keys.First(), testDataExtractor.ConvertAll, dataTransformers, testDataExtractor.ExtractLabel);
