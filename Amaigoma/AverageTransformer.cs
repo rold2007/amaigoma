@@ -24,6 +24,11 @@ namespace Amaigoma
          get;
       }
 
+      private ImmutableList<int> IntegralIndices
+      {
+         get;
+      }
+
       public AverageTransformer(int slidingWindowSize, int fullWindowsSize)
       {
          fullWindowsSize.ShouldBeGreaterThanOrEqualTo(slidingWindowSize);
@@ -31,36 +36,44 @@ namespace Amaigoma
          FeatureWindowSize = fullWindowsSize;
          SlidingWindowSize = slidingWindowSize;
          SlidingWindowSizeSquaredInverted = 1.0 / (slidingWindowSize * slidingWindowSize);
+         IntegralIndices = ImmutableList<int>.Empty;
+
+         int width = FeatureWindowSize + 1;
+
+         for (int y = 0; y <= (FeatureWindowSize - SlidingWindowSize); y += SlidingWindowSize)
+         {
+            int topOffsetY = (width * y);
+            int bottomOffsetY = width * (y + SlidingWindowSize);
+
+            for (int x = 0; x <= (FeatureWindowSize - SlidingWindowSize); x += SlidingWindowSize)
+            {
+               int rightX = x + SlidingWindowSize;
+
+               IntegralIndices = IntegralIndices.Add(x + topOffsetY);
+               IntegralIndices = IntegralIndices.Add(rightX + topOffsetY);
+               IntegralIndices = IntegralIndices.Add(x + bottomOffsetY);
+               IntegralIndices = IntegralIndices.Add(rightX + bottomOffsetY);
+            }
+         }
       }
 
       // TODO Use Benchmark.net to try to improve the benchmark of this method
       public IEnumerable<double> ConvertAll(IEnumerable<double> list)
       {
-         ImmutableList<double> features = ImmutableList<double>.Empty;
-
-         int sizeX = FeatureWindowSize;
-         int sizeY = FeatureWindowSize;
-         int width = sizeX + 1;
          double[] integral = list.ToArray();
          double sum;
 
-         for (int y = 0; y <= (sizeY - SlidingWindowSize); y += SlidingWindowSize)
+         ImmutableList<double> features = ImmutableList<double>.Empty;
+         int i = 0;
+
+         while (i < IntegralIndices.Count)
          {
-            int topOffsetY = (width * y);
-            int bottomOffsetY = width * (y + SlidingWindowSize);
+            sum = integral[IntegralIndices[i++]];
+            sum -= integral[IntegralIndices[i++]];
+            sum -= integral[IntegralIndices[i++]];
+            sum += integral[IntegralIndices[i++]];
 
-            for (int x = 0; x <= (sizeX - SlidingWindowSize); x += SlidingWindowSize)
-            {
-               int rightX = x + SlidingWindowSize;
-
-               // UNDONE All these indices could be precomputed in the constructor. The loop would be a lot simpler.
-               sum = integral[rightX + bottomOffsetY];
-               sum -= integral[x + bottomOffsetY];
-               sum -= integral[rightX + topOffsetY];
-               sum += integral[x + topOffsetY];
-
-               features = features.Add(sum * SlidingWindowSizeSquaredInverted);
-            }
+            features = features.Add(sum * SlidingWindowSizeSquaredInverted);
          }
 
          return features;

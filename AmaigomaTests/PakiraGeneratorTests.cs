@@ -10,6 +10,15 @@ namespace AmaigomaTests
 {
    public record PakiraGeneratorTests // ncrunch: no coverage
    {
+      private readonly PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator;
+
+      public PakiraGeneratorTests()
+      {
+         pakiraDecisionTreeGenerator = new();
+
+         Console.WriteLine("PakiraDecisionTreeGenerator random seed: " + pakiraDecisionTreeGenerator.randomSeed.ToString());
+      }
+
       internal record MeanDistanceDataTransformer // ncrunch: no coverage
       {
          public MeanDistanceDataTransformer()
@@ -34,20 +43,9 @@ namespace AmaigomaTests
          }
       }
 
-      // UNDONE This should be done automatically upon initialization of each test
-      public static PakiraDecisionTreeGenerator CreatePakiraGeneratorInstance()
-      {
-         PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator = new();
-
-         Console.WriteLine("PakiraDecisionTreeGenerator random seed: " + PakiraDecisionTreeGenerator.randomSeed.ToString());
-
-         return pakiraDecisionTreeGenerator;
-      }
-
       [Fact]
       public void Generate()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -62,7 +60,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -79,7 +77,6 @@ namespace AmaigomaTests
       [Fact]
       public void GenerateMultipleCalls()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -94,7 +91,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
          PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
@@ -115,7 +112,7 @@ namespace AmaigomaTests
 
          TanukiTransformers tanukiTransformers2 = new TanukiTransformers(data, labels);
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(3, 3), tanukiTransformers2);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(3, 3), tanukiTransformers2);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
          pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
@@ -146,7 +143,6 @@ namespace AmaigomaTests
       [Fact]
       public void DataTransformers()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -169,7 +165,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
          PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
@@ -188,7 +184,6 @@ namespace AmaigomaTests
       [Fact]
       public void DataTransformersQuickExit()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -215,7 +210,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
          PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
@@ -234,7 +229,6 @@ namespace AmaigomaTests
       [Fact]
       public void DataTransformersQuickExit2()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -255,7 +249,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
          PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
@@ -274,7 +268,6 @@ namespace AmaigomaTests
       [Fact]
       public void DeepTree()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -301,7 +294,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -324,7 +317,6 @@ namespace AmaigomaTests
       [Fact]
       public void CertaintyScore()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -339,7 +331,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -356,7 +348,6 @@ namespace AmaigomaTests
       [Fact]
       public void GenerateCannotSplit()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -371,7 +362,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -390,7 +381,6 @@ namespace AmaigomaTests
       [Fact]
       public void GenerateCannotSplit2()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -403,7 +393,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
@@ -420,7 +410,6 @@ namespace AmaigomaTests
       [Fact]
       public void CallPakiraTreeReplaceLeaf()
       {
-         PakiraDecisionTreeGenerator pakiraGenerator = CreatePakiraGeneratorInstance();
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
@@ -433,7 +422,7 @@ namespace AmaigomaTests
          TanukiTransformers tanukiTransformers = new TanukiTransformers(data, labels);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiTransformers);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
          data = data.Add(ImmutableList.CreateRange(new double[] { 215 }));
@@ -442,7 +431,7 @@ namespace AmaigomaTests
 
          TanukiTransformers tanukiTransformers2 = new TanukiTransformers(data, labels);
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(2, 1), tanukiTransformers2);
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(2, 1), tanukiTransformers2);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
          PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);

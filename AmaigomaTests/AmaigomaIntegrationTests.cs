@@ -14,7 +14,7 @@ using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
 
-// UNDONE Bring back code coverage to 100%
+// TODO Bring back code coverage to 100%
 
 // TODO January 15th 2024: New algorithm idea. The strength of each node can be validated if, and only if, there are enough leaves under it to apply
 // the logic of swapping the node condition and validating the success rate on train data. For nodes which do not have enough leaves under, this process

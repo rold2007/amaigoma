@@ -34,11 +34,12 @@ namespace Amaigoma
       }
 
       public static readonly int UNKNOWN_CLASS_INDEX = -1; // ncrunch: no coverage
-      public static readonly int randomSeed = new Random().Next(); // ncrunch: no coverage
-      private readonly Random RandomSource = new(randomSeed);
+      public readonly int randomSeed = new Random().Next(); // ncrunch: no coverage
+      private readonly Random RandomSource;
 
       public PakiraDecisionTreeGenerator()
       {
+         RandomSource = new(randomSeed);
       }
 
       public int UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
