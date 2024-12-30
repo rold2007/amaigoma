@@ -55,12 +55,12 @@ namespace Amaigoma
    public sealed record PakiraTreeWalker // ncrunch: no coverage
    {
       private PakiraTree Tree { get; }
-      private TanukiTransformers TanukiTransformers { get; }
+      private TanukiETL TanukiETL { get; }
 
-      public PakiraTreeWalker(PakiraTree tree, TanukiTransformers tanukiTransformers)
+      public PakiraTreeWalker(PakiraTree tree, TanukiETL tanukiETL)
       {
          Tree = tree;
-         TanukiTransformers = tanukiTransformers;
+         TanukiETL = tanukiETL;
       }
 
       public PakiraLeaf PredictLeaf(int id)
@@ -72,7 +72,7 @@ namespace Amaigoma
       {
          PakiraNode node = Tree.Root;
          IEnumerable<double> dataSample = null;
-         SabotenCache sabotenCache = TanukiTransformers.TanukiSabotenCacheExtractor(id);
+         SabotenCache sabotenCache = TanukiETL.TanukiSabotenCacheExtractor(id);
 
          do
          {
@@ -83,10 +83,10 @@ namespace Amaigoma
             {
                if (dataSample == null)
                {
-                  dataSample = TanukiTransformers.TanukiDataExtractor(id);
+                  dataSample = TanukiETL.TanukiDataExtractor(id);
                }
 
-               sabotenCache = sabotenCache.Prefetch(TanukiTransformers, dataSample, col);
+               sabotenCache = sabotenCache.Prefetch(TanukiETL, dataSample, col);
             }
 
             PakiraNode subNode;
@@ -97,7 +97,7 @@ namespace Amaigoma
 
                if (subNode == null)
                {
-                  TanukiTransformers.TanukiSabotenCacheLoad(id, sabotenCache);
+                  TanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
 
                   return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetLeftLeaf(node), sabotenCache);
                }
@@ -108,7 +108,7 @@ namespace Amaigoma
 
                if (subNode == null)
                {
-                  TanukiTransformers.TanukiSabotenCacheLoad(id, sabotenCache);
+                  TanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
 
                   return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetRightLeaf(node), sabotenCache);
                }

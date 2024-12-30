@@ -77,6 +77,7 @@ namespace AmaigomaTests
 
             yPosition.ShouldBeGreaterThanOrEqualTo(0);
 
+            // UNDONE Extract and benchmark the DangerousGetRowSpan() and Slice() to see if DangerousGetRowSpan() should be called only in the constructor
             // +1 length to support first column of integral image
             foreach (ulong integralValue in IntegralImage.DangerousGetRowSpan(yPosition).Slice(xPosition - HalfFeatureWindowSize, FeatureWindowSize + 1))
             {
@@ -255,7 +256,7 @@ namespace AmaigomaTests
          return result;
       }
 
-      AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
+      AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          ImmutableHashSet<PakiraLeaf> leaves = ImmutableHashSet<PakiraLeaf>.Empty.Union(pakiraDecisionTreeModel.Tree.GetLeaves().Select(x => x.Value));
          AccuracyResult accuracyResult = new AccuracyResult();
@@ -263,20 +264,21 @@ namespace AmaigomaTests
          accuracyResult.leavesBefore = leaves;
 
          // TODO Move the rectangles and labels in a dictionary to get both values at the same time in the foreach
-         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
 
          foreach (int id in ids)
          {
             PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
-            int sampleClass = tanukiTransformers.TanukiLabelExtractor(id);
+            int sampleClass = tanukiETL.TanukiLabelExtractor(id);
 
             if (pakiraLeafResult.LabelValues.Count() > 1 || !pakiraLeafResult.LabelValues.Contains(sampleClass))
             {
                leaves = leaves.Remove(pakiraLeafResult);
 
+               // TODO Replace this code by an assert since code coverage seems impossible
                if (leaves.Count == 0)
-               {
-                  break;
+               { // ncrunch: no coverage
+                  break; // ncrunch: no coverage
                }
             }
          }
@@ -343,13 +345,13 @@ namespace AmaigomaTests
          AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage, FeatureFullWindowSize);
          AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage, FeatureFullWindowSize);
          AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage, FeatureFullWindowSize);
-         TanukiTransformers trainTanukiTransformers = new(trainPositions.Keys.First(), trainDataExtractor.ConvertAll, dataTransformers, trainDataExtractor.ExtractLabel);
-         TanukiTransformers validationTanukiTransformers = new(validationPositions.Keys.First(), validationDataExtractor.ConvertAll, dataTransformers, validationDataExtractor.ExtractLabel);
-         TanukiTransformers testTanukiTransformers = new(testPositions.Keys.First(), testDataExtractor.ConvertAll, dataTransformers, testDataExtractor.ExtractLabel);
+         TanukiETL trainTanukiETL = new(trainPositions.Keys.First(), trainDataExtractor.ConvertAll, dataTransformers, trainDataExtractor.ExtractLabel);
+         TanukiETL validationTanukiETL = new(validationPositions.Keys.First(), validationDataExtractor.ConvertAll, dataTransformers, validationDataExtractor.ExtractLabel);
+         TanukiETL testTanukiETL = new(testPositions.Keys.First(), testDataExtractor.ConvertAll, dataTransformers, testDataExtractor.ExtractLabel);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { trainPositions.Keys.First() }, trainTanukiTransformers);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { trainPositions.Keys.First() }, trainTanukiETL);
 
          // TODO Evaluate the possibility of using shallow trees to serve as sub-routines. The features could be chosen based on the
          // best discrimination, like it was done a while ago. This will result in categories instead of a scalar so the leaves will need to be recombined
@@ -383,7 +385,7 @@ namespace AmaigomaTests
                IEnumerable<int> batchSamples = trainPositions.Keys.Skip(i).Take(batchSize);
 
                bool processBatch = true;
-               PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiTransformers);
+               PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
 
                // TODO The validation set should be used to identify the leaves which are not predicting correctly. Then find
                //       some data in the train set to improve these leaves
@@ -400,8 +402,8 @@ namespace AmaigomaTests
 
                      if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
                      {
-                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { id }, trainTanukiTransformers);
-                        pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiTransformers);
+                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { id }, trainTanukiETL);
+                        pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
 
                         IEnumerable<int> labelValues = pakiraTreeWalker.PredictLeaf(id).LabelValues;
 
@@ -418,9 +420,9 @@ namespace AmaigomaTests
                }
             }
 
-            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiTransformers);
-            validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiTransformers);
-            testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiTransformers);
+            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
+            validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
+            testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
 
             // TODO Improve test output
             output.WriteLine(trainAccuracyResult.leavesAfter.Count().ToString());

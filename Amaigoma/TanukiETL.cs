@@ -81,8 +81,7 @@ namespace Amaigoma
       }
    }
 
-   // UNDONE Rename to TanukiETL
-   public sealed record TanukiTransformers // ncrunch: no coverage
+   public sealed record TanukiETL // ncrunch: no coverage
    {
       private readonly ImmutableList<Tuple<Range, DataTransformer>> dataTransformers = ImmutableList<Tuple<Range, DataTransformer>>.Empty;
       private readonly Comparer<Tuple<Range, DataTransformer>> rangeComparer = Comparer<Tuple<Range, DataTransformer>>.Create((x, y) => x.Item1.Start.Value.CompareTo(y.Item1.Start.Value));
@@ -94,15 +93,15 @@ namespace Amaigoma
       public SabotenCacheLoad TanukiSabotenCacheLoad { get; private set; }
 
       // TODO Refactor to be able to remove dataSample parameter. We could simply give a parameters count and generate a list of value?
-      public TanukiTransformers(int id, DataExtractor dataExtractor, DataTransformer dataTransformer, LabelExtractor labelExtractor) : this(dataExtractor(id), dataExtractor, dataTransformer, labelExtractor)
+      public TanukiETL(int id, DataExtractor dataExtractor, DataTransformer dataTransformer, LabelExtractor labelExtractor) : this(dataExtractor(id), dataExtractor, dataTransformer, labelExtractor)
       {
       }
 
-      public TanukiTransformers(ImmutableList<ImmutableList<double>> dataSamples, ImmutableList<int> labels) : this(dataSamples[0] as IEnumerable<double>, new IndexedDataExtractor(dataSamples).ConvertAll, new PassThroughDataTransformer().ConvertAll, new IndexedLabelExtractor(labels).ConvertAll)
+      public TanukiETL(ImmutableList<ImmutableList<double>> dataSamples, ImmutableList<int> labels) : this(dataSamples[0] as IEnumerable<double>, new IndexedDataExtractor(dataSamples).ConvertAll, new PassThroughDataTransformer().ConvertAll, new IndexedLabelExtractor(labels).ConvertAll)
       {
       }
 
-      private TanukiTransformers(IEnumerable<double> dataSample, DataExtractor dataExtractor, DataTransformer dataTransformer, LabelExtractor labelExtractor)
+      private TanukiETL(IEnumerable<double> dataSample, DataExtractor dataExtractor, DataTransformer dataTransformer, LabelExtractor labelExtractor)
       {
          SimpleSabotenCacheExtractor simpleSabotenCacheExtractor = new();
 

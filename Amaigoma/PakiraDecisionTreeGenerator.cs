@@ -44,15 +44,15 @@ namespace Amaigoma
 
       public int UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
 
-      public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
+      public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          if (pakiraDecisionTreeModel.Tree.Root == null)
          {
-            pakiraDecisionTreeModel = BuildInitialTree(pakiraDecisionTreeModel, ids, tanukiTransformers);
+            pakiraDecisionTreeModel = BuildInitialTree(pakiraDecisionTreeModel, ids, tanukiETL);
          }
          else
          {
-            PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiTransformers);
+            PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
 
             foreach (int id in ids)
             {
@@ -63,7 +63,7 @@ namespace Amaigoma
             }
          }
 
-         return BuildTree(pakiraDecisionTreeModel, tanukiTransformers);
+         return BuildTree(pakiraDecisionTreeModel, tanukiETL);
       }
 
       private static bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)
@@ -85,27 +85,28 @@ namespace Amaigoma
          public ImmutableList<int> TrainSamplesCache;
       };
 
-      private PakiraNode PrepareNode(IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
+      private PakiraNode PrepareNode(IEnumerable<int> ids, TanukiETL tanukiETL)
       {
-         Tuple<int, double> tuple = GetBestSplit(ids, tanukiTransformers);
+         Tuple<int, double> tuple = GetBestSplit(ids, tanukiETL);
 
          return new PakiraNode(tuple.Item1, tuple.Item2);
       }
 
-      private PakiraLeafResult[] PrepareLeaves(int featureIndex, double threshold, IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
+      private PakiraLeafResult[] PrepareLeaves(int featureIndex, double threshold, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          PakiraLeafResult[] pakiraLeavesResult = new PakiraLeafResult[2];
 
          foreach (int id in ids)
          {
-            SabotenCache sabotenCache = tanukiTransformers.TanukiSabotenCacheExtractor(id);
+            SabotenCache sabotenCache = tanukiETL.TanukiSabotenCacheExtractor(id);
 
+            // TODO Replace this code by an assert since code coverage seems impossible
             if (!sabotenCache.CacheHit(featureIndex))
-            {
-               IEnumerable<double> data = tanukiTransformers.TanukiDataExtractor(id);
-               sabotenCache = sabotenCache.Prefetch(tanukiTransformers, data, featureIndex);
-               tanukiTransformers.TanukiSabotenCacheLoad(id, sabotenCache);
-            }
+            { // ncrunch: no coverage
+               IEnumerable<double> data = tanukiETL.TanukiDataExtractor(id); // ncrunch: no coverage
+               sabotenCache = sabotenCache.Prefetch(tanukiETL, data, featureIndex); // ncrunch: no coverage
+               tanukiETL.TanukiSabotenCacheLoad(id, sabotenCache); // ncrunch: no coverage
+            } // ncrunch: no coverage
          }
 
          for (int leafIndex = 0; leafIndex < 2; leafIndex++)
@@ -116,7 +117,7 @@ namespace Amaigoma
 
             pakiraLeavesResult[leafIndex].ids = ImmutableList<int>.Empty.AddRange(ids.Where(id =>
                                     {
-                                       return ThresholdCompareLessThanOrEqual(tanukiTransformers.TanukiSabotenCacheExtractor(id)[featureIndex], threshold) == theKey;
+                                       return ThresholdCompareLessThanOrEqual(tanukiETL.TanukiSabotenCacheExtractor(id)[featureIndex], threshold) == theKey;
                                     }));
          }
 
@@ -126,7 +127,7 @@ namespace Amaigoma
             {
                ImmutableHashSet<int> labels = ImmutableHashSet.CreateRange(pakiraLeavesResult[leafIndex].ids.Select(id =>
                         {
-                           return tanukiTransformers.TanukiLabelExtractor(id);
+                           return tanukiETL.TanukiLabelExtractor(id);
                         }));
 
                pakiraLeavesResult[leafIndex].pakiraLeaf = new PakiraLeaf(labels);
@@ -141,12 +142,12 @@ namespace Amaigoma
          return pakiraLeavesResult;
       }
 
-      private PakiraDecisionTreeModel BuildInitialTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
+      private PakiraDecisionTreeModel BuildInitialTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          pakiraDecisionTreeModel.Tree.Root.ShouldBeNull();
 
-         PakiraNode pakiraNode = PrepareNode(ids, tanukiTransformers);
-         PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, ids, tanukiTransformers);
+         PakiraNode pakiraNode = PrepareNode(ids, tanukiETL);
+         PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, ids, tanukiETL);
 
          pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf));
          pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[0].ids);
@@ -155,7 +156,7 @@ namespace Amaigoma
          return pakiraDecisionTreeModel;
       }
 
-      private PakiraDecisionTreeModel BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TanukiTransformers tanukiTransformers)
+      private PakiraDecisionTreeModel BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TanukiETL tanukiETL)
       {
          ImmutableStack<ProcessLeaf> processLeaves = ImmutableStack<ProcessLeaf>.Empty;
          ImmutableHashSet<PakiraLeaf> multipleLabelsLeaves = ImmutableHashSet<PakiraLeaf>.Empty;
@@ -174,7 +175,7 @@ namespace Amaigoma
 
                   foreach (int id in ids)
                   {
-                     uniqueLabels = uniqueLabels.Add(tanukiTransformers.TanukiLabelExtractor(id));
+                     uniqueLabels = uniqueLabels.Add(tanukiETL.TanukiLabelExtractor(id));
 
                      if (uniqueLabels.Count > 1)
                      {
@@ -206,7 +207,7 @@ namespace Amaigoma
 
             if (processLeaf.Leaf.LabelValues.First() == UnknownLabelValue && !multipleLabelsLeaves.Contains(processLeaf.Leaf))
             {
-               ImmutableHashSet<int> labels = ImmutableHashSet.CreateRange(ids.Select(id => tanukiTransformers.TanukiLabelExtractor(id)));
+               ImmutableHashSet<int> labels = ImmutableHashSet.CreateRange(ids.Select(id => tanukiETL.TanukiLabelExtractor(id)));
                PakiraLeaf updatedLeaf = new PakiraLeaf(labels);
 
                pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, updatedLeaf));
@@ -215,9 +216,9 @@ namespace Amaigoma
             }
             else
             {
-               PakiraNode pakiraNode = PrepareNode(ids, tanukiTransformers);
+               PakiraNode pakiraNode = PrepareNode(ids, tanukiETL);
 
-               PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, ids, tanukiTransformers);
+               PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, ids, tanukiETL);
 
                if ((pakiraLeavesResults[0].pakiraLeaf.LabelValues.First() != UnknownLabelValue) && pakiraLeavesResults[1].pakiraLeaf.LabelValues.First() != UnknownLabelValue)
                {
@@ -240,14 +241,14 @@ namespace Amaigoma
          return pakiraDecisionTreeModel;
       }
 
-      private Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiTransformers tanukiTransformers)
+      private Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
 
          // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices sequentially. or all data transformers sequentially
          // and then randomly within each transformer.
-         IEnumerable<int> randomFeatureIndices = Enumerable.Range(0, tanukiTransformers.TotalOutputSamples).Shuffle(RandomSource);
+         IEnumerable<int> randomFeatureIndices = Enumerable.Range(0, tanukiETL.TotalOutputSamples).Shuffle(RandomSource);
 
          foreach (int featureIndex in randomFeatureIndices)
          {
@@ -256,16 +257,16 @@ namespace Amaigoma
 
             foreach (int id in ids)
             {
-               SabotenCache sabotenCache = tanukiTransformers.TanukiSabotenCacheExtractor(id);
+               SabotenCache sabotenCache = tanukiETL.TanukiSabotenCacheExtractor(id);
 
                if (!sabotenCache.CacheHit(featureIndex))
                {
-                  IEnumerable<double> data = tanukiTransformers.TanukiDataExtractor(id);
-                  sabotenCache = sabotenCache.Prefetch(tanukiTransformers, data, featureIndex);
-                  tanukiTransformers.TanukiSabotenCacheLoad(id, sabotenCache);
+                  IEnumerable<double> data = tanukiETL.TanukiDataExtractor(id);
+                  sabotenCache = sabotenCache.Prefetch(tanukiETL, data, featureIndex);
+                  tanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
                }
 
-               int trainLabel = tanukiTransformers.TanukiLabelExtractor(id);
+               int trainLabel = tanukiETL.TanukiLabelExtractor(id);
                double dataSampleValue = sabotenCache[featureIndex];
 
                if (dataSampleValue <= minimumValues.Item1)
