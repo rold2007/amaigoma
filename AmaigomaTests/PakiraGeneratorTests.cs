@@ -157,7 +157,7 @@ namespace AmaigomaTests
          PassThroughTransformer passThroughTransformer = new();
          MeanDistanceDataTransformer meanDistanceDataTransformer = new();
 
-         Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
+         Func<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
          dataTransformers += passThroughTransformer.ConvertAll;
          dataTransformers += MeanDistanceDataTransformer.ConvertAll;
@@ -198,7 +198,7 @@ namespace AmaigomaTests
          PassThroughTransformer passThroughTransformer = new();
          MeanDistanceDataTransformer meanDistanceDataTransformer = new();
 
-         Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
+         Func<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
          dataTransformers += MeanDistanceDataTransformer.ConvertAll;
 
@@ -242,7 +242,7 @@ namespace AmaigomaTests
 
          MeanDistanceDataTransformer meanDistanceDataTransformer = new();
 
-         Converter<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
+         Func<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
 
          dataTransformers += MeanDistanceDataTransformer.ConvertAll;
 

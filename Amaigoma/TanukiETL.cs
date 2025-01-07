@@ -6,10 +6,10 @@ using System.Linq;
 
 namespace Amaigoma
 {
-   using DataExtractor = Converter<int, IEnumerable<double>>;
-   using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
-   using LabelExtractor = Converter<int, int>;
-   using SabotenCacheExtractor = Converter<int, SabotenCache>;
+   using DataExtractor = Func<int, IEnumerable<double>>;
+   using DataTransformer = Func<IEnumerable<double>, IEnumerable<double>>;
+   using LabelExtractor = Func<int, int>;
+   using SabotenCacheExtractor = Func<int, SabotenCache>;
    using SabotenCacheLoad = Action<int, SabotenCache>;
 
    // TODO Move this to a new file.

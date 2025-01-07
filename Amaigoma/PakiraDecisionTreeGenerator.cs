@@ -259,6 +259,7 @@ namespace Amaigoma
             {
                SabotenCache sabotenCache = tanukiETL.TanukiSabotenCacheExtractor(id);
 
+               // UNDONE This logic should be moved to one Extension method to be used in other places easily
                if (!sabotenCache.CacheHit(featureIndex))
                {
                   IEnumerable<double> data = tanukiETL.TanukiDataExtractor(id);

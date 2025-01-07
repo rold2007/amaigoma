@@ -24,7 +24,7 @@ using Xunit.Abstractions;
 // it should lower its priority. This will not prevent infinite multiclass leaves, but it may help select the tree which returns a multiclass leaf less often.
 namespace AmaigomaTests
 {
-   using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
+   using DataTransformer = Func<IEnumerable<double>, IEnumerable<double>>;
 
    public record IntegrationTestDataSet // ncrunch: no coverage
    {
@@ -77,9 +77,12 @@ namespace AmaigomaTests
 
             yPosition.ShouldBeGreaterThanOrEqualTo(0);
 
+            Span<ulong> rowSpan = IntegralImage.DangerousGetRowSpan(yPosition);
+            Span<ulong> slice = rowSpan.Slice(xPosition - HalfFeatureWindowSize, FeatureWindowSize + 1);
+
             // UNDONE Extract and benchmark the DangerousGetRowSpan() and Slice() to see if DangerousGetRowSpan() should be called only in the constructor
             // +1 length to support first column of integral image
-            foreach (ulong integralValue in IntegralImage.DangerousGetRowSpan(yPosition).Slice(xPosition - HalfFeatureWindowSize, FeatureWindowSize + 1))
+            foreach (ulong integralValue in slice)
             {
                newSample.Add(integralValue);
             }

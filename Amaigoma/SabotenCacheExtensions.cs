@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Amaigoma
 {
-   using DataTransformer = Converter<IEnumerable<double>, IEnumerable<double>>;
+   using DataTransformer = Func<IEnumerable<double>, IEnumerable<double>>;
 
    public static class SabotenCacheExtensions
    {
