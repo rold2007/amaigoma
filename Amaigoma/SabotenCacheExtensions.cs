@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Amaigoma
 {
-   using DataTransformer = Func<IEnumerable<double>, IEnumerable<double>>;
+   using DataTransformer = Func<IEnumerable<double>, double>;
 
    public static class SabotenCacheExtensions
    {
@@ -11,11 +11,11 @@ namespace Amaigoma
       public static SabotenCache Prefetch(this SabotenCache sabotenCache, TanukiETL tanukiETL, IEnumerable<double> data, int featureIndex)
       {
          // TODO Maybe the TanukiTransformers should be responsible to do the ET(L) on the data instead of getting its DataTransformer.
-         Tuple<Range, DataTransformer> dataTransformer = tanukiETL.DataTransformer(featureIndex);
+         DataTransformer dataTransformer = tanukiETL.TanukiDataTransformer[featureIndex];
 
-         IEnumerable<double> transformedData = dataTransformer.Item2(data);
+         double transformedData = dataTransformer(data);
 
-         return sabotenCache.LoadCache(dataTransformer.Item1, transformedData);
+         return sabotenCache.LoadCache(featureIndex, transformedData);
       }
    }
 }

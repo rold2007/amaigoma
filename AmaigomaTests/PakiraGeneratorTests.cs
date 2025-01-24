@@ -1,6 +1,7 @@
 ﻿using Amaigoma;
 using Shouldly;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -8,6 +9,8 @@ using Xunit;
 
 namespace AmaigomaTests
 {
+   using DataTransformer = Func<IEnumerable<double>, double>;
+
    public record PakiraGeneratorTests // ncrunch: no coverage
    {
       private readonly PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator;
@@ -19,27 +22,39 @@ namespace AmaigomaTests
          Console.WriteLine("PakiraDecisionTreeGenerator random seed: " + pakiraDecisionTreeGenerator.randomSeed.ToString());
       }
 
-      internal record MeanDistanceDataTransformer // ncrunch: no coverage
+      internal sealed record MeanDistanceDataTransformer : IEnumerable<DataTransformer> // ncrunch: no coverage
       {
-         public MeanDistanceDataTransformer()
+         public int DataCount { get; private set; }
+
+         public MeanDistanceDataTransformer(int dataCount)
          {
+            DataCount = dataCount;
          }
 
-         public static IEnumerable<double> ConvertAll(IEnumerable<double> list)
+         public IEnumerator<DataTransformer> GetEnumerator()
          {
-            ImmutableList<double> result = ImmutableList<double>.Empty;
-
-            for (int i = 0; i < list.Count() - 1; i++)
+            for (int i = 0; i < DataCount - 1; i++)
             {
-               double add = list.ElementAt(i) + list.ElementAt(i + 1);
+               int j = i;
 
-               add = 255 - add;
-               add = Math.Abs(add);
+               yield return (list) =>
+               {
+                  // TODO This ToArray() should be removed for optimization
+                  double[] integral = list.ToArray();
 
-               result = result.Add(add);
+                  double add = list.ElementAt(j) + list.ElementAt(j + 1);
+
+                  add = 255 - add;
+                  add = Math.Abs(add);
+
+                  return add;
+               };
             }
+         }
 
-            return result;
+         IEnumerator IEnumerable.GetEnumerator()
+         {
+            return this.GetEnumerator();
          }
       }
 
@@ -154,13 +169,10 @@ namespace AmaigomaTests
          labels = labels.Add(54);
          labels = labels.Add(42);
 
-         PassThroughTransformer passThroughTransformer = new();
-         MeanDistanceDataTransformer meanDistanceDataTransformer = new();
+         ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
 
-         Func<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
-
-         dataTransformers += passThroughTransformer.ConvertAll;
-         dataTransformers += MeanDistanceDataTransformer.ConvertAll;
+         dataTransformers = dataTransformers.AddRange(new PassThroughTransformer(data[0].Count));
+         dataTransformers = dataTransformers.AddRange(new MeanDistanceDataTransformer(data[0].Count));
 
          TanukiETL tanukiETL = new TanukiETL(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
@@ -195,16 +207,17 @@ namespace AmaigomaTests
          labels = labels.Add(54);
          labels = labels.Add(42);
 
-         PassThroughTransformer passThroughTransformer = new();
-         MeanDistanceDataTransformer meanDistanceDataTransformer = new();
+         PassThroughTransformer passThroughTransformer = new(data[0].Count);
+         MeanDistanceDataTransformer meanDistanceDataTransformer = new(data[0].Count);
 
-         Func<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
+         ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
 
-         dataTransformers += MeanDistanceDataTransformer.ConvertAll;
+         // TODO Removed a data transformer to be able to run faster until the performances are improved
+         dataTransformers = dataTransformers.AddRange(meanDistanceDataTransformer);
 
          for (int i = 0; i < 100; i++)
          {
-            dataTransformers += passThroughTransformer.ConvertAll;
+            dataTransformers = dataTransformers.AddRange(passThroughTransformer);
          }
 
          TanukiETL tanukiETL = new TanukiETL(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
@@ -240,13 +253,7 @@ namespace AmaigomaTests
          labels = labels.Add(54);
          labels = labels.Add(42);
 
-         MeanDistanceDataTransformer meanDistanceDataTransformer = new();
-
-         Func<IEnumerable<double>, IEnumerable<double>> dataTransformers = null;
-
-         dataTransformers += MeanDistanceDataTransformer.ConvertAll;
-
-         TanukiETL tanukiETL = new TanukiETL(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
+         TanukiETL tanukiETL = new TanukiETL(0, new IndexedDataExtractor(data).ConvertAll, new MeanDistanceDataTransformer(data[0].Count).ToList(), new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);

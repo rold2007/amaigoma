@@ -24,7 +24,7 @@ using Xunit.Abstractions;
 // it should lower its priority. This will not prevent infinite multiclass leaves, but it may help select the tree which returns a multiclass leaf less often.
 namespace AmaigomaTests
 {
-   using DataTransformer = Func<IEnumerable<double>, IEnumerable<double>>;
+   using DataTransformer = Func<IEnumerable<double>, double>;
 
    public record IntegrationTestDataSet // ncrunch: no coverage
    {
@@ -336,14 +336,14 @@ namespace AmaigomaTests
          testPositions = LoadDataSamples(testRectangles, testLabels, trainPositions.Count() + validationPositions.Count());
 
          // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
-         DataTransformer dataTransformers = null;
+         ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
 
          // TODO Removed a data transformer to be able to run faster until the performances are improved
-         dataTransformers += new AverageTransformer(17, FeatureFullWindowSize).ConvertAll;
-         dataTransformers += new AverageTransformer(7, FeatureFullWindowSize).ConvertAll;
-         dataTransformers += new AverageTransformer(5, FeatureFullWindowSize).ConvertAll;
-         dataTransformers += new AverageTransformer(3, FeatureFullWindowSize).ConvertAll;
-         // dataTransformers += new AverageTransformer(1).ConvertAll;
+         dataTransformers = dataTransformers.AddRange(new AverageTransformer(17, FeatureFullWindowSize));
+         dataTransformers = dataTransformers.AddRange(new AverageTransformer(7, FeatureFullWindowSize));
+         dataTransformers = dataTransformers.AddRange(new AverageTransformer(5, FeatureFullWindowSize));
+         dataTransformers = dataTransformers.AddRange(new AverageTransformer(3, FeatureFullWindowSize));
+         // dataTransformers = dataTransformers.AddRange(new AverageTransformer(1, FeatureFullWindowSize));
 
          AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage, FeatureFullWindowSize);
          AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage, FeatureFullWindowSize);

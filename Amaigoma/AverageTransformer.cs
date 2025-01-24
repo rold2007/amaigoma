@@ -1,13 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Shouldly;
 
 namespace Amaigoma
 {
+   using DataTransformer = Func<IEnumerable<double>, double>;
+
    // TODO Use Skia to add more advanced features ?
    // TODO Rename class to something else than "Transformer"
-   public sealed record AverageTransformer // ncrunch: no coverage
+   public sealed record AverageTransformer : IEnumerable<DataTransformer> // ncrunch: no coverage
    {
       public int FeatureWindowSize
       {
@@ -59,25 +63,34 @@ namespace Amaigoma
       }
 
       // TODO Use Benchmark.net to try to improve the benchmark of this method
-      public IEnumerable<double> ConvertAll(IEnumerable<double> list)
+      public IEnumerator<DataTransformer> GetEnumerator()
       {
-         double[] integral = list.ToArray();
-         double sum;
-
-         ImmutableList<double> features = ImmutableList<double>.Empty;
          int i = 0;
 
          while (i < IntegralIndices.Count)
          {
-            sum = integral[IntegralIndices[i++]];
-            sum -= integral[IntegralIndices[i++]];
-            sum -= integral[IntegralIndices[i++]];
-            sum += integral[IntegralIndices[i++]];
+            int j = i;
 
-            features = features.Add(sum * SlidingWindowSizeSquaredInverted);
+            yield return (list) =>
+            {
+               // TODO This ToArray() should be removed for optimization
+               double[] integral = list.ToArray();
+
+               double sum = integral[IntegralIndices[j]];
+               sum -= integral[IntegralIndices[j + 1]];
+               sum -= integral[IntegralIndices[j + 2]];
+               sum += integral[IntegralIndices[j + 3]];
+
+               return sum * SlidingWindowSizeSquaredInverted;
+            };
+
+            i += 4;
          }
+      }
 
-         return features;
+      IEnumerator IEnumerable.GetEnumerator()
+      {
+         return this.GetEnumerator();
       }
    }
 }

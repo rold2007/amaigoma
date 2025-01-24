@@ -50,7 +50,7 @@ namespace AmaigomaTests
                }
             }
 
-            List<double> convertedValues = averageTransformer.ConvertAll(integral).ToList<double>();
+            List<double> convertedValues = averageTransformer.Select(x => x(integral)).ToList<double>();;
 
             computedValues.Clear();
 

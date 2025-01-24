@@ -12,8 +12,10 @@ namespace AmaigomaTests
       {
          SabotenCache sabotenCache = new();
 
-         sabotenCache = sabotenCache.LoadCache(new Range(8, 10), new double[] { 8, 9 });
-         sabotenCache = sabotenCache.LoadCache(new Range(1, 3), new double[] { 1, 2 });
+         sabotenCache = sabotenCache.LoadCache(8, 8);
+         sabotenCache = sabotenCache.LoadCache(9, 9);
+         sabotenCache = sabotenCache.LoadCache(1, 1);
+         sabotenCache = sabotenCache.LoadCache(2, 2);
 
          sabotenCache[1].ShouldBe(1);
          sabotenCache[2].ShouldBe(2);

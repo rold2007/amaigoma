@@ -21,42 +21,39 @@ namespace Amaigoma
          FetchedData = fetchedData;
       }
 
-      public SabotenCache LoadCache(Range range, IEnumerable<double> newTransformedData)
+      public SabotenCache LoadCache(int dataIndex, double newTransformedData)
       {
          ImmutableList<double> transformedData;
          ImmutableList<bool> fetchedData;
 
          // Validate the data only once
-         foreach (double trainSampleValue in newTransformedData)
-         {
-            trainSampleValue.ShouldBeGreaterThanOrEqualTo(0.0);
-            trainSampleValue.ShouldBeLessThanOrEqualTo(255.0);
-         }
+         newTransformedData.ShouldBeGreaterThanOrEqualTo(0.0);
+         newTransformedData.ShouldBeLessThanOrEqualTo(255.0);
 
-         if (range.Start.Value == TransformedData.Count)
+         if (dataIndex == TransformedData.Count)
          {
-            transformedData = TransformedData.AddRange(newTransformedData);
-            fetchedData = FetchedData.AddRange(Enumerable.Repeat(true, range.End.Value - range.Start.Value));
+            transformedData = TransformedData.Add(newTransformedData);
+            fetchedData = FetchedData.AddRange(Enumerable.Repeat(true, 1));
          }
-         else if (range.Start.Value > TransformedData.Count)
+         else if (dataIndex > TransformedData.Count)
          {
             // Fill the gap
-            transformedData = TransformedData.AddRange(Enumerable.Repeat(0.0, range.Start.Value - TransformedData.Count));
-            fetchedData = FetchedData.AddRange(Enumerable.Repeat(false, range.Start.Value - TransformedData.Count));
+            transformedData = TransformedData.AddRange(Enumerable.Repeat(0.0, dataIndex - TransformedData.Count));
+            fetchedData = FetchedData.AddRange(Enumerable.Repeat(false, dataIndex - TransformedData.Count));
 
             // Fill the new data
-            transformedData = transformedData.AddRange(newTransformedData);
-            fetchedData = fetchedData.AddRange(Enumerable.Repeat(true, range.End.Value - range.Start.Value));
+            transformedData = transformedData.Add(newTransformedData);
+            fetchedData = fetchedData.AddRange(Enumerable.Repeat(true, 1));
          }
          else
          {
-            range.Start.Value.ShouldBeLessThan(TransformedData.Count);
+            dataIndex.ShouldBeLessThan(TransformedData.Count);
 
-            transformedData = TransformedData.RemoveRange(range.Start.Value, range.End.Value - range.Start.Value);
-            fetchedData = FetchedData.RemoveRange(range.Start.Value, range.End.Value - range.Start.Value);
+            transformedData = TransformedData.RemoveRange(dataIndex, 1);
+            fetchedData = FetchedData.RemoveRange(dataIndex, 1);
 
-            transformedData = transformedData.InsertRange(range.Start.Value, newTransformedData);
-            fetchedData = fetchedData.InsertRange(range.Start.Value, Enumerable.Repeat(true, range.End.Value - range.Start.Value));
+            transformedData = transformedData.Insert(dataIndex, newTransformedData);
+            fetchedData = fetchedData.Insert(dataIndex, true);
          }
 
          return new SabotenCache(transformedData, fetchedData);
