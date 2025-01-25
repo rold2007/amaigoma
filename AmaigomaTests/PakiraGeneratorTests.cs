@@ -53,9 +53,9 @@ namespace AmaigomaTests
          }
 
          IEnumerator IEnumerable.GetEnumerator()
-         {
-            return this.GetEnumerator();
-         }
+         { // ncrunch: no coverage
+            return this.GetEnumerator(); // ncrunch: no coverage
+         } // ncrunch: no coverage
       }
 
       [Fact]
