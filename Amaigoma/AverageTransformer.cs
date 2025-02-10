@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -11,7 +10,7 @@ namespace Amaigoma
 
    // TODO Use Skia to add more advanced features ?
    // TODO Rename class to something else than "Transformer"
-   public sealed record AverageTransformer : IEnumerable<DataTransformer> // ncrunch: no coverage
+   public sealed record AverageTransformer
    {
       public int FeatureWindowSize
       {
@@ -62,35 +61,32 @@ namespace Amaigoma
          }
       }
 
-      // TODO Use Benchmark.net to try to improve the benchmark of this method
-      public IEnumerator<DataTransformer> GetEnumerator()
+      public IEnumerable<DataTransformer> DataTransformers
       {
-         int i = 0;
-
-         while (i < IntegralIndices.Count)
+         get
          {
-            int j = i;
+            int i = 0;
 
-            yield return (list) =>
+            while (i < IntegralIndices.Count)
             {
-               // TODO This ToArray() should be removed for optimization
-               double[] integral = list.ToArray();
+               int j = i;
 
-               double sum = integral[IntegralIndices[j]];
-               sum -= integral[IntegralIndices[j + 1]];
-               sum -= integral[IntegralIndices[j + 2]];
-               sum += integral[IntegralIndices[j + 3]];
+               yield return (list) =>
+               {
+                  // TODO This ToArray() should be removed for optimization
+                  double[] integral = list.ToArray();
 
-               return sum * SlidingWindowSizeSquaredInverted;
-            };
+                  double sum = integral[IntegralIndices[j]];
+                  sum -= integral[IntegralIndices[j + 1]];
+                  sum -= integral[IntegralIndices[j + 2]];
+                  sum += integral[IntegralIndices[j + 3]];
 
-            i += 4;
+                  return sum * SlidingWindowSizeSquaredInverted;
+               };
+
+               i += 4;
+            }
          }
       }
-
-      IEnumerator IEnumerable.GetEnumerator()
-      { // ncrunch: no coverage
-         return this.GetEnumerator(); // ncrunch: no coverage
-      } // ncrunch: no coverage
    }
 }

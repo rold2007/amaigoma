@@ -78,10 +78,9 @@ namespace AmaigomaTests
             yPosition.ShouldBeGreaterThanOrEqualTo(0);
 
             Span<ulong> rowSpan = IntegralImage.DangerousGetRowSpan(yPosition);
+            // +1 length to support first column of integral image
             Span<ulong> slice = rowSpan.Slice(xPosition - HalfFeatureWindowSize, FeatureWindowSize + 1);
 
-            // UNDONE Extract and benchmark the DangerousGetRowSpan() and Slice() to see if DangerousGetRowSpan() should be called only in the constructor
-            // +1 length to support first column of integral image
             foreach (ulong integralValue in slice)
             {
                newSample.Add(integralValue);
@@ -339,18 +338,18 @@ namespace AmaigomaTests
          ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
 
          // TODO Removed a data transformer to be able to run faster until the performances are improved
-         dataTransformers = dataTransformers.AddRange(new AverageTransformer(17, FeatureFullWindowSize));
-         dataTransformers = dataTransformers.AddRange(new AverageTransformer(7, FeatureFullWindowSize));
-         dataTransformers = dataTransformers.AddRange(new AverageTransformer(5, FeatureFullWindowSize));
-         dataTransformers = dataTransformers.AddRange(new AverageTransformer(3, FeatureFullWindowSize));
+         dataTransformers = dataTransformers.AddRange(new AverageTransformer(17, FeatureFullWindowSize).DataTransformers);
+         dataTransformers = dataTransformers.AddRange(new AverageTransformer(7, FeatureFullWindowSize).DataTransformers);
+         dataTransformers = dataTransformers.AddRange(new AverageTransformer(5, FeatureFullWindowSize).DataTransformers);
+         dataTransformers = dataTransformers.AddRange(new AverageTransformer(3, FeatureFullWindowSize).DataTransformers);
          // dataTransformers = dataTransformers.AddRange(new AverageTransformer(1, FeatureFullWindowSize));
 
          AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage, FeatureFullWindowSize);
          AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage, FeatureFullWindowSize);
          AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage, FeatureFullWindowSize);
-         TanukiETL trainTanukiETL = new(trainPositions.Keys.First(), trainDataExtractor.ConvertAll, dataTransformers, trainDataExtractor.ExtractLabel);
-         TanukiETL validationTanukiETL = new(validationPositions.Keys.First(), validationDataExtractor.ConvertAll, dataTransformers, validationDataExtractor.ExtractLabel);
-         TanukiETL testTanukiETL = new(testPositions.Keys.First(), testDataExtractor.ConvertAll, dataTransformers, testDataExtractor.ExtractLabel);
+         TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, dataTransformers, trainDataExtractor.ExtractLabel);
+         TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, dataTransformers, validationDataExtractor.ExtractLabel);
+         TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, dataTransformers, testDataExtractor.ExtractLabel);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 

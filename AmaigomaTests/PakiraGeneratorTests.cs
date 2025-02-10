@@ -1,7 +1,6 @@
 ﻿using Amaigoma;
 using Shouldly;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -22,7 +21,7 @@ namespace AmaigomaTests
          Console.WriteLine("PakiraDecisionTreeGenerator random seed: " + pakiraDecisionTreeGenerator.randomSeed.ToString());
       }
 
-      internal sealed record MeanDistanceDataTransformer : IEnumerable<DataTransformer> // ncrunch: no coverage
+      internal sealed record MeanDistanceDataTransformer
       {
          public int DataCount { get; private set; }
 
@@ -31,31 +30,29 @@ namespace AmaigomaTests
             DataCount = dataCount;
          }
 
-         public IEnumerator<DataTransformer> GetEnumerator()
+         public IEnumerable<DataTransformer> DataTransformers
          {
-            for (int i = 0; i < DataCount - 1; i++)
+            get
             {
-               int j = i;
-
-               yield return (list) =>
+               for (int i = 0; i < DataCount - 1; i++)
                {
-                  // TODO This ToArray() should be removed for optimization
-                  double[] integral = list.ToArray();
+                  int j = i;
 
-                  double add = list.ElementAt(j) + list.ElementAt(j + 1);
+                  yield return (list) =>
+                  {
+                     // TODO This ToArray() should be removed for optimization
+                     double[] integral = list.ToArray();
 
-                  add = 255 - add;
-                  add = Math.Abs(add);
+                     double add = list.ElementAt(j) + list.ElementAt(j + 1);
 
-                  return add;
-               };
+                     add = 255 - add;
+                     add = Math.Abs(add);
+
+                     return add;
+                  };
+               }
             }
          }
-
-         IEnumerator IEnumerable.GetEnumerator()
-         { // ncrunch: no coverage
-            return this.GetEnumerator(); // ncrunch: no coverage
-         } // ncrunch: no coverage
       }
 
       [Fact]
@@ -171,10 +168,10 @@ namespace AmaigomaTests
 
          ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
 
-         dataTransformers = dataTransformers.AddRange(new PassThroughTransformer(data[0].Count));
-         dataTransformers = dataTransformers.AddRange(new MeanDistanceDataTransformer(data[0].Count));
+         dataTransformers = dataTransformers.AddRange(new PassThroughTransformer(data[0].Count).DataTransformers);
+         dataTransformers = dataTransformers.AddRange(new MeanDistanceDataTransformer(data[0].Count).DataTransformers);
 
-         TanukiETL tanukiETL = new TanukiETL(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
+         TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
@@ -213,14 +210,14 @@ namespace AmaigomaTests
          ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
 
          // TODO Removed a data transformer to be able to run faster until the performances are improved
-         dataTransformers = dataTransformers.AddRange(meanDistanceDataTransformer);
+         dataTransformers = dataTransformers.AddRange(meanDistanceDataTransformer.DataTransformers);
 
          for (int i = 0; i < 100; i++)
          {
-            dataTransformers = dataTransformers.AddRange(passThroughTransformer);
+            dataTransformers = dataTransformers.AddRange(passThroughTransformer.DataTransformers);
          }
 
-         TanukiETL tanukiETL = new TanukiETL(0, new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
+         TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
@@ -253,7 +250,7 @@ namespace AmaigomaTests
          labels = labels.Add(54);
          labels = labels.Add(42);
 
-         TanukiETL tanukiETL = new TanukiETL(0, new IndexedDataExtractor(data).ConvertAll, new MeanDistanceDataTransformer(data[0].Count).ToList(), new IndexedLabelExtractor(labels).ConvertAll);
+         TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, new MeanDistanceDataTransformer(data[0].Count).DataTransformers.ToList(), new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
