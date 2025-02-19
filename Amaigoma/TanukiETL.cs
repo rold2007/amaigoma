@@ -7,6 +7,7 @@ namespace Amaigoma
 {
    using DataExtractor = Func<int, IEnumerable<double>>;
    using DataTransformer = Func<IEnumerable<double>, double>;
+   using DataTransformerIndices = Func<int, IEnumerable<int>>;
    using LabelExtractor = Func<int, int>;
    using SabotenCacheExtractor = Func<int, SabotenCache>;
    using SabotenCacheLoad = Action<int, SabotenCache>;
@@ -71,20 +72,22 @@ namespace Amaigoma
    {
       public DataExtractor TanukiDataExtractor { get; private set; }
       public IReadOnlyList<DataTransformer> TanukiDataTransformer { get; private set; }
+      public IReadOnlyList<DataTransformerIndices> TanukiDataTransformerIndices { get; private set; }
       public LabelExtractor TanukiLabelExtractor { get; private set; }
       public SabotenCacheExtractor TanukiSabotenCacheExtractor { get; private set; }
       public SabotenCacheLoad TanukiSabotenCacheLoad { get; private set; }
 
-      public TanukiETL(ImmutableList<ImmutableList<double>> dataSamples, ImmutableList<int> labels) : this(new IndexedDataExtractor(dataSamples).ConvertAll, new PassThroughTransformer(dataSamples[0].Count).DataTransformers.ToList(), new IndexedLabelExtractor(labels).ConvertAll)
+      public TanukiETL(ImmutableList<ImmutableList<double>> dataSamples, ImmutableList<int> labels) : this(new IndexedDataExtractor(dataSamples).ConvertAll, new PassThroughTransformer(dataSamples[0].Count).DataTransformers.ToList(), new PassThroughTransformer(dataSamples[0].Count).DataTransformersIndices.ToList(), new IndexedLabelExtractor(labels).ConvertAll)
       {
       }
 
-      public TanukiETL(DataExtractor dataExtractor, IReadOnlyList<DataTransformer> dataTransformer, LabelExtractor labelExtractor)
+      public TanukiETL(DataExtractor dataExtractor, IReadOnlyList<DataTransformer> dataTransformer, IReadOnlyList<DataTransformerIndices> dataTransformerIndices, LabelExtractor labelExtractor)
       {
          SimpleSabotenCacheExtractor simpleSabotenCacheExtractor = new();
 
          TanukiDataExtractor = dataExtractor;
          TanukiDataTransformer = dataTransformer;
+         TanukiDataTransformerIndices = dataTransformerIndices;
          TanukiLabelExtractor = labelExtractor;
          TanukiSabotenCacheExtractor = simpleSabotenCacheExtractor.Extract;
          TanukiSabotenCacheLoad = simpleSabotenCacheExtractor.Load;

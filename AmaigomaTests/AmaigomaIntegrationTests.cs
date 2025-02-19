@@ -25,6 +25,7 @@ using Xunit.Abstractions;
 namespace AmaigomaTests
 {
    using DataTransformer = Func<IEnumerable<double>, double>;
+   using DataTransformerIndices = Func<int, IEnumerable<int>>;
 
    public record IntegrationTestDataSet // ncrunch: no coverage
    {
@@ -334,22 +335,31 @@ namespace AmaigomaTests
          validationPositions = LoadDataSamples(validationRectangles, validationLabels, trainPositions.Count());
          testPositions = LoadDataSamples(testRectangles, testLabels, trainPositions.Count() + validationPositions.Count());
 
+         ImmutableList<AverageTransformer> averageTransformers = ImmutableList<AverageTransformer>.Empty;
+
+         averageTransformers = averageTransformers.Add(new AverageTransformer(17, FeatureFullWindowSize));
+         averageTransformers = averageTransformers.Add(new AverageTransformer(7, FeatureFullWindowSize));
+         averageTransformers = averageTransformers.Add(new AverageTransformer(5, FeatureFullWindowSize));
+         averageTransformers = averageTransformers.Add(new AverageTransformer(3, FeatureFullWindowSize));
+         // TODO Removed a data transformer to be able to run faster until the performances are improved
+         // averageTransformers = averageTransformers.Add(new AverageTransformer(1, FeatureFullWindowSize));
+
          // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
          ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
+         ImmutableList<DataTransformerIndices> dataTransformerIndices = ImmutableList<DataTransformerIndices>.Empty;
 
-         // TODO Removed a data transformer to be able to run faster until the performances are improved
-         dataTransformers = dataTransformers.AddRange(new AverageTransformer(17, FeatureFullWindowSize).DataTransformers);
-         dataTransformers = dataTransformers.AddRange(new AverageTransformer(7, FeatureFullWindowSize).DataTransformers);
-         dataTransformers = dataTransformers.AddRange(new AverageTransformer(5, FeatureFullWindowSize).DataTransformers);
-         dataTransformers = dataTransformers.AddRange(new AverageTransformer(3, FeatureFullWindowSize).DataTransformers);
-         // dataTransformers = dataTransformers.AddRange(new AverageTransformer(1, FeatureFullWindowSize));
+         foreach (AverageTransformer averageTransformer in averageTransformers)
+         {
+            dataTransformers = dataTransformers.AddRange(averageTransformer.DataTransformers);
+            dataTransformerIndices = dataTransformerIndices.AddRange(averageTransformer.DataTransformersIndices);
+         }
 
          AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage, FeatureFullWindowSize);
          AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage, FeatureFullWindowSize);
          AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage, FeatureFullWindowSize);
-         TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, dataTransformers, trainDataExtractor.ExtractLabel);
-         TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, dataTransformers, validationDataExtractor.ExtractLabel);
-         TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, dataTransformers, testDataExtractor.ExtractLabel);
+         TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, dataTransformers, dataTransformerIndices, trainDataExtractor.ExtractLabel);
+         TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, dataTransformers, dataTransformerIndices, validationDataExtractor.ExtractLabel);
+         TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, dataTransformers, dataTransformerIndices, testDataExtractor.ExtractLabel);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 

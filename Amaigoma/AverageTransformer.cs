@@ -7,6 +7,7 @@ using Shouldly;
 namespace Amaigoma
 {
    using DataTransformer = Func<IEnumerable<double>, double>;
+   using DataTransformerIndices = Func<int, IEnumerable<int>>;
 
    // TODO Use Skia to add more advanced features ?
    // TODO Rename class to something else than "Transformer"
@@ -61,6 +62,25 @@ namespace Amaigoma
          }
       }
 
+      public IEnumerable<DataTransformerIndices> DataTransformersIndices
+      {
+         get
+         {
+            int i = 0;
+
+            while (i < IntegralIndices.Count)
+            {
+               int j = i;
+
+               yield return (featureIndex) =>
+               {
+                  return [IntegralIndices[j], IntegralIndices[j + 1], IntegralIndices[j + 2], IntegralIndices[j + 3]];
+               };
+
+               i += 4;
+            }
+         }
+      }
       public IEnumerable<DataTransformer> DataTransformers
       {
          get

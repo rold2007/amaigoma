@@ -103,8 +103,7 @@ namespace Amaigoma
             // TODO Replace this code by an assert since code coverage seems impossible
             if (!sabotenCache.CacheHit(featureIndex))
             { // ncrunch: no coverage
-               IEnumerable<double> data = tanukiETL.TanukiDataExtractor(id); // ncrunch: no coverage
-               sabotenCache = sabotenCache.Prefetch(tanukiETL, data, featureIndex); // ncrunch: no coverage
+               sabotenCache = sabotenCache.Prefetch(tanukiETL, id, featureIndex); // ncrunch: no coverage
                tanukiETL.TanukiSabotenCacheLoad(id, sabotenCache); // ncrunch: no coverage
             } // ncrunch: no coverage
          }
@@ -262,8 +261,7 @@ namespace Amaigoma
                // UNDONE This logic should be moved to one Extension method to be used in other places easily
                if (!sabotenCache.CacheHit(featureIndex))
                {
-                  IEnumerable<double> data = tanukiETL.TanukiDataExtractor(id);
-                  sabotenCache = sabotenCache.Prefetch(tanukiETL, data, featureIndex);
+                  sabotenCache = sabotenCache.Prefetch(tanukiETL, id, featureIndex);
                   tanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
                }
 

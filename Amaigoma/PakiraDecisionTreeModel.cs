@@ -71,7 +71,6 @@ namespace Amaigoma
       private Tuple<PakiraLeaf, SabotenCache> WalkNode(int id)
       {
          PakiraNode node = Tree.Root;
-         IEnumerable<double> dataSample = null;
          SabotenCache sabotenCache = TanukiETL.TanukiSabotenCacheExtractor(id);
 
          do
@@ -81,12 +80,7 @@ namespace Amaigoma
 
             if (!sabotenCache.CacheHit(col))
             {
-               if (dataSample == null)
-               {
-                  dataSample = TanukiETL.TanukiDataExtractor(id);
-               }
-
-               sabotenCache = sabotenCache.Prefetch(TanukiETL, dataSample, col);
+               sabotenCache = sabotenCache.Prefetch(TanukiETL, id, col);
             }
 
             PakiraNode subNode;

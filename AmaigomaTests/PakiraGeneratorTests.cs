@@ -9,6 +9,7 @@ using Xunit;
 namespace AmaigomaTests
 {
    using DataTransformer = Func<IEnumerable<double>, double>;
+   using DataTransformerIndices = Func<int, IEnumerable<int>>;
 
    public record PakiraGeneratorTests // ncrunch: no coverage
    {
@@ -28,6 +29,22 @@ namespace AmaigomaTests
          public MeanDistanceDataTransformer(int dataCount)
          {
             DataCount = dataCount;
+         }
+
+         public IEnumerable<DataTransformerIndices> DataTransformersIndices
+         {
+            get
+            {
+               for (int i = 0; i < DataCount - 1; i++)
+               {
+                  int j = i;
+
+                  yield return (featureIndex) =>
+                  {
+                     return [j, j + 1];
+                  };
+               }
+            }
          }
 
          public IEnumerable<DataTransformer> DataTransformers
@@ -166,12 +183,17 @@ namespace AmaigomaTests
          labels = labels.Add(54);
          labels = labels.Add(42);
 
+         PassThroughTransformer passThroughTransformer = new(data[0].Count);
+         MeanDistanceDataTransformer meanDistanceDataTransformer = new(data[0].Count);
          ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
+         ImmutableList<DataTransformerIndices> dataTransformerIndices = ImmutableList<DataTransformerIndices>.Empty;
 
-         dataTransformers = dataTransformers.AddRange(new PassThroughTransformer(data[0].Count).DataTransformers);
-         dataTransformers = dataTransformers.AddRange(new MeanDistanceDataTransformer(data[0].Count).DataTransformers);
+         dataTransformers = dataTransformers.AddRange(passThroughTransformer.DataTransformers);
+         dataTransformers = dataTransformers.AddRange(meanDistanceDataTransformer.DataTransformers);
+         dataTransformerIndices = dataTransformerIndices.AddRange(passThroughTransformer.DataTransformersIndices);
+         dataTransformerIndices = dataTransformerIndices.AddRange(meanDistanceDataTransformer.DataTransformersIndices);
 
-         TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
+         TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, dataTransformers, dataTransformerIndices, new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
@@ -208,16 +230,19 @@ namespace AmaigomaTests
          MeanDistanceDataTransformer meanDistanceDataTransformer = new(data[0].Count);
 
          ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
+         ImmutableList<DataTransformerIndices> dataTransformerIndices = ImmutableList<DataTransformerIndices>.Empty;
 
          // TODO Removed a data transformer to be able to run faster until the performances are improved
          dataTransformers = dataTransformers.AddRange(meanDistanceDataTransformer.DataTransformers);
+         dataTransformerIndices = dataTransformerIndices.AddRange(meanDistanceDataTransformer.DataTransformersIndices);
 
          for (int i = 0; i < 100; i++)
          {
             dataTransformers = dataTransformers.AddRange(passThroughTransformer.DataTransformers);
+            dataTransformerIndices = dataTransformerIndices.AddRange(passThroughTransformer.DataTransformersIndices);
          }
 
-         TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, dataTransformers, new IndexedLabelExtractor(labels).ConvertAll);
+         TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, dataTransformers, dataTransformerIndices, new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
@@ -242,15 +267,22 @@ namespace AmaigomaTests
          ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
-         data = data.Add(ImmutableList.CreateRange(new double[] { 25, 35 }));
-         data = data.Add(ImmutableList.CreateRange(new double[] { 120, 140 }));
-         data = data.Add(ImmutableList.CreateRange(new double[] { 190, 200 }));
+         data = data.Add([25, 35]);
+         data = data.Add([120, 140]);
+         data = data.Add([190, 200]);
 
          labels = labels.Add(42);
          labels = labels.Add(54);
          labels = labels.Add(42);
 
-         TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, new MeanDistanceDataTransformer(data[0].Count).DataTransformers.ToList(), new IndexedLabelExtractor(labels).ConvertAll);
+         MeanDistanceDataTransformer meanDistanceDataTransformer = new(data[0].Count);
+         ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
+         ImmutableList<DataTransformerIndices> dataTransformerIndices = ImmutableList<DataTransformerIndices>.Empty;
+
+         dataTransformers = dataTransformers.AddRange(meanDistanceDataTransformer.DataTransformers);
+         dataTransformerIndices = dataTransformerIndices.AddRange(meanDistanceDataTransformer.DataTransformersIndices);
+
+         TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, dataTransformers, dataTransformerIndices, new IndexedLabelExtractor(labels).ConvertAll);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
