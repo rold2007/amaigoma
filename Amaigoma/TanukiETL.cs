@@ -5,9 +5,9 @@ using System.Linq;
 
 namespace Amaigoma
 {
-   using DataExtractor = Func<int, IEnumerable<double>>;
-   using DataTransformer = Func<IEnumerable<double>, double>;
-   using DataTransformerIndices = Func<int, IEnumerable<int>>;
+   // UNDONE Need to be consistent with the concept of Extractor/Transformer...
+   using DataExtractor = Func<int, int, IEnumerable<double>>;
+   using DataTransformer = Func<int, int, double>;
    using LabelExtractor = Func<int, int>;
    using SabotenCacheExtractor = Func<int, SabotenCache>;
    using SabotenCacheLoad = Action<int, SabotenCache>;
@@ -22,7 +22,8 @@ namespace Amaigoma
          DataSamples = dataSamples;
       }
 
-      public IEnumerable<double> ConvertAll(int id)
+      // UNDONE Take advantage of the indices parameter
+      public IEnumerable<double> ConvertAll(int id, int featureIndex)
       {
          return DataSamples[id];
       }
@@ -70,27 +71,29 @@ namespace Amaigoma
 
    public sealed record TanukiETL // ncrunch: no coverage
    {
-      public DataExtractor TanukiDataExtractor { get; private set; }
-      public IReadOnlyList<DataTransformer> TanukiDataTransformer { get; private set; }
-      public IReadOnlyList<DataTransformerIndices> TanukiDataTransformerIndices { get; private set; }
+      // UNDONE Remove unused stuff
+      // public DataExtractor TanukiDataExtractor { get; private set; }
+      // public IReadOnlyList<DataTransformer> TanukiDataTransformer { get; private set; }
+      public DataTransformer TanukiDataTransformer { get; private set; }
       public LabelExtractor TanukiLabelExtractor { get; private set; }
       public SabotenCacheExtractor TanukiSabotenCacheExtractor { get; private set; }
       public SabotenCacheLoad TanukiSabotenCacheLoad { get; private set; }
+      public int TanukiFeatureCount { get; private set; }
 
-      public TanukiETL(ImmutableList<ImmutableList<double>> dataSamples, ImmutableList<int> labels) : this(new IndexedDataExtractor(dataSamples).ConvertAll, new PassThroughTransformer(dataSamples[0].Count).DataTransformers.ToList(), new PassThroughTransformer(dataSamples[0].Count).DataTransformersIndices.ToList(), new IndexedLabelExtractor(labels).ConvertAll)
-      {
-      }
+      // public TanukiETL(ImmutableList<ImmutableList<double>> dataSamples, ImmutableList<int> labels) : this(/*new IndexedDataExtractor(dataSamples).ConvertAll, */new PassThroughTransformer(dataSamples[0].Count).DataTransformers.ToList(), new IndexedLabelExtractor(labels).ConvertAll)
+      // {
+      // }
 
-      public TanukiETL(DataExtractor dataExtractor, IReadOnlyList<DataTransformer> dataTransformer, IReadOnlyList<DataTransformerIndices> dataTransformerIndices, LabelExtractor labelExtractor)
+      public TanukiETL(DataTransformer dataTransformer, LabelExtractor labelExtractor, int featureCount)
       {
          SimpleSabotenCacheExtractor simpleSabotenCacheExtractor = new();
 
-         TanukiDataExtractor = dataExtractor;
+         // TanukiDataExtractor = dataExtractor;
          TanukiDataTransformer = dataTransformer;
-         TanukiDataTransformerIndices = dataTransformerIndices;
          TanukiLabelExtractor = labelExtractor;
          TanukiSabotenCacheExtractor = simpleSabotenCacheExtractor.Extract;
          TanukiSabotenCacheLoad = simpleSabotenCacheExtractor.Load;
+         TanukiFeatureCount = featureCount;
       }
    }
 }

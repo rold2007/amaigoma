@@ -24,8 +24,9 @@ using Xunit.Abstractions;
 // it should lower its priority. This will not prevent infinite multiclass leaves, but it may help select the tree which returns a multiclass leaf less often.
 namespace AmaigomaTests
 {
+   using DataExtractor = Func<int, int, double>;
    using DataTransformer = Func<IEnumerable<double>, double>;
-   using DataTransformerIndices = Func<int, IEnumerable<int>>;
+   using DataTransformerIndices = Func<int, IEnumerable<double>>;
 
    public record IntegrationTestDataSet // ncrunch: no coverage
    {
@@ -49,6 +50,8 @@ namespace AmaigomaTests
       private Buffer2D<ulong> IntegralImage;
       private int FeatureWindowSize;
       private int HalfFeatureWindowSize;
+      private ImmutableList<DataTransformer> DataTransformers = ImmutableList<DataTransformer>.Empty;
+      private ImmutableList<DataTransformerIndices> DataTransformersIndices = ImmutableList<DataTransformerIndices>.Empty;
 
       public AverageWindowFeature(ImmutableDictionary<int, SampleData> positions, Buffer2D<ulong> integralImage, int featureWindowSize)
       {
@@ -58,7 +61,8 @@ namespace AmaigomaTests
          HalfFeatureWindowSize = featureWindowSize / 2;
       }
 
-      public IEnumerable<double> ConvertAll(int id)
+      // UNDONE Take advantage of the indices parameter
+      public double ConvertAll(int id, int featureIndex)
       {
          Point position = Samples[id].Position;
          List<double> newSample = new((FeatureWindowSize + 1) * (FeatureWindowSize + 1));
@@ -68,32 +72,58 @@ namespace AmaigomaTests
 
          xPosition.ShouldBePositive();
 
+         IEnumerable<double> indices = DataTransformersIndices[featureIndex](featureIndex);
+
          // UNDONE I should get rid of the data extractors. Most of the time the data transformers don't need the full data sample, except in train mode,
          // so it is slow for nothing. The data transformer could fetch only what it needs and back it up with a SabotenCache.
          // UNDONE Try to apply this solution to see if it is faster, although it will probably allocate more: https://github.com/SixLabors/ImageSharp/discussions/1666#discussioncomment-876494
          // +1 length to support first row of integral image
-         for (int y2 = -HalfFeatureWindowSize; y2 <= HalfFeatureWindowSize + 1; y2++)
+
+         // UNDONE This logic can be further optimized, no need to get all 4 spans when dealing with AverageTransformers
+         foreach (int i in indices)
          {
-            int yPosition = top + y2;
+            int indexY = i / (FeatureWindowSize + 1);
+            int y2 = -HalfFeatureWindowSize + indexY;
 
-            yPosition.ShouldBeGreaterThanOrEqualTo(0);
-
-            Span<ulong> rowSpan = IntegralImage.DangerousGetRowSpan(yPosition);
-            // +1 length to support first column of integral image
-            Span<ulong> slice = rowSpan.Slice(xPosition - HalfFeatureWindowSize, FeatureWindowSize + 1);
-
-            foreach (ulong integralValue in slice)
             {
-               newSample.Add(integralValue);
+               int yPosition = top + y2;
+
+               yPosition.ShouldBeGreaterThanOrEqualTo(0);
+
+               Span<ulong> rowSpan = IntegralImage.DangerousGetRowSpan(yPosition);
+               // +1 length to support first column of integral image
+               Span<ulong> slice = rowSpan.Slice(xPosition - HalfFeatureWindowSize, FeatureWindowSize + 1);
+
+               int indexX = i - (indexY * (FeatureWindowSize + 1));
+               newSample.Add(slice[indexX]);
             }
          }
 
-         return newSample;
+         double transformedData = DataTransformers[featureIndex](newSample);
+
+         return transformedData;
+         // return -1;
+      }
+
+      // TODO Change this method to make the class immutable
+      public void AddAverageTransformer(IEnumerable<int> slidingWindowSizes)
+      {
+         foreach (int slidingWindowSize in slidingWindowSizes)
+         {
+            AverageTransformer averageTransformer = new(slidingWindowSize, FeatureWindowSize);
+            DataTransformers = DataTransformers.AddRange(averageTransformer.DataTransformers);
+            DataTransformersIndices = DataTransformersIndices.AddRange(averageTransformer.DataTransformersIndices);
+         }
       }
 
       public int ExtractLabel(int id)
       {
          return Samples[id].Label;
+      }
+
+      public int FeaturesCount()
+      {
+         return DataTransformers.Count;
       }
    }
 
@@ -335,31 +365,21 @@ namespace AmaigomaTests
          validationPositions = LoadDataSamples(validationRectangles, validationLabels, trainPositions.Count());
          testPositions = LoadDataSamples(testRectangles, testLabels, trainPositions.Count() + validationPositions.Count());
 
-         ImmutableList<AverageTransformer> averageTransformers = ImmutableList<AverageTransformer>.Empty;
+         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
 
-         averageTransformers = averageTransformers.Add(new AverageTransformer(17, FeatureFullWindowSize));
-         averageTransformers = averageTransformers.Add(new AverageTransformer(7, FeatureFullWindowSize));
-         averageTransformers = averageTransformers.Add(new AverageTransformer(5, FeatureFullWindowSize));
-         averageTransformers = averageTransformers.Add(new AverageTransformer(3, FeatureFullWindowSize));
-         // TODO Removed a data transformer to be able to run faster until the performances are improved
-         // averageTransformers = averageTransformers.Add(new AverageTransformer(1, FeatureFullWindowSize));
-
+         // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
          // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
-         ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
-         ImmutableList<DataTransformerIndices> dataTransformerIndices = ImmutableList<DataTransformerIndices>.Empty;
-
-         foreach (AverageTransformer averageTransformer in averageTransformers)
-         {
-            dataTransformers = dataTransformers.AddRange(averageTransformer.DataTransformers);
-            dataTransformerIndices = dataTransformerIndices.AddRange(averageTransformer.DataTransformersIndices);
-         }
-
          AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage, FeatureFullWindowSize);
          AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage, FeatureFullWindowSize);
          AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage, FeatureFullWindowSize);
-         TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, dataTransformers, dataTransformerIndices, trainDataExtractor.ExtractLabel);
-         TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, dataTransformers, dataTransformerIndices, validationDataExtractor.ExtractLabel);
-         TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, dataTransformers, dataTransformerIndices, testDataExtractor.ExtractLabel);
+
+         trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
+         validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
+         testDataExtractor.AddAverageTransformer(averageTransformerSizes);
+
+         TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, trainDataExtractor.ExtractLabel, trainDataExtractor.FeaturesCount());
+         TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
+         TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 

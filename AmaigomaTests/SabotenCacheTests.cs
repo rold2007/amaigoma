@@ -1,6 +1,5 @@
 ﻿using Amaigoma;
 using Shouldly;
-using System;
 using Xunit;
 
 namespace AmaigomaTests

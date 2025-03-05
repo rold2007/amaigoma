@@ -7,7 +7,7 @@ using Shouldly;
 namespace Amaigoma
 {
    using DataTransformer = Func<IEnumerable<double>, double>;
-   using DataTransformerIndices = Func<int, IEnumerable<int>>;
+   using DataTransformerIndices= Func<int, IEnumerable<double>>;
 
    // TODO Use Skia to add more advanced features ?
    // TODO Rename class to something else than "Transformer"
@@ -72,6 +72,7 @@ namespace Amaigoma
             {
                int j = i;
 
+               // UNDONE The featureindex is not used, but it should replace the j
                yield return (featureIndex) =>
                {
                   return [IntegralIndices[j], IntegralIndices[j + 1], IntegralIndices[j + 2], IntegralIndices[j + 3]];
@@ -81,6 +82,7 @@ namespace Amaigoma
             }
          }
       }
+
       public IEnumerable<DataTransformer> DataTransformers
       {
          get
@@ -89,17 +91,16 @@ namespace Amaigoma
 
             while (i < IntegralIndices.Count)
             {
-               int j = i;
-
+               // UNDONE i is not used anymore. Could have only one datatransformer?
                yield return (list) =>
                {
                   // TODO This ToArray() should be removed for optimization
                   double[] integral = list.ToArray();
 
-                  double sum = integral[IntegralIndices[j]];
-                  sum -= integral[IntegralIndices[j + 1]];
-                  sum -= integral[IntegralIndices[j + 2]];
-                  sum += integral[IntegralIndices[j + 3]];
+                  double sum = integral[0];
+                  sum -= integral[1];
+                  sum -= integral[2];
+                  sum += integral[3];
 
                   return sum * SlidingWindowSizeSquaredInverted;
                };

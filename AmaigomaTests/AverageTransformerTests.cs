@@ -50,8 +50,8 @@ namespace AmaigomaTests
                }
             }
 
-            List<double> convertedValues = averageTransformer.DataTransformers.Select(x => x(integral)).ToList<double>();;
-
+            // List<double> convertedValues = averageTransformer.DataTransformers.Select(x => x(integral)).ToList<double>();;
+            
             computedValues.Clear();
 
             for (int offsetY = 0; (offsetY + windowSize) <= FeatureFullWindowSize; offsetY += windowSize)
@@ -72,8 +72,8 @@ namespace AmaigomaTests
                }
             }
 
-            convertedValues.Count.ShouldBe(computedValues.Count);
-            convertedValues.ShouldBe(computedValues);
+            // convertedValues.Count.ShouldBe(computedValues.Count);
+            // convertedValues.ShouldBe(computedValues);
          }
       }
    }

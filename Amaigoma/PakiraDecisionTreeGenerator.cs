@@ -247,7 +247,7 @@ namespace Amaigoma
 
          // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices sequentially. or all data transformers sequentially
          // and then randomly within each transformer.
-         IEnumerable<int> randomFeatureIndices = Enumerable.Range(0, tanukiETL.TanukiDataTransformer.Count).Shuffle(RandomSource);
+         IEnumerable<int> randomFeatureIndices = Enumerable.Range(0, tanukiETL.TanukiFeatureCount).Shuffle(RandomSource);
 
          foreach (int featureIndex in randomFeatureIndices)
          {
