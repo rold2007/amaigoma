@@ -7,13 +7,19 @@ using Shouldly;
 namespace Amaigoma
 {
    using DataTransformer = Func<IEnumerable<double>, double>;
-   using DataTransformerIndices= Func<int, IEnumerable<double>>;
+   using DataTransformerIndices = Func<int, IEnumerable<double>>;
 
    // TODO Use Skia to add more advanced features ?
    // TODO Rename class to something else than "Transformer"
    public sealed record AverageTransformer
    {
       public int FeatureWindowSize
+      {
+         get;
+         private set;
+      }
+
+      public int FeatureCount
       {
          get;
          private set;
@@ -60,54 +66,28 @@ namespace Amaigoma
                IntegralIndices = IntegralIndices.Add(rightX + bottomOffsetY);
             }
          }
+
+         FeatureCount = IntegralIndices.Count / 4;
       }
 
-      public IEnumerable<DataTransformerIndices> DataTransformersIndices
+      public IEnumerable<double> DataTransformersIndices(int featureIndex)
       {
-         get
-         {
-            int i = 0;
+         featureIndex *= 4;
 
-            while (i < IntegralIndices.Count)
-            {
-               int j = i;
-
-               // UNDONE The featureindex is not used, but it should replace the j
-               yield return (featureIndex) =>
-               {
-                  return [IntegralIndices[j], IntegralIndices[j + 1], IntegralIndices[j + 2], IntegralIndices[j + 3]];
-               };
-
-               i += 4;
-            }
-         }
+         return [IntegralIndices[featureIndex], IntegralIndices[featureIndex + 1], IntegralIndices[featureIndex + 2], IntegralIndices[featureIndex + 3]];
       }
 
-      public IEnumerable<DataTransformer> DataTransformers
+      public double DataTransformers(IEnumerable<double> sampledData)
       {
-         get
-         {
-            int i = 0;
+         // TODO This ToArray() should be removed for optimization
+         double[] integral = sampledData.ToArray();
 
-            while (i < IntegralIndices.Count)
-            {
-               // UNDONE i is not used anymore. Could have only one datatransformer?
-               yield return (list) =>
-               {
-                  // TODO This ToArray() should be removed for optimization
-                  double[] integral = list.ToArray();
+         double sum = integral[0];
+         sum -= integral[1];
+         sum -= integral[2];
+         sum += integral[3];
 
-                  double sum = integral[0];
-                  sum -= integral[1];
-                  sum -= integral[2];
-                  sum += integral[3];
-
-                  return sum * SlidingWindowSizeSquaredInverted;
-               };
-
-               i += 4;
-            }
-         }
+         return sum * SlidingWindowSizeSquaredInverted;
       }
    }
 }

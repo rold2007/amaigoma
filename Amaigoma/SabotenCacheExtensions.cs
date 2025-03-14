@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Amaigoma
+﻿namespace Amaigoma
 {
    public static class SabotenCacheExtensions
    {

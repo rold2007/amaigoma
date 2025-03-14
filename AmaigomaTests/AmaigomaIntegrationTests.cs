@@ -44,6 +44,24 @@ namespace AmaigomaTests
       }
    }
 
+   public class RangeComparer : IComparer<Range>
+   {
+      public int Compare(Range x, Range y)
+      {
+         if (x.Start.Value < y.Start.Value)
+         {
+            return -1;
+         }
+         else if (x.Start.Value >= y.End.Value)
+         {
+            return 1;
+         }
+
+         return 0;
+      }
+   }
+
+   // TODO Move this class to the main library to properly test it
    public record AverageWindowFeature // ncrunch: no coverage
    {
       private ImmutableDictionary<int, SampleData> Samples;
@@ -52,6 +70,7 @@ namespace AmaigomaTests
       private int HalfFeatureWindowSize;
       private ImmutableList<DataTransformer> DataTransformers = ImmutableList<DataTransformer>.Empty;
       private ImmutableList<DataTransformerIndices> DataTransformersIndices = ImmutableList<DataTransformerIndices>.Empty;
+      private ImmutableList<Range> DataTransformersRanges = ImmutableList<Range>.Empty;
 
       public AverageWindowFeature(ImmutableDictionary<int, SampleData> positions, Buffer2D<ulong> integralImage, int featureWindowSize)
       {
@@ -72,7 +91,10 @@ namespace AmaigomaTests
 
          xPosition.ShouldBePositive();
 
-         IEnumerable<double> indices = DataTransformersIndices[featureIndex](featureIndex);
+         // UNDONE Allocate a static RangeComparer instead
+         RangeComparer dc = new RangeComparer();
+         int dataTransformerIndex = DataTransformersRanges.BinarySearch(Range.StartAt(featureIndex), dc);
+         IEnumerable<double> indices = DataTransformersIndices[dataTransformerIndex](featureIndex - DataTransformersRanges[dataTransformerIndex].Start.Value);
 
          // UNDONE I should get rid of the data extractors. Most of the time the data transformers don't need the full data sample, except in train mode,
          // so it is slow for nothing. The data transformer could fetch only what it needs and back it up with a SabotenCache.
@@ -99,20 +121,28 @@ namespace AmaigomaTests
             }
          }
 
-         double transformedData = DataTransformers[featureIndex](newSample);
+         double transformedData = DataTransformers[dataTransformerIndex](newSample);
 
          return transformedData;
-         // return -1;
       }
 
       // TODO Change this method to make the class immutable
       public void AddAverageTransformer(IEnumerable<int> slidingWindowSizes)
       {
+         int startRange = 0;
+         int endRange = 0;
+
          foreach (int slidingWindowSize in slidingWindowSizes)
          {
             AverageTransformer averageTransformer = new(slidingWindowSize, FeatureWindowSize);
-            DataTransformers = DataTransformers.AddRange(averageTransformer.DataTransformers);
-            DataTransformersIndices = DataTransformersIndices.AddRange(averageTransformer.DataTransformersIndices);
+
+            endRange = startRange + averageTransformer.FeatureCount;
+
+            // UNDONE Just keep a list of AverageTransformer instead of DataTransformers/DataTransformersIndices
+            DataTransformers = DataTransformers.Add(averageTransformer.DataTransformers);
+            DataTransformersIndices = DataTransformersIndices.Add(averageTransformer.DataTransformersIndices);
+            DataTransformersRanges = DataTransformersRanges.Add(new Range(startRange, endRange));
+            startRange = endRange;
          }
       }
 
