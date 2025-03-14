@@ -72,6 +72,7 @@ namespace Amaigoma
       {
          PakiraNode node = Tree.Root;
          SabotenCache sabotenCache = TanukiETL.TanukiSabotenCacheExtractor(id);
+         bool loadSabotenCache = false;
 
          do
          {
@@ -81,6 +82,7 @@ namespace Amaigoma
             if (!sabotenCache.CacheHit(col))
             {
                sabotenCache = sabotenCache.Prefetch(TanukiETL, id, col);
+               loadSabotenCache = true;
             }
 
             PakiraNode subNode;
@@ -91,7 +93,10 @@ namespace Amaigoma
 
                if (subNode == null)
                {
-                  TanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
+                  if (loadSabotenCache)
+                  {
+                     TanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
+                  }
 
                   return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetLeftLeaf(node), sabotenCache);
                }
@@ -102,7 +107,10 @@ namespace Amaigoma
 
                if (subNode == null)
                {
-                  TanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
+                  if (loadSabotenCache)
+                  {
+                     TanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
+                  }
 
                   return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetRightLeaf(node), sabotenCache);
                }

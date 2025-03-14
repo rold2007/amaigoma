@@ -98,14 +98,7 @@ namespace Amaigoma
 
          foreach (int id in ids)
          {
-            SabotenCache sabotenCache = tanukiETL.TanukiSabotenCacheExtractor(id);
-
-            // TODO Replace this code by an assert since code coverage seems impossible
-            if (!sabotenCache.CacheHit(featureIndex))
-            { // ncrunch: no coverage
-               sabotenCache = sabotenCache.Prefetch(tanukiETL, id, featureIndex); // ncrunch: no coverage
-               tanukiETL.TanukiSabotenCacheLoad(id, sabotenCache); // ncrunch: no coverage
-            } // ncrunch: no coverage
+            tanukiETL.TanukiSabotenCacheExtractor(id).PrefetchLoad(tanukiETL, id, featureIndex);
          }
 
          for (int leafIndex = 0; leafIndex < 2; leafIndex++)
@@ -256,30 +249,22 @@ namespace Amaigoma
 
             foreach (int id in ids)
             {
-               SabotenCache sabotenCache = tanukiETL.TanukiSabotenCacheExtractor(id);
+               SabotenCache sabotenCache = tanukiETL.TanukiSabotenCacheExtractor(id).PrefetchLoad(tanukiETL, id, featureIndex);
 
-               // UNDONE This logic should be moved to one Extension method to be used in other places easily
-               if (!sabotenCache.CacheHit(featureIndex))
-               {
-                  sabotenCache = sabotenCache.Prefetch(tanukiETL, id, featureIndex);
-                  tanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
-               }
-
-               int trainLabel = tanukiETL.TanukiLabelExtractor(id);
                double dataSampleValue = sabotenCache[featureIndex];
 
                if (dataSampleValue <= minimumValues.Item1)
                {
                   ImmutableHashSet<double> labels = (dataSampleValue < minimumValues.Item1) ? ImmutableHashSet<double>.Empty : minimumValues.Item2;
 
-                  minimumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(trainLabel));
+                  minimumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(tanukiETL.TanukiLabelExtractor(id)));
                }
 
                if (dataSampleValue >= maximumValues.Item1)
                {
                   ImmutableHashSet<double> labels = (dataSampleValue > maximumValues.Item1) ? ImmutableHashSet<double>.Empty : maximumValues.Item2;
 
-                  maximumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(trainLabel));
+                  maximumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(tanukiETL.TanukiLabelExtractor(id)));
                }
             }
 
