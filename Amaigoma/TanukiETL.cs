@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 
 namespace Amaigoma
 {
@@ -71,18 +70,11 @@ namespace Amaigoma
 
    public sealed record TanukiETL // ncrunch: no coverage
    {
-      // UNDONE Remove unused stuff
-      // public DataExtractor TanukiDataExtractor { get; private set; }
-      // public IReadOnlyList<DataTransformer> TanukiDataTransformer { get; private set; }
       public DataTransformer TanukiDataTransformer { get; private set; }
       public LabelExtractor TanukiLabelExtractor { get; private set; }
       public SabotenCacheExtractor TanukiSabotenCacheExtractor { get; private set; }
       public SabotenCacheLoad TanukiSabotenCacheLoad { get; private set; }
       public int TanukiFeatureCount { get; private set; }
-
-      // public TanukiETL(ImmutableList<ImmutableList<double>> dataSamples, ImmutableList<int> labels) : this(/*new IndexedDataExtractor(dataSamples).ConvertAll, */new PassThroughTransformer(dataSamples[0].Count).DataTransformers.ToList(), new IndexedLabelExtractor(labels).ConvertAll)
-      // {
-      // }
 
       public TanukiETL(DataTransformer dataTransformer, LabelExtractor labelExtractor, int featureCount)
       {

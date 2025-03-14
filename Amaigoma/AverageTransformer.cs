@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Shouldly;
 
 namespace Amaigoma
 {
-   using DataTransformer = Func<IEnumerable<double>, double>;
-   using DataTransformerIndices = Func<int, IEnumerable<double>>;
-
    // TODO Use Skia to add more advanced features ?
    // TODO Rename class to something else than "Transformer"
    public sealed record AverageTransformer
