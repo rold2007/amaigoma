@@ -50,8 +50,20 @@ namespace AmaigomaTests
                }
             }
 
-            // List<double> convertedValues = averageTransformer.DataTransformers.Select(x => x(integral)).ToList<double>();;
-            
+            List<double> convertedValues = new();
+
+            for (int featureIndex = 0; featureIndex < averageTransformer.FeatureCount; featureIndex++)
+            {
+               List<double> newSample = new();
+
+               foreach (int dataIndex in averageTransformer.DataTransformersIndices(featureIndex))
+               {
+                  newSample.Add(integral[dataIndex]);
+               }
+
+               convertedValues.Add(averageTransformer.DataTransformers(newSample));
+            }
+
             computedValues.Clear();
 
             for (int offsetY = 0; (offsetY + windowSize) <= FeatureFullWindowSize; offsetY += windowSize)
@@ -72,8 +84,8 @@ namespace AmaigomaTests
                }
             }
 
-            // convertedValues.Count.ShouldBe(computedValues.Count);
-            // convertedValues.ShouldBe(computedValues);
+            convertedValues.Count.ShouldBe(computedValues.Count);
+            convertedValues.ShouldBe(computedValues);
          }
       }
    }
