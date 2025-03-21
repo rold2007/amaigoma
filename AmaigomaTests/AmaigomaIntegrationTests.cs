@@ -153,7 +153,7 @@ namespace AmaigomaTests
 
       public int FeaturesCount()
       {
-         return DataTransformers.Count;
+         return DataTransformersRanges.Last().End.Value;
       }
    }
 

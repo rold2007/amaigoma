@@ -1,51 +1,37 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Collections.Immutable;
 
 namespace Amaigoma
 {
-   using DataTransformer = Func<IEnumerable<double>, double>;
-
    // TODO Rename class to something else than "Transformer"
    public record PassThroughTransformer
    {
-      public int DataCount { get; private set; }
+      ImmutableList<ImmutableList<double>> DataSamples;
 
-      public PassThroughTransformer(int dataCount)
+      public PassThroughTransformer(ImmutableList<ImmutableList<double>> dataSamples)
       {
-         DataCount = dataCount;
+         DataSamples = dataSamples;
       }
 
-      // public IEnumerable<DataTransformerIndices> DataTransformersIndices
-      // {
-      //    get
-      //    {
-      //       for (int i = 0; i < DataCount; i++)
-      //       {
-      //          int j = i;
-
-      //          yield return (featureIndex) =>
-      //          {
-      //             return [ j ];
-      //          };
-      //       }
-      //    }
-      // }
-
-      public IEnumerable<DataTransformer> DataTransformers
+      public double ConvertAll(int id, int featureIndex)
       {
-         get
-         {
-            for (int i = 0; i < DataCount; i++)
-            {
-               int j = i;
+         return DataSamples[id][featureIndex];
+      }
 
-               yield return (list) =>
-               {
-                  return list.ElementAt(j);
-               };
-            }
-         }
+      public int FeaturesCount => DataSamples[0].Count;
+   }
+
+   public record PassThroughLabelsTransformer
+   {
+      ImmutableList<int> Labels;
+
+      public PassThroughLabelsTransformer(ImmutableList<int> labels)
+      {
+         Labels = labels;
+      }
+
+      public int ConvertAll(int id)
+      {
+         return Labels[id];
       }
    }
 }
