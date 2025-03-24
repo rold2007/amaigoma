@@ -6,7 +6,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using Xunit;
 
-// UNDONE Fix all commented code in tests
 namespace AmaigomaTests
 {
    using DataTransformer = Func<IEnumerable<double>, double>;
@@ -104,9 +103,9 @@ namespace AmaigomaTests
          pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
          pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
 
-         data = data.Add(ImmutableList.CreateRange(new double[] { 3, 91 }));
-         data = data.Add(ImmutableList.CreateRange(new double[] { 128, 95 }));
-         data = data.Add(ImmutableList.CreateRange(new double[] { 201, 101 }));
+         data = data.Add([3, 91]);
+         data = data.Add([128, 95]);
+         data = data.Add([201, 101]);
          labels = labels.Add(42);
          labels = labels.Add(54);
          labels = labels.Add(42);
@@ -205,39 +204,38 @@ namespace AmaigomaTests
          labels = labels.Add(54);
          labels = labels.Add(42);
 
-         // PassThroughTransformer passThroughTransformer = new(data[0].Count);
-         // MeanDistanceDataTransformer meanDistanceDataTransformer = new(data[0].Count);
+         PassThroughTransformer passThroughTransformer = new(data);
+         MeanDistanceDataTransformer meanDistanceDataTransformer = new(data);
 
-         // ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
-         // ImmutableList<DataTransformerIndices> dataTransformerIndices = ImmutableList<DataTransformerIndices>.Empty;
+         Func<int, int, double> dataTransformers = (int id, int featureIndex) =>
+         {
+            if (featureIndex == 0)
+            {
+               return meanDistanceDataTransformer.ConvertAll(id, 0);
+            }
+            else
+            {
+               return passThroughTransformer.ConvertAll(id, (featureIndex - 1) % 2);
+            }
+         };
 
-         // // TODO Removed a data transformer to be able to run faster until the performances are improved
-         // dataTransformers = dataTransformers.AddRange(meanDistanceDataTransformer.DataTransformers);
-         // dataTransformerIndices = dataTransformerIndices.AddRange(meanDistanceDataTransformer.DataTransformersIndices);
+         TanukiETL tanukiETL = new(dataTransformers, new PassThroughLabelsTransformer(labels).ConvertAll, meanDistanceDataTransformer.FeaturesCount + passThroughTransformer.FeaturesCount * 100);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         // for (int i = 0; i < 100; i++)
-         // {
-         //    dataTransformers = dataTransformers.AddRange(passThroughTransformer.DataTransformers);
-         //    dataTransformerIndices = dataTransformerIndices.AddRange(passThroughTransformer.DataTransformersIndices);
-         // }
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         // TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, dataTransformers, dataTransformerIndices, new IndexedLabelExtractor(labels).ConvertAll);
-         // PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         // pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
-         // pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
 
-         // PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
-
-         // pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         // pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         // pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         // pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         // pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         // pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
-
-         // // The data transformers should allow to produce a very shallow tree
-         // pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(1, 5);
+         // The data transformers should allow to produce a very shallow tree
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(1, 5);
       }
 
       [Fact]
@@ -254,30 +252,25 @@ namespace AmaigomaTests
          labels = labels.Add(54);
          labels = labels.Add(42);
 
-         // MeanDistanceDataTransformer meanDistanceDataTransformer = new(data[0].Count);
-         // ImmutableList<DataTransformer> dataTransformers = ImmutableList<DataTransformer>.Empty;
-         // ImmutableList<DataTransformerIndices> dataTransformerIndices = ImmutableList<DataTransformerIndices>.Empty;
+         MeanDistanceDataTransformer meanDistanceDataTransformer = new(data);
 
-         // dataTransformers = dataTransformers.AddRange(meanDistanceDataTransformer.DataTransformers);
-         // dataTransformerIndices = dataTransformerIndices.AddRange(meanDistanceDataTransformer.DataTransformersIndices);
+         TanukiETL tanukiETL = new(meanDistanceDataTransformer.ConvertAll, new PassThroughLabelsTransformer(labels).ConvertAll, meanDistanceDataTransformer.FeaturesCount);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         // TanukiETL tanukiETL = new TanukiETL(new IndexedDataExtractor(data).ConvertAll, dataTransformers, dataTransformerIndices, new IndexedLabelExtractor(labels).ConvertAll);
-         // PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
+         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
+         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         // pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
-         // pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         // PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
 
-         // pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         // pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         // pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         // pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         // pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         // pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
-
-         // // The data transformers should allow to produce a very shallow tree
-         // pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(1);
+         // The data transformers should allow to produce a very shallow tree
+         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(1);
       }
 
       [Fact]
@@ -440,7 +433,7 @@ namespace AmaigomaTests
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
-         data = data.Add(ImmutableList.CreateRange(new double[] { 215 }));
+         data = data.Add([215]);
 
          labels = labels.Add(42);
 

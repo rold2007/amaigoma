@@ -24,10 +24,6 @@ using Xunit.Abstractions;
 // it should lower its priority. This will not prevent infinite multiclass leaves, but it may help select the tree which returns a multiclass leaf less often.
 namespace AmaigomaTests
 {
-   using DataExtractor = Func<int, int, double>;
-   using DataTransformer = Func<IEnumerable<double>, double>;
-   using DataTransformerIndices = Func<int, IEnumerable<double>>;
-
    public record IntegrationTestDataSet // ncrunch: no coverage
    {
       public string filename;
@@ -68,9 +64,9 @@ namespace AmaigomaTests
       private Buffer2D<ulong> IntegralImage;
       private int FeatureWindowSize;
       private int HalfFeatureWindowSize;
-      private ImmutableList<DataTransformer> DataTransformers = ImmutableList<DataTransformer>.Empty;
-      private ImmutableList<DataTransformerIndices> DataTransformersIndices = ImmutableList<DataTransformerIndices>.Empty;
+      private ImmutableList<AverageTransformer> AverageTransformers = ImmutableList<AverageTransformer>.Empty;
       private ImmutableList<Range> DataTransformersRanges = ImmutableList<Range>.Empty;
+      static private RangeComparer rangeComparer = new RangeComparer();
 
       public AverageWindowFeature(ImmutableDictionary<int, SampleData> positions, Buffer2D<ulong> integralImage, int featureWindowSize)
       {
@@ -80,24 +76,13 @@ namespace AmaigomaTests
          HalfFeatureWindowSize = featureWindowSize / 2;
       }
 
-      // UNDONE Take advantage of the indices parameter
       public double ConvertAll(int id, int featureIndex)
       {
          Point position = Samples[id].Position;
          List<double> newSample = new((FeatureWindowSize + 1) * (FeatureWindowSize + 1));
+         int dataTransformerIndex = DataTransformersRanges.BinarySearch(Range.StartAt(featureIndex), rangeComparer);
+         IEnumerable<double> indices = AverageTransformers[dataTransformerIndex].DataTransformersIndices(featureIndex - DataTransformersRanges[dataTransformerIndex].Start.Value);
 
-         int top = position.Y + HalfFeatureWindowSize;
-         int xPosition = position.X + HalfFeatureWindowSize;
-
-         xPosition.ShouldBePositive();
-
-         // UNDONE Allocate a static RangeComparer instead
-         RangeComparer dc = new RangeComparer();
-         int dataTransformerIndex = DataTransformersRanges.BinarySearch(Range.StartAt(featureIndex), dc);
-         IEnumerable<double> indices = DataTransformersIndices[dataTransformerIndex](featureIndex - DataTransformersRanges[dataTransformerIndex].Start.Value);
-
-         // UNDONE I should get rid of the data extractors. Most of the time the data transformers don't need the full data sample, except in train mode,
-         // so it is slow for nothing. The data transformer could fetch only what it needs and back it up with a SabotenCache.
          // UNDONE Try to apply this solution to see if it is faster, although it will probably allocate more: https://github.com/SixLabors/ImageSharp/discussions/1666#discussioncomment-876494
          // +1 length to support first row of integral image
 
@@ -105,25 +90,23 @@ namespace AmaigomaTests
          foreach (int i in indices)
          {
             int indexY = i / (FeatureWindowSize + 1);
-            int y2 = -HalfFeatureWindowSize + indexY;
+            int y2 = indexY;
 
             {
-               int yPosition = top + y2;
+               int yPosition = position.Y + y2;
 
                yPosition.ShouldBeGreaterThanOrEqualTo(0);
 
                Span<ulong> rowSpan = IntegralImage.DangerousGetRowSpan(yPosition);
                // +1 length to support first column of integral image
-               Span<ulong> slice = rowSpan.Slice(xPosition - HalfFeatureWindowSize, FeatureWindowSize + 1);
+               Span<ulong> slice = rowSpan.Slice(position.X, FeatureWindowSize + 1);
 
                int indexX = i - (indexY * (FeatureWindowSize + 1));
                newSample.Add(slice[indexX]);
             }
          }
 
-         double transformedData = DataTransformers[dataTransformerIndex](newSample);
-
-         return transformedData;
+         return AverageTransformers[dataTransformerIndex].DataTransformers(newSample);
       }
 
       // TODO Change this method to make the class immutable
@@ -138,9 +121,7 @@ namespace AmaigomaTests
 
             endRange = startRange + averageTransformer.FeatureCount;
 
-            // UNDONE Just keep a list of AverageTransformer instead of DataTransformers/DataTransformersIndices
-            DataTransformers = DataTransformers.Add(averageTransformer.DataTransformers);
-            DataTransformersIndices = DataTransformersIndices.Add(averageTransformer.DataTransformersIndices);
+            AverageTransformers = AverageTransformers.Add(averageTransformer);
             DataTransformersRanges = DataTransformersRanges.Add(new Range(startRange, endRange));
             startRange = endRange;
          }

@@ -3,7 +3,6 @@ using System.Collections.Immutable;
 
 namespace Amaigoma
 {
-   // UNDONE Need to be consistent with the concept of Extractor/Transformer...
    using DataTransformer = Func<int, int, double>;
    using LabelExtractor = Func<int, int>;
    using SabotenCacheExtractor = Func<int, SabotenCache>;
