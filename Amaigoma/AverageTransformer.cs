@@ -66,7 +66,7 @@ namespace Amaigoma
          FeatureCount = IntegralIndices.Count / 4;
       }
 
-      public IEnumerable<double> DataTransformersIndices(int featureIndex)
+      public IEnumerable<int> DataTransformersIndices(int featureIndex)
       {
          featureIndex *= 4;
 

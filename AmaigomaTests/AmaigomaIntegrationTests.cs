@@ -40,104 +40,6 @@ namespace AmaigomaTests
       }
    }
 
-   public class RangeComparer : IComparer<Range>
-   {
-      public int Compare(Range x, Range y)
-      {
-         if (x.Start.Value < y.Start.Value)
-         {
-            return -1;
-         }
-         else if (x.Start.Value >= y.End.Value)
-         {
-            return 1;
-         }
-
-         return 0;
-      }
-   }
-
-   // TODO Move this class to the main library to properly test it
-   public record AverageWindowFeature // ncrunch: no coverage
-   {
-      private ImmutableDictionary<int, SampleData> Samples;
-      private Buffer2D<ulong> IntegralImage;
-      private int FeatureWindowSize;
-      private int HalfFeatureWindowSize;
-      private ImmutableList<AverageTransformer> AverageTransformers = ImmutableList<AverageTransformer>.Empty;
-      private ImmutableList<Range> DataTransformersRanges = ImmutableList<Range>.Empty;
-      static private RangeComparer rangeComparer = new RangeComparer();
-
-      public AverageWindowFeature(ImmutableDictionary<int, SampleData> positions, Buffer2D<ulong> integralImage, int featureWindowSize)
-      {
-         Samples = positions;
-         IntegralImage = integralImage;
-         FeatureWindowSize = featureWindowSize;
-         HalfFeatureWindowSize = featureWindowSize / 2;
-      }
-
-      public double ConvertAll(int id, int featureIndex)
-      {
-         Point position = Samples[id].Position;
-         List<double> newSample = new((FeatureWindowSize + 1) * (FeatureWindowSize + 1));
-         int dataTransformerIndex = DataTransformersRanges.BinarySearch(Range.StartAt(featureIndex), rangeComparer);
-         IEnumerable<double> indices = AverageTransformers[dataTransformerIndex].DataTransformersIndices(featureIndex - DataTransformersRanges[dataTransformerIndex].Start.Value);
-
-         // UNDONE Try to apply this solution to see if it is faster, although it will probably allocate more: https://github.com/SixLabors/ImageSharp/discussions/1666#discussioncomment-876494
-         // +1 length to support first row of integral image
-
-         // UNDONE This logic can be further optimized, no need to get all 4 spans when dealing with AverageTransformers
-         foreach (int i in indices)
-         {
-            int indexY = i / (FeatureWindowSize + 1);
-            int y2 = indexY;
-
-            {
-               int yPosition = position.Y + y2;
-
-               yPosition.ShouldBeGreaterThanOrEqualTo(0);
-
-               Span<ulong> rowSpan = IntegralImage.DangerousGetRowSpan(yPosition);
-               // +1 length to support first column of integral image
-               Span<ulong> slice = rowSpan.Slice(position.X, FeatureWindowSize + 1);
-
-               int indexX = i - (indexY * (FeatureWindowSize + 1));
-               newSample.Add(slice[indexX]);
-            }
-         }
-
-         return AverageTransformers[dataTransformerIndex].DataTransformers(newSample);
-      }
-
-      // TODO Change this method to make the class immutable
-      public void AddAverageTransformer(IEnumerable<int> slidingWindowSizes)
-      {
-         int startRange = 0;
-         int endRange = 0;
-
-         foreach (int slidingWindowSize in slidingWindowSizes)
-         {
-            AverageTransformer averageTransformer = new(slidingWindowSize, FeatureWindowSize);
-
-            endRange = startRange + averageTransformer.FeatureCount;
-
-            AverageTransformers = AverageTransformers.Add(averageTransformer);
-            DataTransformersRanges = DataTransformersRanges.Add(new Range(startRange, endRange));
-            startRange = endRange;
-         }
-      }
-
-      public int ExtractLabel(int id)
-      {
-         return Samples[id].Label;
-      }
-
-      public int FeaturesCount()
-      {
-         return DataTransformersRanges.Last().End.Value;
-      }
-   }
-
    public struct DataSet
    {
       public List<IntegrationTestDataSet> train = new List<IntegrationTestDataSet>();
@@ -153,12 +55,6 @@ namespace AmaigomaTests
    {
       public ImmutableHashSet<PakiraLeaf> leavesBefore;
       public ImmutableHashSet<PakiraLeaf> leavesAfter;
-   }
-
-   public struct SampleData
-   {
-      public Point Position;
-      public int Label;
    }
 
    // TODO The integration test could output interesting positions to be validated and added to the test
