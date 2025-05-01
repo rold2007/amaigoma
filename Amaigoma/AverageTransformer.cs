@@ -21,7 +21,17 @@ namespace Amaigoma
          private set;
       }
 
-      private int SlidingWindowSize
+      public int SlidingWindowSize
+      {
+         get;
+      }
+
+      public int SlidingWindowHalfSize
+      {
+         get;
+      }
+
+      public int SlidingWindowSizePlusOne
       {
          get;
       }
@@ -41,6 +51,8 @@ namespace Amaigoma
          fullWindowsSize.ShouldBeGreaterThanOrEqualTo(slidingWindowSize);
 
          FeatureWindowSize = fullWindowsSize;
+         SlidingWindowHalfSize = slidingWindowSize / 2;
+         SlidingWindowSizePlusOne = slidingWindowSize + 1;
          SlidingWindowSize = slidingWindowSize;
          SlidingWindowSizeSquaredInverted = 1.0 / (slidingWindowSize * slidingWindowSize);
          IntegralIndices = ImmutableList<int>.Empty;

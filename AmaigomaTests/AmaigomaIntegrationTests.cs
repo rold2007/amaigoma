@@ -67,7 +67,7 @@ namespace AmaigomaTests
       static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
           new Rectangle(83, 150, 1, 1),
-          new Rectangle(0, 0, 300, 100),
+          new Rectangle(17, 17, 300, 100),
           new Rectangle(624, 140, 1, 1),
           new Rectangle(670, 140, 1, 1),
           new Rectangle(688, 140, 1, 1),
@@ -246,24 +246,13 @@ namespace AmaigomaTests
          validationRectangles.Count.ShouldBe(validationLabels.Count);
          testRectangles.Count.ShouldBe(testLabels.Count);
 
-         const int halfFeatureWindowSize = FeatureFullWindowSize / 2;
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), imagePath);
 
          PakiraDecisionTreeGenerator pakiraGenerator = new();
-         Image<L8> imageWithOverscan;
 
-         {
-            Image<L8> fullTextImage = Image.Load<L8>(fullImagePath);
+         Image<L8> fullTextImage = Image.Load<L8>(fullImagePath);
 
-            // TODO Need to support different background values
-            imageWithOverscan = new Image<L8>(fullTextImage.Width + (2 * halfFeatureWindowSize) + 1, fullTextImage.Height + (2 * halfFeatureWindowSize) + 1, new L8(255));
-
-            // TODO Move this to a globally available helper method
-            // There is a +1 in coordinates to make sure we have at least one row and one column that we never use at the beginning so that we never go outside the image for integral values
-            imageWithOverscan.Mutate(x => x.DrawImage(fullTextImage, new Point(halfFeatureWindowSize + 1, halfFeatureWindowSize + 1), 1.0f));
-         }
-
-         Buffer2D<ulong> integralImage = imageWithOverscan.CalculateIntegralImage();
+         Buffer2D<ulong> integralImage = fullTextImage.CalculateIntegralImage();
          ImmutableDictionary<int, SampleData> trainPositions;
          ImmutableDictionary<int, SampleData> validationPositions;
          ImmutableDictionary<int, SampleData> testPositions;
@@ -341,7 +330,7 @@ namespace AmaigomaTests
 
                      if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
                      {
-                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { id }, trainTanukiETL);
+                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, [id], trainTanukiETL);
                         pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
 
                         IEnumerable<int> labelValues = pakiraTreeWalker.PredictLeaf(id).LabelValues;
