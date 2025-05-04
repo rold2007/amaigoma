@@ -14,7 +14,7 @@ using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
 
-// TODO Bring back code coverage to 100%
+// UNDONE Bring back code coverage to 100%
 
 // TODO January 15th 2024: New algorithm idea. The strength of each node can be validated if, and only if, there are enough leaves under it to apply
 // the logic of swapping the node condition and validating the success rate on train data. For nodes which do not have enough leaves under, this process
@@ -63,7 +63,6 @@ namespace AmaigomaTests
       static readonly int uppercaseA = 1; // ncrunch: no coverage
       static readonly int other = 2; // ncrunch: no coverage
 
-      // TODO Removed some samples in Train, Validation and Test sets to be able to run faster until the performances are improved
       static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
           new Rectangle(83, 150, 1, 1),
@@ -79,8 +78,8 @@ namespace AmaigomaTests
           new Rectangle(658, 217, 1, 1),
           new Rectangle(109, 333, 1, 1),
           new Rectangle(127, 333, 1, 1),
-          //new Rectangle(520, 40, 230, 90),
-          //new Rectangle(20, 420, 380, 80),
+          new Rectangle(520, 40, 230, 90),
+          new Rectangle(20, 420, 380, 80),
       });
 
       static private readonly ImmutableList<int> trainNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
@@ -98,20 +97,20 @@ namespace AmaigomaTests
           uppercaseA,
           uppercaseA,
           uppercaseA,
-          //other,
-          //other,
+          other,
+          other,
       });
 
       static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
          new Rectangle(190, 540, 280, 20),
-         //new Rectangle(20, 555, 480, 215),
+         new Rectangle(20, 555, 480, 215),
       });
 
       static private readonly ImmutableList<int> validationNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
        {
          other,
-         //other,
+         other,
       });
 
       static private readonly ImmutableList<Rectangle> testNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
@@ -126,10 +125,10 @@ namespace AmaigomaTests
          new Rectangle(137, 851, 1, 1),
          new Rectangle(257, 851, 1, 1),
          new Rectangle(605, 852, 1, 1),
-         //new Rectangle(520, 550, 250, 216),
+         new Rectangle(520, 550, 230, 216),
          new Rectangle(95, 810, 500, 20),
-         //new Rectangle(20, 900, 756, 70),
-         //new Rectangle(180, 960, 310, 35)
+         new Rectangle(20, 900, 740, 70),
+         new Rectangle(180, 960, 310, 23)
       });
 
       static private readonly ImmutableList<int> testNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
@@ -144,10 +143,10 @@ namespace AmaigomaTests
          uppercaseA,
          uppercaseA,
          uppercaseA,
-         //other,
          other,
-         //other,
-         //other,
+         other,
+         other,
+         other,
       });
 
       public static IEnumerable<object[]> GetUppercaseA_507484246_Data()
@@ -300,7 +299,7 @@ namespace AmaigomaTests
             previousRegenerateTreeCount = regenerateTreeCount;
             processBackgroundTrainData = false;
 
-            // TODO Run many tree generations to evaluate if the average accuracy is lower when the root is using a data transformer
+            // UNDONE Run many tree generations to evaluate if the average accuracy is lower when the root is using a data transformer
             // with a lower size (1 vs 15)
             // TODO Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the Test classes, inside the main library
             // TODO Note this methodology somewhere: When the validation set contains too many unevaluated leaves we need to apply one of the following solution:

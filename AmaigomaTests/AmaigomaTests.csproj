@@ -4,6 +4,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <LangVersion>13.0</LangVersion>
     <IsPackable>false</IsPackable>
+    <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageReference Include="NCrunch.Framework" Version="5.11.0" />
     <PackageReference Include="Shouldly" Version="4.3.0" />

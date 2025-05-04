@@ -37,8 +37,6 @@ namespace Amaigoma
         private ImmutableDictionary<int, SampleData> Samples;
         private Buffer2D<ulong> IntegralImage;
         private int FeatureWindowSize;
-        private int FeatureWindowHalfSize;
-        private int FeatureWindowSizePlusOne;
         private ImmutableList<AverageTransformer> AverageTransformers = ImmutableList<AverageTransformer>.Empty;
         private ImmutableList<Range> DataTransformersRanges = ImmutableList<Range>.Empty;
         private ImmutableList<double> ConvertedSample = ImmutableList<double>.Empty;
@@ -50,8 +48,6 @@ namespace Amaigoma
             Samples = positions;
             IntegralImage = integralImage;
             FeatureWindowSize = featureWindowSize;
-            FeatureWindowHalfSize = featureWindowSize / 2;
-            FeatureWindowSizePlusOne = FeatureWindowSize + 1;
             ConvertedSample = ConvertedSample.AddRange(Enumerable.Repeat<double>(0, 4));
 
             // Empty line of zeros for the integral
@@ -59,7 +55,7 @@ namespace Amaigoma
 
             for (int y = 0; y < integralImage.Height; y++)
             {
-                // UNDONE Send a list of ReadOnlyMemory in parameter instead of Buffer2D<ulong> integralImage
+                // TODO Send a list of ReadOnlyMemory in parameter instead of Buffer2D<ulong> integralImage
                 // Add one zero at the beginning for the integral
                 ReadOnlySpan<ulong> integralData = [0, .. IntegralImage.DangerousGetRowSpan(y)];
                 RowSpans = RowSpans.Add(new ReadOnlyMemory<ulong>(integralData.ToArray()));

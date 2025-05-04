@@ -1,4 +1,7 @@
 using Amaigoma;
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Engines;
+using BenchmarkDotNet.Running;
 using Shouldly;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Memory;
@@ -7,12 +10,30 @@ using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.ComponentModel;
 using Xunit;
 
 namespace AmaigomaTests
 {
-   public record AverageWindowFeatureTests // ncrunch: no coverage
+   // TODO Move Benchmark to separate folder
+   // TODO Add benchmark results to source control to compare the performances after each change
+   // TODO Add more benchmarks on time-critical code
+   // TODO Add more benchmarks on memory usage
+   // TODO Add more benchmarks on smaller methods
+   // TODO Optimize time-critical methods using Benchmark results
+   // TODO Add more benchmarks on different image sizes
+   // TODO Add more benchmark diagnosers: https://benchmarkdotnet.org/articles/configs/diagnosers.html
+   // TODO Add more benchmark for feature calculation classes
+   public class Program
+   {
+      public static void Main(string[] args)
+      {
+         var summary = BenchmarkRunner.Run<AverageWindowFeatureTests>();
+      }
+   }
+
+   [MemoryDiagnoser]
+   [SimpleJob(RunStrategy.Monitoring)]
+   public class AverageWindowFeatureTests // ncrunch: no coverage
    {
       [Fact]
       public void Constructor()
@@ -22,6 +43,8 @@ namespace AmaigomaTests
       }
 
       [Fact]
+      // TODO Simplify code to benchmark only the ConvertAll method
+      [Benchmark]
       // TODO Refactor this test to simplify the code
       public void ConvertAllTest()
       {
@@ -86,7 +109,6 @@ namespace AmaigomaTests
 
                manuallyConvertedValue /= (averageTransformerSize * averageTransformerSize);
 
-               // UNDONE Add Benchmark.Net to validate faster method and optimize even more if needed
                double convertedValueNew = averageWindowFeature.ConvertAll(position.Key, featureIndex);
 
                convertedValueNew.ShouldBe(manuallyConvertedValue, 0.0000001);
