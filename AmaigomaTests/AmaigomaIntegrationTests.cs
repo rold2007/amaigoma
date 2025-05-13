@@ -14,8 +14,6 @@ using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
 
-// UNDONE Bring back code coverage to 100%
-
 // TODO January 15th 2024: New algorithm idea. The strength of each node can be validated if, and only if, there are enough leaves under it to apply
 // the logic of swapping the node condition and validating the success rate on train data. For nodes which do not have enough leaves under, this process
 // will probably not give reliable results. The solution is probably to prune these nodes. This will force some leaves to have more than one class. So
@@ -294,13 +292,12 @@ namespace AmaigomaTests
          AccuracyResult testAccuracyResult;
          AccuracyResult trainAccuracyResult;
 
+         // TODO Remove the batch concept and use the whole set to train the tree. The batch concept is not needed anymore.
          while (processBackgroundTrainData)
          {
             previousRegenerateTreeCount = regenerateTreeCount;
             processBackgroundTrainData = false;
 
-            // UNDONE Run many tree generations to evaluate if the average accuracy is lower when the root is using a data transformer
-            // with a lower size (1 vs 15)
             // TODO Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the Test classes, inside the main library
             // TODO Note this methodology somewhere: When the validation set contains too many unevaluated leaves we need to apply one of the following solution:
             // - Increase validation set size
@@ -347,17 +344,21 @@ namespace AmaigomaTests
                }
             }
 
+            // TODO Improve accuracy output by adding the count of true positives, false positives, true negatives and false negatives
             trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
             validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
             testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
 
-            // TODO Improve test output
+            output.WriteLine("First node index: " + pakiraDecisionTreeModel.Tree.Root.Column.ToString());
             output.WriteLine(trainAccuracyResult.leavesAfter.Count().ToString());
             output.WriteLine(trainAccuracyResult.leavesBefore.Count().ToString());
+            output.WriteLine((trainAccuracyResult.leavesAfter.Count() / trainAccuracyResult.leavesBefore.Count()).ToString());
             output.WriteLine(validationAccuracyResult.leavesAfter.Count().ToString());
             output.WriteLine(validationAccuracyResult.leavesBefore.Count().ToString());
+            output.WriteLine("{0}%", 100.0 * validationAccuracyResult.leavesAfter.Count() / validationAccuracyResult.leavesBefore.Count());
             output.WriteLine(testAccuracyResult.leavesAfter.Count().ToString());
             output.WriteLine(testAccuracyResult.leavesBefore.Count().ToString());
+            output.WriteLine("{0}%", 100.0 * testAccuracyResult.leavesAfter.Count() / testAccuracyResult.leavesBefore.Count());
             output.WriteLine("---");
 
             processBackgroundTrainData = (trainAccuracyResult.leavesBefore.Count != trainAccuracyResult.leavesAfter.Count);

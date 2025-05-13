@@ -7,7 +7,6 @@ using Xunit;
 
 namespace AmaigomaTests
 {
-   // TODO Rename class to something else than "Transformer"
    public record AverageTransformerTests // ncrunch: no coverage
    {
       [Fact]

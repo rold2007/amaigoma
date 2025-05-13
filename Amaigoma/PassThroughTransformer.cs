@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 
 namespace Amaigoma
 {
-   // TODO Rename class to something else than "Transformer"
    public record PassThroughTransformer
    {
       ImmutableList<ImmutableList<double>> DataSamples;

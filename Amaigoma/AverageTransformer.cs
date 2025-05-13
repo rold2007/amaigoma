@@ -6,7 +6,6 @@ using Shouldly;
 namespace Amaigoma
 {
    // TODO Use Skia to add more advanced features ?
-   // TODO Rename class to something else than "Transformer"
    public sealed record AverageTransformer
    {
       public int FeatureWindowSize

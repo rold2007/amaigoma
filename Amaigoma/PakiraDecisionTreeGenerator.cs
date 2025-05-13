@@ -156,7 +156,7 @@ namespace Amaigoma
          // Identify all the leaves to retrain
          foreach (KeyValuePair<PakiraNode, PakiraLeaf> pakiraNodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves().Where(pakiraNodeLeaf =>
          {
-            // TODO his logic can certainly be simplified without using a HashSet since we exit early as soon as we have 2 items
+            // TODO This logic can certainly be simplified without using a HashSet since we exit early as soon as we have 2 items
             if (pakiraNodeLeaf.Value.LabelValues.Count() == 1)
             {
                ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(pakiraNodeLeaf.Value);
