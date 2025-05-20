@@ -14,27 +14,29 @@ using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
 
-// TODO January 15th 2024: New algorithm idea. The strength of each node can be validated if, and only if, there are enough leaves under it to apply
-// the logic of swapping the node condition and validating the success rate on train data. For nodes which do not have enough leaves under, this process
-// will probably not give reliable results. The solution is probably to prune these nodes. This will force some leaves to have more than one class. So
-// more trees need to be created, this way each data may eventually fall in a leaf with a single class. Not sure how to determine how many trees are needed
-// to prevent having data to always fall in a multi-class leaf. Maybe a priority list of trees can be created, and each time a tree returns a multiclass
-// it should lower its priority. This will not prevent infinite multiclass leaves, but it may help select the tree which returns a multiclass leaf less often.
 namespace AmaigomaTests
 {
+   public struct RegionLabel
+   {
+      public Rectangle rectangle;
+      public int label;
+   }
+
    public record IntegrationTestDataSet // ncrunch: no coverage
    {
       public string filename;
-      public ImmutableList<Rectangle> regions;
-      public ImmutableList<int> labels;
+      public ImmutableList<RegionLabel> regionLabels = ImmutableList<RegionLabel>.Empty;
 
       public IntegrationTestDataSet(string filename, ImmutableList<Rectangle> regions, ImmutableList<int> labels)
       {
          regions.Count.ShouldBe(labels.Count);
 
          this.filename = filename;
-         this.regions = regions;
-         this.labels = labels;
+
+         for (int i = 0; i < regions.Count; i++)
+         {
+            regionLabels = regionLabels.Add(new RegionLabel { rectangle = regions[i], label = labels[i] });
+         }
       }
    }
 
@@ -168,26 +170,20 @@ namespace AmaigomaTests
          this.output = output;
       }
 
-      ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<Rectangle> rectangles, ImmutableList<int> labels, int startingIndex)
+      ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex)
       {
          ImmutableDictionary<int, SampleData> result = ImmutableDictionary<int, SampleData>.Empty;
-         // TODO Move the rectangles and labels in a dictionary to get both values at the same time in the foreach
-         int labelsIndex = 0;
 
-         foreach (Rectangle rectangle in rectangles)
+         foreach (RegionLabel regionLabel in rectangles)
          {
-            int sampleClass = labels[labelsIndex];
-
-            for (int y = rectangle.Top; y < rectangle.Bottom; y++)
+            for (int y = regionLabel.rectangle.Top; y < regionLabel.rectangle.Bottom; y++)
             {
-               for (int x = rectangle.Left; x < rectangle.Right; x++)
+               for (int x = regionLabel.rectangle.Left; x < regionLabel.rectangle.Right; x++)
                {
-                  result = result.Add(startingIndex, new SampleData { Position = new Point(x, y), Label = sampleClass });
+                  result = result.Add(startingIndex, new SampleData { Position = new Point(x, y), Label = regionLabel.label });
                   startingIndex++;
                }
             }
-
-            labelsIndex++;
          }
 
          return result;
@@ -200,23 +196,17 @@ namespace AmaigomaTests
 
          accuracyResult.leavesBefore = leaves;
 
-         // TODO Move the rectangles and labels in a dictionary to get both values at the same time in the foreach
          PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
 
          foreach (int id in ids)
          {
             PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
-            int sampleClass = tanukiETL.TanukiLabelExtractor(id);
+            int label = tanukiETL.TanukiLabelExtractor(id);
 
-            if (pakiraLeafResult.LabelValues.Count() > 1 || !pakiraLeafResult.LabelValues.Contains(sampleClass))
+            if (pakiraLeafResult.LabelValues.Count() > 1 || !pakiraLeafResult.LabelValues.Contains(label))
             {
                leaves = leaves.Remove(pakiraLeafResult);
-
-               // TODO Replace this code by an assert since code coverage seems impossible
-               if (leaves.Count == 0)
-               { // ncrunch: no coverage
-                  break; // ncrunch: no coverage
-               }
+               leaves.Count.ShouldNotBe(0);
             }
          }
 
@@ -232,16 +222,9 @@ namespace AmaigomaTests
       {
          const int FeatureFullWindowSize = 17;
          string imagePath = dataSet.train[0].filename;
-         ImmutableList<Rectangle> trainRectangles = dataSet.train[0].regions;
-         ImmutableList<int> trainLabels = dataSet.train[0].labels;
-         ImmutableList<Rectangle> validationRectangles = dataSet.validation[0].regions;
-         ImmutableList<int> validationLabels = dataSet.validation[0].labels;
-         ImmutableList<Rectangle> testRectangles = dataSet.test[0].regions;
-         ImmutableList<int> testLabels = dataSet.test[0].labels;
-
-         trainRectangles.Count.ShouldBe(trainLabels.Count);
-         validationRectangles.Count.ShouldBe(validationLabels.Count);
-         testRectangles.Count.ShouldBe(testLabels.Count);
+         ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
+         ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
+         ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
 
          string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), imagePath);
 
@@ -254,9 +237,9 @@ namespace AmaigomaTests
          ImmutableDictionary<int, SampleData> validationPositions;
          ImmutableDictionary<int, SampleData> testPositions;
 
-         trainPositions = LoadDataSamples(trainRectangles, trainLabels, 0);
-         validationPositions = LoadDataSamples(validationRectangles, validationLabels, trainPositions.Count());
-         testPositions = LoadDataSamples(testRectangles, testLabels, trainPositions.Count() + validationPositions.Count());
+         trainPositions = LoadDataSamples(trainRectangles, 0);
+         validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count());
+         testPositions = LoadDataSamples(testRectangles, trainPositions.Count() + validationPositions.Count());
 
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
 
@@ -278,9 +261,6 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { trainPositions.Keys.First() }, trainTanukiETL);
 
-         // TODO Evaluate the possibility of using shallow trees to serve as sub-routines. The features could be chosen based on the
-         // best discrimination, like it was done a while ago. This will result in categories instead of a scalar so the leaves will need to be recombined
-         // to provide a binary (scalar) answer. Many strategies could be use to combine leaves. All the left ones vs right ones, random?
          int previousRegenerateTreeCount = -1;
          int previousRegenerateTreeCountBatch = -1;
          int regenerateTreeCount = 0;
@@ -292,17 +272,24 @@ namespace AmaigomaTests
          AccuracyResult testAccuracyResult;
          AccuracyResult trainAccuracyResult;
 
-         // TODO Remove the batch concept and use the whole set to train the tree. The batch concept is not needed anymore.
+         // UNDONE Improve accuracy output by adding the count of true positives, false positives, true negatives and false negatives for each class.
+         // UNDONE Review the batch concept. Start the first tree with about 100 samples (including all classes). Then identify the leaves which are
+         //        not predicting correctly in the validation set, and add more train samples of the same class to these leaves. Keep an eye on
+         //        the prediction rate on th test set, which should match closely with the validation set.
+         // UNDONE The validation set should be used to identify the leaves which are not predicting correctly. Then find
+         //       some data in the train set to improve these leaves
+         // UNDONE Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the
+         //        Test classes, inside the main library
+         // UNDONE Note this methodology somewhere: When the validation set contains too many unevaluated leaves we need to apply one of the following solution:
+         //        - Increase validation set size
+         //        - Optimize the tree size by replacing nodes with better discriminating nodes, thus reducing the number of leaves and/or the depth of the tree
+         //        - Other?
+         // UNDONE Add parallelism to the test. I', tired of waiting. Make sure it is easy to remove for the day there are too many long running tests.
          while (processBackgroundTrainData)
          {
             previousRegenerateTreeCount = regenerateTreeCount;
             processBackgroundTrainData = false;
 
-            // TODO Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the Test classes, inside the main library
-            // TODO Note this methodology somewhere: When the validation set contains too many unevaluated leaves we need to apply one of the following solution:
-            // - Increase validation set size
-            // - Optimize the tree size by replacing nodes with better discriminating nodes, thus reducing the number of leaves and/or the depth of the tree
-            // - Other?
             for (int i = 0; i < totalTrainSamples; i += batchSize)
             {
                batchSize = Math.Min(100, Math.Max(20, pakiraDecisionTreeModel.Tree.GetLeaves().Count()));
@@ -311,8 +298,6 @@ namespace AmaigomaTests
                bool processBatch = true;
                PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
 
-               // TODO The validation set should be used to identify the leaves which are not predicting correctly. Then find
-               //       some data in the train set to improve these leaves
                while (processBatch)
                {
                   int batchIndex = 0;
@@ -344,7 +329,6 @@ namespace AmaigomaTests
                }
             }
 
-            // TODO Improve accuracy output by adding the count of true positives, false positives, true negatives and false negatives
             trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
             validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
             testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);

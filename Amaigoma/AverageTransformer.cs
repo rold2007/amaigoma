@@ -84,11 +84,8 @@ namespace Amaigoma
          return [IntegralIndices[featureIndex], IntegralIndices[featureIndex + 1], IntegralIndices[featureIndex + 2], IntegralIndices[featureIndex + 3]];
       }
 
-      public double DataTransformers(IEnumerable<double> sampledData)
+      public double DataTransformers(IList<double> integral)
       {
-         // TODO This ToArray() should be removed for optimization
-         double[] integral = sampledData.ToArray();
-
          double sum = integral[0];
          sum -= integral[1];
          sum -= integral[2];

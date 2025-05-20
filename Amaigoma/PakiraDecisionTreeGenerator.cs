@@ -156,36 +156,36 @@ namespace Amaigoma
          // Identify all the leaves to retrain
          foreach (KeyValuePair<PakiraNode, PakiraLeaf> pakiraNodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves().Where(pakiraNodeLeaf =>
          {
-            // TODO This logic can certainly be simplified without using a HashSet since we exit early as soon as we have 2 items
-            if (pakiraNodeLeaf.Value.LabelValues.Count() == 1)
-            {
-               ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(pakiraNodeLeaf.Value);
-
-               if (ids.Count > 0)
-               {
-                  ImmutableHashSet<int> uniqueLabels = ImmutableHashSet<int>.Empty;
-
-                  foreach (int id in ids)
-                  {
-                     uniqueLabels = uniqueLabels.Add(tanukiETL.TanukiLabelExtractor(id));
-
-                     if (uniqueLabels.Count > 1)
-                     {
-                        multipleLabelsLeaves = multipleLabelsLeaves.Add(pakiraNodeLeaf.Value);
-                        return true;
-                     }
-                  }
-
-                  uniqueLabels.Count().ShouldBe(1);
-                  return uniqueLabels.First() != pakiraNodeLeaf.Value.LabelValues.First();
-               }
-            }
-            else
+            if (pakiraNodeLeaf.Value.LabelValues.Count() != 1)
             {
                return true;
             }
 
-            return false;
+            int uniqueLabel = 0;
+            bool uniqueLabelFound = false;
+
+            foreach (int id in pakiraDecisionTreeModel.DataSamples(pakiraNodeLeaf.Value))
+            {
+               int currentLabel = tanukiETL.TanukiLabelExtractor(id);
+
+               if (uniqueLabelFound && uniqueLabel != currentLabel)
+               {
+                  multipleLabelsLeaves = multipleLabelsLeaves.Add(pakiraNodeLeaf.Value);
+                  return true;
+               }
+
+               uniqueLabel = currentLabel;
+               uniqueLabelFound = true;
+            }
+
+            if (uniqueLabelFound)
+            {
+               return uniqueLabel != pakiraNodeLeaf.Value.LabelValues.First();
+            }
+            else
+            {
+               return false;
+            }
          }))
          {
             processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNodeLeaf.Key, pakiraNodeLeaf.Value, pakiraDecisionTreeModel.DataSamples(pakiraNodeLeaf.Value)));
@@ -199,8 +199,8 @@ namespace Amaigoma
 
             if (processLeaf.Leaf.LabelValues.First() == UnknownLabelValue && !multipleLabelsLeaves.Contains(processLeaf.Leaf))
             {
-               ImmutableHashSet<int> labels = ImmutableHashSet.CreateRange(ids.Select(id => tanukiETL.TanukiLabelExtractor(id)));
-               PakiraLeaf updatedLeaf = new PakiraLeaf(labels);
+               ImmutableHashSet<int> labels = [.. ids.Select(id => tanukiETL.TanukiLabelExtractor(id))];
+               PakiraLeaf updatedLeaf = new(labels);
 
                pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, updatedLeaf));
                pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(processLeaf.Leaf);
