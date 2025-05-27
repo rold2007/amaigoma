@@ -55,6 +55,12 @@ namespace AmaigomaTests
    {
       public ImmutableHashSet<PakiraLeaf> leavesBefore;
       public ImmutableHashSet<PakiraLeaf> leavesAfter;
+      public ImmutableDictionary<PakiraLeaf, ImmutableList<int>> truePositives = ImmutableDictionary<PakiraLeaf, ImmutableList<int>>.Empty;
+      public ImmutableDictionary<PakiraLeaf, ImmutableList<int>> falsePositives = ImmutableDictionary<PakiraLeaf, ImmutableList<int>>.Empty;
+
+      public AccuracyResult()
+      {
+      }
    }
 
    // TODO The integration test could output interesting positions to be validated and added to the test
@@ -203,10 +209,29 @@ namespace AmaigomaTests
             PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
             int label = tanukiETL.TanukiLabelExtractor(id);
 
-            if (pakiraLeafResult.LabelValues.Count() > 1 || !pakiraLeafResult.LabelValues.Contains(label))
+            if (pakiraLeafResult.LabelValues.Contains(label))
             {
+               if (accuracyResult.truePositives.ContainsKey(pakiraLeafResult))
+               {
+                  accuracyResult.truePositives = accuracyResult.truePositives.SetItem(pakiraLeafResult, accuracyResult.truePositives[pakiraLeafResult].Add(id));
+               }
+               else
+               {
+                  accuracyResult.truePositives = accuracyResult.truePositives.Add(pakiraLeafResult, ImmutableList<int>.Empty.Add(id));
+               }
+            }
+            else
+            {
+               if (accuracyResult.falsePositives.ContainsKey(pakiraLeafResult))
+               {
+                  accuracyResult.falsePositives = accuracyResult.falsePositives.SetItem(pakiraLeafResult, accuracyResult.falsePositives[pakiraLeafResult].Add(id));
+               }
+               else
+               {
+                  accuracyResult.falsePositives = accuracyResult.falsePositives.Add(pakiraLeafResult, ImmutableList<int>.Empty.Add(id));
+               }
+
                leaves = leaves.Remove(pakiraLeafResult);
-               leaves.Count.ShouldNotBe(0);
             }
          }
 
@@ -220,6 +245,10 @@ namespace AmaigomaTests
       [Timeout(600000)]
       public void UppercaseA_507484246(DataSet dataSet)
       {
+         TimeSpan ts;
+         System.Diagnostics.Stopwatch stopWatch = new System.Diagnostics.Stopwatch();
+         stopWatch.Start();
+
          const int FeatureFullWindowSize = 17;
          string imagePath = dataSet.train[0].filename;
          ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
@@ -261,6 +290,9 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { trainPositions.Keys.First() }, trainTanukiETL);
 
+         ts = stopWatch.Elapsed;
+         stopWatch.Restart();
+
          int previousRegenerateTreeCount = -1;
          int previousRegenerateTreeCountBatch = -1;
          int regenerateTreeCount = 0;
@@ -284,7 +316,7 @@ namespace AmaigomaTests
          //        - Increase validation set size
          //        - Optimize the tree size by replacing nodes with better discriminating nodes, thus reducing the number of leaves and/or the depth of the tree
          //        - Other?
-         // UNDONE Add parallelism to the test. I', tired of waiting. Make sure it is easy to remove for the day there are too many long running tests.
+         // UNDONE Add parallelism to the test. I'm, tired of waiting. Make sure it is easy to remove for the day there are too many long running tests.
          while (processBackgroundTrainData)
          {
             previousRegenerateTreeCount = regenerateTreeCount;
@@ -325,7 +357,7 @@ namespace AmaigomaTests
                      batchIndex++;
                   }
 
-                  processBatch = (previousRegenerateTreeCountBatch != regenerateTreeCount);
+                  processBatch = previousRegenerateTreeCountBatch != regenerateTreeCount;
                }
             }
 
@@ -333,20 +365,52 @@ namespace AmaigomaTests
             validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
             testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
 
-            output.WriteLine("First node index: " + pakiraDecisionTreeModel.Tree.Root.Column.ToString());
-            output.WriteLine(trainAccuracyResult.leavesAfter.Count().ToString());
-            output.WriteLine(trainAccuracyResult.leavesBefore.Count().ToString());
-            output.WriteLine((trainAccuracyResult.leavesAfter.Count() / trainAccuracyResult.leavesBefore.Count()).ToString());
-            output.WriteLine(validationAccuracyResult.leavesAfter.Count().ToString());
-            output.WriteLine(validationAccuracyResult.leavesBefore.Count().ToString());
-            output.WriteLine("{0}%", 100.0 * validationAccuracyResult.leavesAfter.Count() / validationAccuracyResult.leavesBefore.Count());
-            output.WriteLine(testAccuracyResult.leavesAfter.Count().ToString());
-            output.WriteLine(testAccuracyResult.leavesBefore.Count().ToString());
-            output.WriteLine("{0}%", 100.0 * testAccuracyResult.leavesAfter.Count() / testAccuracyResult.leavesBefore.Count());
-            output.WriteLine("---");
+            PrintFirstNodeIndex(pakiraDecisionTreeModel);
+            PrintConfusionMatrix(trainAccuracyResult, "Train");
+            PrintConfusionMatrix(validationAccuracyResult, "Validation");
+            PrintConfusionMatrix(testAccuracyResult, "Test");
+            PrintLeaveResults(trainAccuracyResult);
+            PrintLeaveResults(validationAccuracyResult);
+            PrintLeaveResults(testAccuracyResult);
+            PrintEnd();
 
             processBackgroundTrainData = (trainAccuracyResult.leavesBefore.Count != trainAccuracyResult.leavesAfter.Count);
          }
+
+         ts = stopWatch.Elapsed;
+         stopWatch.Restart();
+      }
+
+      private void PrintFirstNodeIndex(PakiraDecisionTreeModel pakiraDecisionTreeModel)
+      {
+         output.WriteLine("First node index: " + pakiraDecisionTreeModel.Tree.Root.Column.ToString());
+      }
+
+      private void PrintConfusionMatrix(AccuracyResult accuracyResult, string title)
+      {
+         output.WriteLine("Confusion matrix for {0}", title);
+
+         foreach (PakiraLeaf leaf in accuracyResult.leavesBefore)
+         {
+            int falsePositivesCount = accuracyResult.falsePositives.GetValueOrDefault(leaf, ImmutableList<int>.Empty).Count;
+
+            if (falsePositivesCount > 0)
+            {
+               int truePositivesCount = accuracyResult.truePositives.GetValueOrDefault(leaf, ImmutableList<int>.Empty).Count;
+
+               output.WriteLine("Leaf: {0} - {1} true positives, {2} false positives", String.Join(" ", leaf.LabelValues.Select(item => item.ToString()).ToArray()), truePositivesCount, falsePositivesCount);
+            }
+         }
+      }
+
+      private void PrintLeaveResults(AccuracyResult accuracyResult)
+      {
+         output.WriteLine("{0}/{1} = {2}%", accuracyResult.leavesAfter.Count().ToString(), accuracyResult.leavesBefore.Count().ToString(), 100.0 * accuracyResult.leavesAfter.Count() / accuracyResult.leavesBefore.Count());
+      }
+
+      private void PrintEnd()
+      {
+         output.WriteLine("---");
       }
    }
 }

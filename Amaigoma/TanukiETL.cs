@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 
 namespace Amaigoma
 {
+   // UNDONE DataTransformer should return an int instead of a double
    using DataTransformer = Func<int, int, double>;
    using LabelExtractor = Func<int, int>;
    using SabotenCacheExtractor = Func<int, SabotenCache>;
