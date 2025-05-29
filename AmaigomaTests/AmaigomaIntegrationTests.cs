@@ -66,13 +66,13 @@ namespace AmaigomaTests
    // TODO The integration test could output interesting positions to be validated and added to the test
    public record AmaigomaIntegrationTests // ncrunch: no coverage
    {
+      // UNDONE Add more classes
       static readonly int uppercaseA = 1; // ncrunch: no coverage
       static readonly int other = 2; // ncrunch: no coverage
 
       static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
           new Rectangle(83, 150, 1, 1),
-          new Rectangle(17, 17, 300, 100),
           new Rectangle(624, 140, 1, 1),
           new Rectangle(670, 140, 1, 1),
           new Rectangle(688, 140, 1, 1),
@@ -84,6 +84,7 @@ namespace AmaigomaTests
           new Rectangle(658, 217, 1, 1),
           new Rectangle(109, 333, 1, 1),
           new Rectangle(127, 333, 1, 1),
+          new Rectangle(17, 17, 300, 100),
           new Rectangle(520, 40, 230, 90),
           new Rectangle(20, 420, 380, 80),
       });
@@ -91,22 +92,23 @@ namespace AmaigomaTests
       static private readonly ImmutableList<int> trainNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
        {
           uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
+          uppercaseA,
           other,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
           other,
           other,
       });
 
+      // UNDONE Need more background samples in the validation set to remove false positive on real letters
       static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
          new Rectangle(190, 540, 280, 20),
@@ -245,10 +247,6 @@ namespace AmaigomaTests
       [Timeout(600000)]
       public void UppercaseA_507484246(DataSet dataSet)
       {
-         TimeSpan ts;
-         System.Diagnostics.Stopwatch stopWatch = new System.Diagnostics.Stopwatch();
-         stopWatch.Start();
-
          const int FeatureFullWindowSize = 17;
          string imagePath = dataSet.train[0].filename;
          ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
@@ -288,10 +286,7 @@ namespace AmaigomaTests
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, new[] { trainPositions.Keys.First() }, trainTanukiETL);
-
-         ts = stopWatch.Elapsed;
-         stopWatch.Restart();
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainPositions.Keys.Take(100), trainTanukiETL);
 
          int previousRegenerateTreeCount = -1;
          int previousRegenerateTreeCountBatch = -1;
@@ -300,14 +295,16 @@ namespace AmaigomaTests
          int batchSize = 0;
          int totalTrainSamples = trainPositions.Keys.Count();
 
+         AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
          AccuracyResult testAccuracyResult;
-         AccuracyResult trainAccuracyResult;
 
-         // UNDONE Improve accuracy output by adding the count of true positives, false positives, true negatives and false negatives for each class.
+         // UNDONE Remove SabotenCache to see if the integrated test runs faster or slower.
          // UNDONE Review the batch concept. Start the first tree with about 100 samples (including all classes). Then identify the leaves which are
          //        not predicting correctly in the validation set, and add more train samples of the same class to these leaves. Keep an eye on
          //        the prediction rate on th test set, which should match closely with the validation set.
+         // UNDONE Integrate images from mirflickr
+         // UNDONE The test accuracy result shows that not a single uppercase A is correctly predicted. See if the new batch system and a proper leaf selection fixes this.
          // UNDONE The validation set should be used to identify the leaves which are not predicting correctly. Then find
          //       some data in the train set to improve these leaves
          // UNDONE Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the
@@ -376,9 +373,6 @@ namespace AmaigomaTests
 
             processBackgroundTrainData = (trainAccuracyResult.leavesBefore.Count != trainAccuracyResult.leavesAfter.Count);
          }
-
-         ts = stopWatch.Elapsed;
-         stopWatch.Restart();
       }
 
       private void PrintFirstNodeIndex(PakiraDecisionTreeModel pakiraDecisionTreeModel)
