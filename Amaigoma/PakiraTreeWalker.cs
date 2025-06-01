@@ -15,40 +15,29 @@ namespace Amaigoma
 
       public PakiraLeaf PredictLeaf(int id)
       {
-         return WalkNode(id).Item1;
+         return WalkNode(id);
       }
 
-      private Tuple<PakiraLeaf, SabotenCache> WalkNode(int id)
+      private PakiraLeaf WalkNode(int id)
       {
          PakiraNode node = Tree.Root;
-         SabotenCache sabotenCache = TanukiETL.TanukiSabotenCacheExtractor(id);
-         bool loadSabotenCache = false;
 
          do
          {
             // Get the index of the feature for this node.
             int col = node.Column;
 
-            if (!sabotenCache.CacheHit(col))
-            {
-               sabotenCache = sabotenCache.Prefetch(TanukiETL, id, col);
-               loadSabotenCache = true;
-            }
+            double columnValue = TanukiETL.TanukiDataTransformer(id, col);
 
             PakiraNode subNode;
 
-            if (sabotenCache[col] <= node.Threshold)
+            if (columnValue <= node.Threshold)
             {
                subNode = Tree.GetLeftNodeSafe(node);
 
                if (subNode == null)
                {
-                  if (loadSabotenCache)
-                  {
-                     TanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
-                  }
-
-                  return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetLeftLeaf(node), sabotenCache);
+                  return Tree.GetLeftLeaf(node);
                }
             }
             else
@@ -57,12 +46,7 @@ namespace Amaigoma
 
                if (subNode == null)
                {
-                  if (loadSabotenCache)
-                  {
-                     TanukiETL.TanukiSabotenCacheLoad(id, sabotenCache);
-                  }
-
-                  return new Tuple<PakiraLeaf, SabotenCache>(Tree.GetRightLeaf(node), sabotenCache);
+                  return Tree.GetRightLeaf(node);
                }
             }
 

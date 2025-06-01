@@ -96,11 +96,6 @@ namespace Amaigoma
       {
          PakiraLeafResult[] pakiraLeavesResult = new PakiraLeafResult[2];
 
-         foreach (int id in ids)
-         {
-            tanukiETL.TanukiSabotenCacheExtractor(id).PrefetchLoad(tanukiETL, id, featureIndex);
-         }
-
          for (int leafIndex = 0; leafIndex < 2; leafIndex++)
          {
             bool theKey = (leafIndex == 0);
@@ -109,7 +104,7 @@ namespace Amaigoma
 
             pakiraLeavesResult[leafIndex].ids = ImmutableList<int>.Empty.AddRange(ids.Where(id =>
                                     {
-                                       return ThresholdCompareLessThanOrEqual(tanukiETL.TanukiSabotenCacheExtractor(id)[featureIndex], threshold) == theKey;
+                                       return ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, featureIndex), threshold) == theKey;
                                     }));
          }
 
@@ -249,9 +244,7 @@ namespace Amaigoma
 
             foreach (int id in ids)
             {
-               SabotenCache sabotenCache = tanukiETL.TanukiSabotenCacheExtractor(id).PrefetchLoad(tanukiETL, id, featureIndex);
-
-               double dataSampleValue = sabotenCache[featureIndex];
+               double dataSampleValue = tanukiETL.TanukiDataTransformer(id, featureIndex);
 
                if (dataSampleValue <= minimumValues.Item1)
                {

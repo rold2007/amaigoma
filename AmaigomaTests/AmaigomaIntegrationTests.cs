@@ -299,7 +299,6 @@ namespace AmaigomaTests
          AccuracyResult validationAccuracyResult;
          AccuracyResult testAccuracyResult;
 
-         // UNDONE Remove SabotenCache to see if the integrated test runs faster or slower.
          // UNDONE Review the batch concept. Start the first tree with about 100 samples (including all classes). Then identify the leaves which are
          //        not predicting correctly in the validation set, and add more train samples of the same class to these leaves. Keep an eye on
          //        the prediction rate on th test set, which should match closely with the validation set.
