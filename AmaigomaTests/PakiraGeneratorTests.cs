@@ -1,15 +1,12 @@
 ﻿using Amaigoma;
 using Shouldly;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Xunit;
 
 namespace AmaigomaTests
 {
-   using DataTransformer = Func<IEnumerable<double>, double>;
-
    public record PakiraGeneratorTests // ncrunch: no coverage
    {
       private readonly PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator;
@@ -23,16 +20,16 @@ namespace AmaigomaTests
 
       internal sealed record MeanDistanceDataTransformer
       {
-         ImmutableList<ImmutableList<double>> DataSamples;
+         ImmutableList<ImmutableList<int>> DataSamples;
 
-         public MeanDistanceDataTransformer(ImmutableList<ImmutableList<double>> dataSamples)
+         public MeanDistanceDataTransformer(ImmutableList<ImmutableList<int>> dataSamples)
          {
             DataSamples = dataSamples;
          }
 
-         public double ConvertAll(int id, int featureIndex)
+         public int ConvertAll(int id, int featureIndex)
          {
-            double add = DataSamples[id][featureIndex] + DataSamples[id][featureIndex + 1];
+            int add = DataSamples[id][featureIndex] + DataSamples[id][featureIndex + 1];
 
             add = 255 - add;
             add = Math.Abs(add);
@@ -46,7 +43,7 @@ namespace AmaigomaTests
       [Fact]
       public void Generate()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([2, 90]);
@@ -77,7 +74,7 @@ namespace AmaigomaTests
       [Fact]
       public void GenerateMultipleCalls()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([2, 90]);
@@ -143,7 +140,7 @@ namespace AmaigomaTests
       [Fact]
       public void DataTransformers()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([2, 3]);
@@ -157,7 +154,7 @@ namespace AmaigomaTests
          PassThroughTransformer passThroughTransformer = new(data);
          MeanDistanceDataTransformer meanDistanceDataTransformer = new(data);
 
-         Func<int, int, double> dataTransformers = (int id, int featureIndex) =>
+         Func<int, int, int> dataTransformers = (int id, int featureIndex) =>
          {
             if (featureIndex <= 1)
             {
@@ -193,7 +190,7 @@ namespace AmaigomaTests
       [Fact]
       public void DataTransformersQuickExit()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([25, 35]);
@@ -207,7 +204,7 @@ namespace AmaigomaTests
          PassThroughTransformer passThroughTransformer = new(data);
          MeanDistanceDataTransformer meanDistanceDataTransformer = new(data);
 
-         Func<int, int, double> dataTransformers = (int id, int featureIndex) =>
+         Func<int, int, int> dataTransformers = (int id, int featureIndex) =>
          {
             if (featureIndex == 0)
             {
@@ -241,7 +238,7 @@ namespace AmaigomaTests
       [Fact]
       public void DataTransformersQuickExit2()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([25, 35]);
@@ -276,7 +273,7 @@ namespace AmaigomaTests
       [Fact]
       public void DeepTree()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([2, 3]);
@@ -325,7 +322,7 @@ namespace AmaigomaTests
       [Fact]
       public void CertaintyScore()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([2, 90]);
@@ -356,7 +353,7 @@ namespace AmaigomaTests
       [Fact]
       public void GenerateCannotSplit()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([2, 90]);
@@ -389,7 +386,7 @@ namespace AmaigomaTests
       [Fact]
       public void GenerateCannotSplit2()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([250, 140]);
@@ -418,7 +415,7 @@ namespace AmaigomaTests
       [Fact]
       public void CallPakiraTreeReplaceLeaf()
       {
-         ImmutableList<ImmutableList<double>> data = ImmutableList<ImmutableList<double>>.Empty;
+         ImmutableList<ImmutableList<int>> data = ImmutableList<ImmutableList<int>>.Empty;
          ImmutableList<int> labels = ImmutableList<int>.Empty;
 
          data = data.Add([2]);

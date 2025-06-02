@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Shouldly;
@@ -84,14 +85,14 @@ namespace Amaigoma
          return [IntegralIndices[featureIndex], IntegralIndices[featureIndex + 1], IntegralIndices[featureIndex + 2], IntegralIndices[featureIndex + 3]];
       }
 
-      public double DataTransformers(IList<double> integral)
+      public int DataTransformers(IList<uint> integral)
       {
-         double sum = integral[0];
+         uint sum = integral[0];
          sum -= integral[1];
          sum -= integral[2];
          sum += integral[3];
 
-         return sum * SlidingWindowSizeSquaredInverted;
+         return Convert.ToInt32(sum * SlidingWindowSizeSquaredInverted);
       }
    }
 }

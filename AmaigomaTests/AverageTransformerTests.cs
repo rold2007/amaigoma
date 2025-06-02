@@ -15,9 +15,9 @@ namespace AmaigomaTests
          const int FeatureFullWindowSize = 17;
          int randomSeed = new Random().Next();
          Random RandomSource = new(randomSeed);
-         List<double> integral = new List<double>();
+         List<uint> integral = [];
          int byteIndex;
-         List<double> computedValues = new List<double>();
+         List<int> computedValues = [];
 
          for (int windowSize = 1; windowSize < (FeatureFullWindowSize + 1); windowSize++)
          {
@@ -31,7 +31,7 @@ namespace AmaigomaTests
 
             integral.Clear();
 
-            integral.AddRange(Enumerable.Repeat<double>(0.0, FeatureFullWindowSize + 1));
+            integral.AddRange(Enumerable.Repeat<uint>(0, FeatureFullWindowSize + 1));
 
             byteIndex = 0;
 
@@ -49,11 +49,11 @@ namespace AmaigomaTests
                }
             }
 
-            List<double> convertedValues = new();
+            List<int> convertedValues = new();
 
             for (int featureIndex = 0; featureIndex < averageTransformer.FeatureCount; featureIndex++)
             {
-               List<double> newSample = new();
+               List<uint> newSample = new();
 
                foreach (int dataIndex in averageTransformer.DataTransformersIndices(featureIndex))
                {
@@ -69,7 +69,7 @@ namespace AmaigomaTests
             {
                for (int offsetX = 0; (offsetX + windowSize) <= FeatureFullWindowSize; offsetX += windowSize)
                {
-                  double computedValue = 0.0;
+                  int computedValue = 0;
 
                   for (int y = 0; y < windowSize; y++)
                   {
@@ -79,7 +79,7 @@ namespace AmaigomaTests
                      }
                   }
 
-                  computedValues.Add(computedValue * windowSizeSquaredInverted);
+                  computedValues.Add(Convert.ToInt32(computedValue * windowSizeSquaredInverted));
                }
             }
 

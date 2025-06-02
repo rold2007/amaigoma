@@ -1,4 +1,3 @@
-using Shouldly;
 // TODO Move all classes depending on SixLabors to a different Utility project so that Amaigoma doesn't depend on it
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Memory;
@@ -39,7 +38,7 @@ namespace Amaigoma
         private int FeatureWindowSize;
         private ImmutableList<AverageTransformer> AverageTransformers = ImmutableList<AverageTransformer>.Empty;
         private ImmutableList<Range> DataTransformersRanges = ImmutableList<Range>.Empty;
-        private ImmutableList<double> ConvertedSample = ImmutableList<double>.Empty;
+        private ImmutableList<uint> ConvertedSample = ImmutableList<uint>.Empty;
         static private RangeComparer rangeComparer = new RangeComparer();
         private ImmutableList<ReadOnlyMemory<ulong>> RowSpans = ImmutableList<ReadOnlyMemory<ulong>>.Empty;
 
@@ -48,7 +47,7 @@ namespace Amaigoma
             Samples = positions;
             IntegralImage = integralImage;
             FeatureWindowSize = featureWindowSize;
-            ConvertedSample = ConvertedSample.AddRange(Enumerable.Repeat<double>(0, 4));
+            ConvertedSample = ConvertedSample.AddRange(Enumerable.Repeat<uint>(0, 4));
 
             // Empty line of zeros for the integral
             RowSpans = RowSpans.Add(new ReadOnlyMemory<ulong>(Enumerable.Repeat<ulong>(0, integralImage.Width + 1).ToArray()));
@@ -62,7 +61,7 @@ namespace Amaigoma
             }
         }
 
-        public double ConvertAll(int id, int featureIndex)
+        public int ConvertAll(int id, int featureIndex)
         {
             Point position = Samples[id].Position;
             int dataTransformerIndex = DataTransformersRanges.BinarySearch(Range.StartAt(featureIndex), rangeComparer);
@@ -77,15 +76,15 @@ namespace Amaigoma
                 // +1 length to support first column of integral image
                 ReadOnlySpan<ulong> slice = rowSpan.Slice(position.X - slidingWindowHalfSize, slidingWindowSizePlusOne);
 
-                ConvertedSample = ConvertedSample.SetItem(0, slice[0]);
+                ConvertedSample = ConvertedSample.SetItem(0, Convert.ToUInt32(slice[0]));
 
-                ConvertedSample = ConvertedSample.SetItem(1, slice[slidingWindowSize]);
+                ConvertedSample = ConvertedSample.SetItem(1, Convert.ToUInt32(slice[slidingWindowSize]));
                 ReadOnlySpan<ulong> rowSpan2 = RowSpans[position.Y + slidingWindowHalfSize + 1].Span;
                 // +1 length to support first column of integral image
                 ReadOnlySpan<ulong> slice2 = rowSpan2.Slice(position.X - slidingWindowHalfSize, slidingWindowSizePlusOne);
 
-                ConvertedSample = ConvertedSample.SetItem(2, slice2[0]);
-                ConvertedSample = ConvertedSample.SetItem(3, slice2[slidingWindowSize]);
+                ConvertedSample = ConvertedSample.SetItem(2, Convert.ToUInt32(slice2[0]));
+                ConvertedSample = ConvertedSample.SetItem(3, Convert.ToUInt32(slice2[slidingWindowSize]));
             }
 
             return AverageTransformers[dataTransformerIndex].DataTransformers(ConvertedSample);

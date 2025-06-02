@@ -97,7 +97,7 @@ namespace AmaigomaTests
                int averageTransformerSize = featureIndexAverageTransformerSizes[featureIndex];
                int averageTransformerHalfSize = averageTransformerSize / 2;
                Point pixelPosition = position.Value.Position;
-               double manuallyConvertedValue = 0;
+               int manuallyConvertedValue = 0;
 
                for (int y = pixelPosition.Y - averageTransformerHalfSize; y <= pixelPosition.Y + averageTransformerHalfSize; y++)
                {
@@ -107,7 +107,7 @@ namespace AmaigomaTests
                   }
                }
 
-               manuallyConvertedValue /= (averageTransformerSize * averageTransformerSize);
+               manuallyConvertedValue = Convert.ToInt32((double)manuallyConvertedValue / (averageTransformerSize * averageTransformerSize));
 
                double convertedValueNew = averageWindowFeature.ConvertAll(position.Key, featureIndex);
 

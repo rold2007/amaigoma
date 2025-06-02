@@ -3,8 +3,7 @@ using System.Collections.Immutable;
 
 namespace Amaigoma
 {
-   // UNDONE DataTransformer should return an int instead of a double
-   using DataTransformer = Func<int, int, double>;
+   using DataTransformer = Func<int, int, int>;
    using LabelExtractor = Func<int, int>;
 
    public record SimpleSabotenCacheExtractor // ncrunch: no coverage
@@ -20,7 +19,7 @@ namespace Amaigoma
       public LabelExtractor TanukiLabelExtractor { get; private set; }
       public int TanukiFeatureCount { get; private set; }
 
-      public TanukiETL(ImmutableList<ImmutableList<double>> dataSamples, ImmutableList<int> labels) : this(new PassThroughTransformer(dataSamples).ConvertAll, new PassThroughLabelsTransformer(labels).ConvertAll, dataSamples[0].Count)
+      public TanukiETL(ImmutableList<ImmutableList<int>> dataSamples, ImmutableList<int> labels) : this(new PassThroughTransformer(dataSamples).ConvertAll, new PassThroughLabelsTransformer(labels).ConvertAll, dataSamples[0].Count)
       {
       }
 

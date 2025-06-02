@@ -4,14 +4,14 @@ namespace Amaigoma
 {
    public record PassThroughTransformer
    {
-      ImmutableList<ImmutableList<double>> DataSamples;
+      ImmutableList<ImmutableList<int>> DataSamples;
 
-      public PassThroughTransformer(ImmutableList<ImmutableList<double>> dataSamples)
+      public PassThroughTransformer(ImmutableList<ImmutableList<int>> dataSamples)
       {
          DataSamples = dataSamples;
       }
 
-      public double ConvertAll(int id, int featureIndex)
+      public int ConvertAll(int id, int featureIndex)
       {
          return DataSamples[id][featureIndex];
       }
