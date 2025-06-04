@@ -111,23 +111,28 @@ namespace AmaigomaTests
       // UNDONE Need more background samples in the validation set to remove false positive on real letters
       static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
+         new Rectangle(228, 334, 1, 1),
+         new Rectangle(283, 335, 1, 1),
+         new Rectangle(153, 408, 1, 1),
+         new Rectangle(217, 519, 1, 1),
+         new Rectangle(155, 549, 1, 1),
          new Rectangle(190, 540, 280, 20),
          new Rectangle(20, 555, 480, 215),
       });
 
       static private readonly ImmutableList<int> validationNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
        {
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
          other,
          other,
       });
 
       static private readonly ImmutableList<Rectangle> testNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
        {
-         new Rectangle(228, 334, 1, 1),
-         new Rectangle(283, 335, 1, 1),
-         new Rectangle(153, 408, 1, 1),
-         new Rectangle(217, 519, 1, 1),
-         new Rectangle(155, 549, 1, 1),
          new Rectangle(218, 790, 1, 1),
          new Rectangle(411, 836, 1, 1),
          new Rectangle(137, 851, 1, 1),
@@ -141,11 +146,6 @@ namespace AmaigomaTests
 
       static private readonly ImmutableList<int> testNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
        {
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
          uppercaseA,
          uppercaseA,
          uppercaseA,
@@ -286,92 +286,63 @@ namespace AmaigomaTests
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainPositions.Keys.Take(100), trainTanukiETL);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainPositions.Keys.Take(24), trainTanukiETL);
 
-         int previousRegenerateTreeCount = -1;
-         int previousRegenerateTreeCountBatch = -1;
-         int regenerateTreeCount = 0;
-         bool processBackgroundTrainData = true;
-         int batchSize = 0;
          int totalTrainSamples = trainPositions.Keys.Count();
+         ImmutableList<int> trainSampleIds = ImmutableList<int>.Empty;
+         ImmutableHashSet<int> trainSampleIdsSet = [.. trainPositions.Keys];
 
          AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
          AccuracyResult testAccuracyResult;
 
-         // UNDONE Review the batch concept. Start the first tree with about 100 samples (including all classes). Then identify the leaves which are
-         //        not predicting correctly in the validation set, and add more train samples of the same class to these leaves. Keep an eye on
-         //        the prediction rate on th test set, which should match closely with the validation set.
          // UNDONE Integrate images from mirflickr
          // UNDONE The test accuracy result shows that not a single uppercase A is correctly predicted. See if the new batch system and a proper leaf selection fixes this.
-         // UNDONE The validation set should be used to identify the leaves which are not predicting correctly. Then find
-         //       some data in the train set to improve these leaves
          // UNDONE Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the
          //        Test classes, inside the main library
          // UNDONE Note this methodology somewhere: When the validation set contains too many unevaluated leaves we need to apply one of the following solution:
          //        - Increase validation set size
          //        - Optimize the tree size by replacing nodes with better discriminating nodes, thus reducing the number of leaves and/or the depth of the tree
          //        - Other?
-         // UNDONE Add parallelism to the test. I'm, tired of waiting. Make sure it is easy to remove for the day there are too many long running tests.
-         while (processBackgroundTrainData)
+         while (!trainSampleIdsSet.IsEmpty)
          {
-            previousRegenerateTreeCount = regenerateTreeCount;
-            processBackgroundTrainData = false;
+            PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
 
-            for (int i = 0; i < totalTrainSamples; i += batchSize)
+            foreach (int id in trainSampleIdsSet.Take(10))
             {
-               batchSize = Math.Min(100, Math.Max(20, pakiraDecisionTreeModel.Tree.GetLeaves().Count()));
-               IEnumerable<int> batchSamples = trainPositions.Keys.Skip(i).Take(batchSize);
+               int expectedLabel = trainPositions[id].Label;
+               IEnumerable<int> resultLabels = pakiraTreeWalker.PredictLeaf(id).LabelValues;
 
-               bool processBatch = true;
-               PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
-
-               while (processBatch)
+               if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
                {
-                  int batchIndex = 0;
-
-                  previousRegenerateTreeCountBatch = regenerateTreeCount;
-
-                  foreach (int id in batchSamples)
-                  {
-                     int expectedLabel = trainPositions[id].Label;
-                     IEnumerable<int> resultLabels = pakiraTreeWalker.PredictLeaf(id).LabelValues;
-
-                     if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
-                     {
-                        pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, [id], trainTanukiETL);
-                        pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
-
-                        IEnumerable<int> labelValues = pakiraTreeWalker.PredictLeaf(id).LabelValues;
-
-                        labelValues.Count().ShouldBe(1);
-                        labelValues.First().ShouldBe(expectedLabel);
-
-                        regenerateTreeCount++;
-                     }
-
-                     batchIndex++;
-                  }
-
-                  processBatch = previousRegenerateTreeCountBatch != regenerateTreeCount;
+                  trainSampleIds = trainSampleIds.Add(id);
+               }
+               else
+               {
+                  trainSampleIdsSet = trainSampleIdsSet.Remove(id);
                }
             }
 
-            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
-            validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
-            testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
-
-            PrintFirstNodeIndex(pakiraDecisionTreeModel);
-            PrintConfusionMatrix(trainAccuracyResult, "Train");
-            PrintConfusionMatrix(validationAccuracyResult, "Validation");
-            PrintConfusionMatrix(testAccuracyResult, "Test");
-            PrintLeaveResults(trainAccuracyResult);
-            PrintLeaveResults(validationAccuracyResult);
-            PrintLeaveResults(testAccuracyResult);
-            PrintEnd();
-
-            processBackgroundTrainData = (trainAccuracyResult.leavesBefore.Count != trainAccuracyResult.leavesAfter.Count);
+            if (!trainSampleIds.IsEmpty)
+            {
+               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainSampleIds, trainTanukiETL);
+               pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
+               trainSampleIds = ImmutableList<int>.Empty;
+            }
          }
+
+         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
+         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
+         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
+
+         PrintFirstNodeIndex(pakiraDecisionTreeModel);
+         PrintConfusionMatrix(trainAccuracyResult, "Train");
+         PrintConfusionMatrix(validationAccuracyResult, "Validation");
+         PrintConfusionMatrix(testAccuracyResult, "Test");
+         PrintLeaveResults(trainAccuracyResult);
+         PrintLeaveResults(validationAccuracyResult);
+         PrintLeaveResults(testAccuracyResult);
+         PrintEnd();
       }
 
       private void PrintFirstNodeIndex(PakiraDecisionTreeModel pakiraDecisionTreeModel)
