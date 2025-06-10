@@ -33,6 +33,9 @@
     <None Update="assets\text-extraction-for-ocr\507484246.tif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="assets\mirflickr08\*.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

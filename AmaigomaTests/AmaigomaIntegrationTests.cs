@@ -45,6 +45,7 @@ namespace AmaigomaTests
       public List<IntegrationTestDataSet> train = new List<IntegrationTestDataSet>();
       public List<IntegrationTestDataSet> validation = new List<IntegrationTestDataSet>();
       public List<IntegrationTestDataSet> test = new List<IntegrationTestDataSet>();
+      public List<IntegrationTestDataSet> im164 = new List<IntegrationTestDataSet>();
 
       public DataSet()
       {
@@ -70,8 +71,8 @@ namespace AmaigomaTests
       static readonly int uppercaseA = 1; // ncrunch: no coverage
       static readonly int other = 2; // ncrunch: no coverage
 
-      static private readonly ImmutableList<Rectangle> trainNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
-       {
+      static private readonly ImmutableList<Rectangle> train_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(// ncrunch: no coverage
+       [
           new Rectangle(83, 150, 1, 1),
           new Rectangle(624, 140, 1, 1),
           new Rectangle(670, 140, 1, 1),
@@ -87,10 +88,10 @@ namespace AmaigomaTests
           new Rectangle(17, 17, 300, 100),
           new Rectangle(520, 40, 230, 90),
           new Rectangle(20, 420, 380, 80),
-      });
+      ]);
 
-      static private readonly ImmutableList<int> trainNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
-       {
+      static private readonly ImmutableList<int> train_507484246_Labels = ImmutableList<int>.Empty.AddRange( // ncrunch: no coverage
+       [
           uppercaseA,
           uppercaseA,
           uppercaseA,
@@ -106,11 +107,11 @@ namespace AmaigomaTests
           other,
           other,
           other,
-      });
+      ]);
 
       // UNDONE Need more background samples in the validation set to remove false positive on real letters
-      static private readonly ImmutableList<Rectangle> validationNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
-       {
+      static private readonly ImmutableList<Rectangle> validation_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange( // ncrunch: no coverage
+       [
          new Rectangle(228, 334, 1, 1),
          new Rectangle(283, 335, 1, 1),
          new Rectangle(153, 408, 1, 1),
@@ -118,10 +119,10 @@ namespace AmaigomaTests
          new Rectangle(155, 549, 1, 1),
          new Rectangle(190, 540, 280, 20),
          new Rectangle(20, 555, 480, 215),
-      });
+      ]);
 
-      static private readonly ImmutableList<int> validationNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
-       {
+      static private readonly ImmutableList<int> validation_507484246_Labels = ImmutableList<int>.Empty.AddRange( // ncrunch: no coverage
+       [
          uppercaseA,
          uppercaseA,
          uppercaseA,
@@ -129,10 +130,10 @@ namespace AmaigomaTests
          uppercaseA,
          other,
          other,
-      });
+      ]);
 
-      static private readonly ImmutableList<Rectangle> testNotUppercaseA_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(new Rectangle[] // ncrunch: no coverage
-       {
+      static private readonly ImmutableList<Rectangle> test_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange( // ncrunch: no coverage
+       [
          new Rectangle(218, 790, 1, 1),
          new Rectangle(411, 836, 1, 1),
          new Rectangle(137, 851, 1, 1),
@@ -142,10 +143,10 @@ namespace AmaigomaTests
          new Rectangle(95, 810, 500, 20),
          new Rectangle(20, 900, 740, 70),
          new Rectangle(180, 960, 310, 23)
-      });
+      ]);
 
-      static private readonly ImmutableList<int> testNotUppercaseA_507484246 = ImmutableList<int>.Empty.AddRange(new int[] // ncrunch: no coverage
-       {
+      static private readonly ImmutableList<int> test_507484246_Labels = ImmutableList<int>.Empty.AddRange( // ncrunch: no coverage
+       [
          uppercaseA,
          uppercaseA,
          uppercaseA,
@@ -155,18 +156,30 @@ namespace AmaigomaTests
          other,
          other,
          other,
-      });
+      ]);
+
+      static private readonly ImmutableList<Rectangle> im164Rectangles = ImmutableList<Rectangle>.Empty.AddRange( // ncrunch: no coverage
+       [
+         new Rectangle(8, 8, 483, 358),
+      ]);
+
+      static private readonly ImmutableList<int> im164Labels = ImmutableList<int>.Empty.AddRange( // ncrunch: no coverage
+       [
+         other
+      ]);
 
       public static IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
          DataSet dataSet = new DataSet();
-         IntegrationTestDataSet trainIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", trainNotUppercaseA_507484246_Rectangles, trainNotUppercaseA_507484246);
-         IntegrationTestDataSet validationIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", validationNotUppercaseA_507484246_Rectangles, validationNotUppercaseA_507484246);
-         IntegrationTestDataSet testIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", testNotUppercaseA_507484246_Rectangles, testNotUppercaseA_507484246);
+         IntegrationTestDataSet trainIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", train_507484246_Rectangles, train_507484246_Labels);
+         IntegrationTestDataSet validationIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", validation_507484246_Rectangles, validation_507484246_Labels);
+         IntegrationTestDataSet testIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", test_507484246_Rectangles, test_507484246_Labels);
+         IntegrationTestDataSet im164IntegrationTestDataSet = new IntegrationTestDataSet(@"assets/mirflickr08/im164.jpg", im164Rectangles, im164Labels);
 
          dataSet.train.Add(trainIntegrationTestDataSet);
          dataSet.validation.Add(validationIntegrationTestDataSet);
          dataSet.test.Add(testIntegrationTestDataSet);
+         dataSet.im164.Add(im164IntegrationTestDataSet);
 
          yield return new object[] { dataSet };
       }
@@ -248,41 +261,57 @@ namespace AmaigomaTests
       public void UppercaseA_507484246(DataSet dataSet)
       {
          const int FeatureFullWindowSize = 17;
-         string imagePath = dataSet.train[0].filename;
+         ImmutableDictionary<string, Image<L8>> sourceImages = ImmutableDictionary<string, Image<L8>>.Empty;
+         ImmutableDictionary<string, Buffer2D<ulong>> integralImages = ImmutableDictionary<string, Buffer2D<ulong>>.Empty;
          ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
          ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
          ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
+         ImmutableList<RegionLabel> im164Rectangles = dataSet.im164[0].regionLabels;
+         ImmutableList<IntegrationTestDataSet> allDataSets = dataSet.train.Concat(dataSet.validation).Concat(dataSet.test).Concat(dataSet.im164).ToImmutableList();
 
-         string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), imagePath);
+         foreach (IntegrationTestDataSet integrationTestDataSet in allDataSets)
+         {
+            if (!sourceImages.ContainsKey(integrationTestDataSet.filename))
+            {
+               string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), integrationTestDataSet.filename);
+               Image<L8> sourceImage = Image.Load<L8>(fullImagePath);
+
+               sourceImages = sourceImages.Add(integrationTestDataSet.filename, sourceImage);
+               integralImages = integralImages.Add(integrationTestDataSet.filename, sourceImage.CalculateIntegralImage());
+            }
+         }
 
          PakiraDecisionTreeGenerator pakiraGenerator = new();
-
-         Image<L8> fullTextImage = Image.Load<L8>(fullImagePath);
-
-         Buffer2D<ulong> integralImage = fullTextImage.CalculateIntegralImage();
          ImmutableDictionary<int, SampleData> trainPositions;
          ImmutableDictionary<int, SampleData> validationPositions;
          ImmutableDictionary<int, SampleData> testPositions;
+         ImmutableDictionary<int, SampleData> im164Positions;
 
          trainPositions = LoadDataSamples(trainRectangles, 0);
          validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count());
          testPositions = LoadDataSamples(testRectangles, trainPositions.Count() + validationPositions.Count());
+         im164Positions = LoadDataSamples(im164Rectangles, trainPositions.Count() + validationPositions.Count() + testPositions.Count());
 
-         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
+         Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
+         Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
+
+         ImmutableList<int> averageTransformerSizes = [FeatureFullWindowSize, 7, 5, 3, 1];
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
-         // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
-         AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage, FeatureFullWindowSize);
-         AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage, FeatureFullWindowSize);
-         AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage, FeatureFullWindowSize);
+         AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage507484246, FeatureFullWindowSize);
+         AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage507484246, FeatureFullWindowSize);
+         AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage507484246, FeatureFullWindowSize);
+         AverageWindowFeature im164DataExtractor = new AverageWindowFeature(im164Positions, integralImageim164, FeatureFullWindowSize);
 
          trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
          validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
          testDataExtractor.AddAverageTransformer(averageTransformerSizes);
+         im164DataExtractor.AddAverageTransformer(averageTransformerSizes);
 
          TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, trainDataExtractor.ExtractLabel, trainDataExtractor.FeaturesCount());
          TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
          TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
+         TanukiETL im164TanukiETL = new(im164DataExtractor.ConvertAll, im164DataExtractor.ExtractLabel, im164DataExtractor.FeaturesCount());
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
@@ -295,6 +324,7 @@ namespace AmaigomaTests
          AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
          AccuracyResult testAccuracyResult;
+         AccuracyResult im164AccuracyResult;
 
          // UNDONE Integrate images from mirflickr
          // UNDONE The test accuracy result shows that not a single uppercase A is correctly predicted. See if the new batch system and a proper leaf selection fixes this.
@@ -334,15 +364,66 @@ namespace AmaigomaTests
          trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
          validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
          testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
+         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, im164Positions.Keys, im164TanukiETL);
 
          PrintFirstNodeIndex(pakiraDecisionTreeModel);
          PrintConfusionMatrix(trainAccuracyResult, "Train");
          PrintConfusionMatrix(validationAccuracyResult, "Validation");
          PrintConfusionMatrix(testAccuracyResult, "Test");
+         PrintConfusionMatrix(im164AccuracyResult, "im164");
          PrintLeaveResults(trainAccuracyResult);
          PrintLeaveResults(validationAccuracyResult);
          PrintLeaveResults(testAccuracyResult);
+         PrintLeaveResults(im164AccuracyResult);
          PrintEnd();
+
+         // UNDONE Need to support more than one data source (integral image) in one data extractor to be able to support this
+         // UNDONE Move the batch batch training logic in a seperate method/class to prevent code duplication
+         //trainSampleIds = ImmutableList<int>.Empty;
+         //trainSampleIdsSet = [.. im164Positions.Keys];
+
+         //while (!trainSampleIdsSet.IsEmpty)
+         //{
+         //   PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, im164TanukiETL);
+
+         //   foreach (int id in trainSampleIdsSet.Take(10))
+         //   {
+         //      int expectedLabel = im164Positions[id].Label;
+         //      IEnumerable<int> resultLabels = pakiraTreeWalker.PredictLeaf(id).LabelValues;
+
+         //      if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
+         //      {
+         //         trainSampleIds = trainSampleIds.Add(id);
+         //      }
+         //      else
+         //      {
+         //         trainSampleIdsSet = trainSampleIdsSet.Remove(id);
+         //      }
+         //   }
+
+         //   if (!trainSampleIds.IsEmpty)
+         //   {
+         //      pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainSampleIds, im164TanukiETL);
+         //      pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, im164TanukiETL);
+         //      trainSampleIds = ImmutableList<int>.Empty;
+         //   }
+         //}
+
+         //trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
+         //validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
+         //testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
+         //im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, im164Positions.Keys, im164TanukiETL);
+
+         //PrintFirstNodeIndex(pakiraDecisionTreeModel);
+         //PrintConfusionMatrix(trainAccuracyResult, "Train");
+         //PrintConfusionMatrix(validationAccuracyResult, "Validation");
+         //PrintConfusionMatrix(testAccuracyResult, "Test");
+         //PrintConfusionMatrix(im164AccuracyResult, "im164");
+         //PrintLeaveResults(trainAccuracyResult);
+         //PrintLeaveResults(validationAccuracyResult);
+         //PrintLeaveResults(testAccuracyResult);
+         //PrintLeaveResults(im164AccuracyResult);
+         //PrintEnd();
       }
 
       private void PrintFirstNodeIndex(PakiraDecisionTreeModel pakiraDecisionTreeModel)

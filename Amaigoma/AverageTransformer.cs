@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using Shouldly;
 
 namespace Amaigoma
@@ -9,12 +8,6 @@ namespace Amaigoma
    // TODO Use Skia to add more advanced features ?
    public sealed record AverageTransformer
    {
-      public int FeatureWindowSize
-      {
-         get;
-         private set;
-      }
-
       public int FeatureCount
       {
          get;
@@ -50,21 +43,20 @@ namespace Amaigoma
       {
          fullWindowsSize.ShouldBeGreaterThanOrEqualTo(slidingWindowSize);
 
-         FeatureWindowSize = fullWindowsSize;
          SlidingWindowHalfSize = slidingWindowSize / 2;
          SlidingWindowSizePlusOne = slidingWindowSize + 1;
          SlidingWindowSize = slidingWindowSize;
          SlidingWindowSizeSquaredInverted = 1.0 / (slidingWindowSize * slidingWindowSize);
          IntegralIndices = ImmutableList<int>.Empty;
 
-         int width = FeatureWindowSize + 1;
+         int width = fullWindowsSize + 1;
 
-         for (int y = 0; y <= (FeatureWindowSize - SlidingWindowSize); y += SlidingWindowSize)
+         for (int y = 0; y <= (fullWindowsSize - SlidingWindowSize); y += SlidingWindowSize)
          {
             int topOffsetY = (width * y);
             int bottomOffsetY = width * (y + SlidingWindowSize);
 
-            for (int x = 0; x <= (FeatureWindowSize - SlidingWindowSize); x += SlidingWindowSize)
+            for (int x = 0; x <= (fullWindowsSize - SlidingWindowSize); x += SlidingWindowSize)
             {
                int rightX = x + SlidingWindowSize;
 
