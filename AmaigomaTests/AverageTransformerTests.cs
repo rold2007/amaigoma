@@ -23,7 +23,7 @@ namespace AmaigomaTests
          {
             double windowSizeSquaredInverted = 1.0 / (windowSize * windowSize);
 
-            AverageTransformer averageTransformer = new AverageTransformer(windowSize, FeatureFullWindowSize);
+            AverageTransformer averageTransformer = new(windowSize, FeatureFullWindowSize);
 
             byte[] bytes = new byte[FeatureFullWindowSize * FeatureFullWindowSize];
 
@@ -42,18 +42,18 @@ namespace AmaigomaTests
                for (int x = 0; x < FeatureFullWindowSize; x++)
                {
                   integral.Add(bytes[byteIndex] +
-                     integral[integral.Count() - (FeatureFullWindowSize + 1)] +
+                     integral[integral.Count - (FeatureFullWindowSize + 1)] +
                      integral.Last() -
-                     integral[integral.Count() - (FeatureFullWindowSize + 2)]);
+                     integral[integral.Count - (FeatureFullWindowSize + 2)]);
                   byteIndex++;
                }
             }
 
-            List<int> convertedValues = new();
+            List<int> convertedValues = [];
 
             for (int featureIndex = 0; featureIndex < averageTransformer.FeatureCount; featureIndex++)
             {
-               List<uint> newSample = new();
+               List<uint> newSample = [];
 
                foreach (int dataIndex in averageTransformer.DataTransformersIndices(featureIndex))
                {

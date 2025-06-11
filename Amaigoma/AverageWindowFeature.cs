@@ -8,114 +8,98 @@ using System.Linq;
 
 namespace Amaigoma
 {
-    public struct SampleData
-    {
-        public Point Position;
-        public int Label;
-    }
+   public struct SampleData
+   {
+      public Point Position;
+      public int Label;
+   }
 
-    internal class RangeComparer : IComparer<Range>
-    {
-        public int Compare(Range x, Range y)
-        {
-            if (x.Start.Value < y.Start.Value)
-            {
-                return -1;
-            }
-            else if (x.Start.Value >= y.End.Value)
-            {
-                return 1;
-            }
+   internal class RangeComparer : IComparer<Range>
+   {
+      public int Compare(Range x, Range y)
+      {
+         if (x.Start.Value < y.Start.Value)
+         {
+            return -1;
+         }
+         else if (x.Start.Value >= y.End.Value)
+         {
+            return 1;
+         }
 
-            return 0;
-        }
-    }
+         return 0;
+      }
+   }
 
-    public record AverageWindowFeature // ncrunch: no coverage
-    {
-        private ImmutableDictionary<int, SampleData> Samples;
-        private Buffer2D<ulong> IntegralImage;
-        private int FeatureWindowSize;
-        private ImmutableList<AverageTransformer> AverageTransformers = ImmutableList<AverageTransformer>.Empty;
-        private ImmutableList<Range> DataTransformersRanges = ImmutableList<Range>.Empty;
-        private ImmutableList<uint> ConvertedSample = ImmutableList<uint>.Empty;
-        static private RangeComparer rangeComparer = new RangeComparer();
-        private ImmutableList<ReadOnlyMemory<ulong>> RowSpans = ImmutableList<ReadOnlyMemory<ulong>>.Empty;
+   public record AverageWindowFeature // ncrunch: no coverage
+   {
+      private readonly ImmutableDictionary<int, SampleData> Samples;
+      private readonly Buffer2D<ulong> IntegralImage;
+      private ImmutableList<AverageTransformer> AverageTransformers = [];
+      private ImmutableList<Range> DataTransformersRanges = [];
+      private static readonly RangeComparer rangeComparer = new();
+      private readonly ImmutableList<ReadOnlyMemory<ulong>> RowSpans = [];
 
-        public AverageWindowFeature(ImmutableDictionary<int, SampleData> positions, Buffer2D<ulong> integralImage, int featureWindowSize)
-        {
-            Samples = positions;
-            IntegralImage = integralImage;
-            FeatureWindowSize = featureWindowSize;
-            ConvertedSample = ConvertedSample.AddRange(Enumerable.Repeat<uint>(0, 4));
+      public AverageWindowFeature(ImmutableDictionary<int, SampleData> positions, Buffer2D<ulong> integralImage)
+      {
+         Samples = positions;
+         IntegralImage = integralImage;
 
-            // Empty line of zeros for the integral
-            RowSpans = RowSpans.Add(new ReadOnlyMemory<ulong>(Enumerable.Repeat<ulong>(0, integralImage.Width + 1).ToArray()));
+         // Empty line of zeros for the integral
+         RowSpans = RowSpans.Add(new ReadOnlyMemory<ulong>([.. Enumerable.Repeat<ulong>(0, integralImage.Width + 1)]));
 
-            for (int y = 0; y < integralImage.Height; y++)
-            {
-                // TODO Send a list of ReadOnlyMemory in parameter instead of Buffer2D<ulong> integralImage
-                // Add one zero at the beginning for the integral
-                ReadOnlySpan<ulong> integralData = [0, .. IntegralImage.DangerousGetRowSpan(y)];
-                RowSpans = RowSpans.Add(new ReadOnlyMemory<ulong>(integralData.ToArray()));
-            }
-        }
+         for (int y = 0; y < integralImage.Height; y++)
+         {
+            // TODO Send a list of ReadOnlyMemory in parameter instead of Buffer2D<ulong> integralImage
+            // Add one zero at the beginning for the integral
+            ReadOnlySpan<ulong> integralData = [0, .. IntegralImage.DangerousGetRowSpan(y)];
+            RowSpans = RowSpans.Add(new ReadOnlyMemory<ulong>(integralData.ToArray()));
+         }
+      }
 
-        public int ConvertAll(int id, int featureIndex)
-        {
-            Point position = Samples[id].Position;
-            int dataTransformerIndex = DataTransformersRanges.BinarySearch(Range.StartAt(featureIndex), rangeComparer);
-            int slidingWindowSize = AverageTransformers[dataTransformerIndex].SlidingWindowSize;
-            int slidingWindowHalfSize = AverageTransformers[dataTransformerIndex].SlidingWindowHalfSize;
-            int slidingWindowSizePlusOne = AverageTransformers[dataTransformerIndex].SlidingWindowSizePlusOne;
+      public int ConvertAll(int id, int featureIndex)
+      {
+         Point position = Samples[id].Position;
+         int dataTransformerIndex = DataTransformersRanges.BinarySearch(Range.StartAt(featureIndex), rangeComparer);
+         int slidingWindowSize = AverageTransformers[dataTransformerIndex].SlidingWindowSize;
+         int slidingWindowHalfSize = AverageTransformers[dataTransformerIndex].SlidingWindowHalfSize;
+         int slidingWindowSizePlusOne = AverageTransformers[dataTransformerIndex].SlidingWindowSizePlusOne;
 
-            {
-                int indexY = position.Y - slidingWindowHalfSize;
+         ReadOnlySpan<ulong> topRowSpan = RowSpans[position.Y - slidingWindowHalfSize].Span;
+         ReadOnlySpan<ulong> bottomRowSpan = RowSpans[position.Y + slidingWindowHalfSize + 1].Span;
+         ReadOnlySpan<ulong> topSlice = topRowSpan.Slice(position.X - slidingWindowHalfSize, slidingWindowSizePlusOne);
+         ReadOnlySpan<ulong> bottomSlice = bottomRowSpan.Slice(position.X - slidingWindowHalfSize, slidingWindowSizePlusOne);
 
-                ReadOnlySpan<ulong> rowSpan = RowSpans[indexY].Span;
-                // +1 length to support first column of integral image
-                ReadOnlySpan<ulong> slice = rowSpan.Slice(position.X - slidingWindowHalfSize, slidingWindowSizePlusOne);
+         return AverageTransformers[dataTransformerIndex].DataTransformers([Convert.ToUInt32(topSlice[0]), Convert.ToUInt32(topSlice[slidingWindowSize]), Convert.ToUInt32(bottomSlice[0]), Convert.ToUInt32(bottomSlice[slidingWindowSize])]);
+      }
 
-                ConvertedSample = ConvertedSample.SetItem(0, Convert.ToUInt32(slice[0]));
+      // TODO Change this method to make the class immutable
+      public void AddAverageTransformer(IEnumerable<int> slidingWindowSizes)
+      {
+         int startRange = 0;
+         int endRange;
+         int maxFeatureWindowSize = slidingWindowSizes.Max();
 
-                ConvertedSample = ConvertedSample.SetItem(1, Convert.ToUInt32(slice[slidingWindowSize]));
-                ReadOnlySpan<ulong> rowSpan2 = RowSpans[position.Y + slidingWindowHalfSize + 1].Span;
-                // +1 length to support first column of integral image
-                ReadOnlySpan<ulong> slice2 = rowSpan2.Slice(position.X - slidingWindowHalfSize, slidingWindowSizePlusOne);
+         foreach (int slidingWindowSize in slidingWindowSizes)
+         {
+            AverageTransformer averageTransformer = new(slidingWindowSize, maxFeatureWindowSize);
 
-                ConvertedSample = ConvertedSample.SetItem(2, Convert.ToUInt32(slice2[0]));
-                ConvertedSample = ConvertedSample.SetItem(3, Convert.ToUInt32(slice2[slidingWindowSize]));
-            }
+            endRange = startRange + averageTransformer.FeatureCount;
 
-            return AverageTransformers[dataTransformerIndex].DataTransformers(ConvertedSample);
-        }
+            AverageTransformers = AverageTransformers.Add(averageTransformer);
+            DataTransformersRanges = DataTransformersRanges.Add(new Range(startRange, endRange));
+            startRange = endRange;
+         }
+      }
 
-        // TODO Change this method to make the class immutable
-        public void AddAverageTransformer(IEnumerable<int> slidingWindowSizes)
-        {
-            int startRange = 0;
-            int endRange;
+      public int ExtractLabel(int id)
+      {
+         return Samples[id].Label;
+      }
 
-            foreach (int slidingWindowSize in slidingWindowSizes)
-            {
-                AverageTransformer averageTransformer = new(slidingWindowSize, FeatureWindowSize);
-
-                endRange = startRange + averageTransformer.FeatureCount;
-
-                AverageTransformers = AverageTransformers.Add(averageTransformer);
-                DataTransformersRanges = DataTransformersRanges.Add(new Range(startRange, endRange));
-                startRange = endRange;
-           }
-        }
-
-        public int ExtractLabel(int id)
-        {
-            return Samples[id].Label;
-        }
-
-        public int FeaturesCount()
-        {
-            return DataTransformersRanges.Last().End.Value;
-        }
-    }
+      public int FeaturesCount()
+      {
+         return DataTransformersRanges.Last().End.Value;
+      }
+   }
 }

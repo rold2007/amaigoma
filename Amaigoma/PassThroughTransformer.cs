@@ -4,7 +4,7 @@ namespace Amaigoma
 {
    public record PassThroughTransformer
    {
-      ImmutableList<ImmutableList<int>> DataSamples;
+      readonly ImmutableList<ImmutableList<int>> DataSamples;
 
       public PassThroughTransformer(ImmutableList<ImmutableList<int>> dataSamples)
       {
@@ -21,7 +21,7 @@ namespace Amaigoma
 
    public record PassThroughLabelsTransformer
    {
-      ImmutableList<int> Labels;
+      readonly ImmutableList<int> Labels;
 
       public PassThroughLabelsTransformer(ImmutableList<int> labels)
       {

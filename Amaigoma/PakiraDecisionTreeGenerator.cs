@@ -12,7 +12,7 @@ namespace Amaigoma
       // Obtained from https://stackoverflow.com/a/1287572/263228
       public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source, Random rng)
       {
-         T[] elements = source.ToArray();
+         T[] elements = [.. source];
          for (int i = elements.Length - 1; i >= 0; i--)
          {
             // Swap element "i" with a random earlier element it (or itself)
@@ -52,14 +52,14 @@ namespace Amaigoma
          }
          else
          {
-            PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
+            PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
             foreach (int id in ids)
             {
                // TODO Create a new PredictLeaf() which doesn't call Prefetch() to optimize this slightly
                PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
 
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeafResult, ImmutableList<int>.Empty.Add(id));
+               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeafResult, [id]);
             }
          }
 
@@ -100,17 +100,18 @@ namespace Amaigoma
          {
             bool theKey = (leafIndex == 0);
 
-            pakiraLeavesResult[leafIndex] = new PakiraLeafResult();
-
-            pakiraLeavesResult[leafIndex].ids = ImmutableList<int>.Empty.AddRange(ids.Where(id =>
-                                    {
-                                       return ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, featureIndex), threshold) == theKey;
-                                    }));
+            pakiraLeavesResult[leafIndex] = new PakiraLeafResult
+            {
+               ids = [.. ids.Where(id =>
+                                       {
+                                          return ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, featureIndex), threshold) == theKey;
+                                       })]
+            };
          }
 
          for (int leafIndex = 0; leafIndex < 2; leafIndex++)
          {
-            if (pakiraLeavesResult[leafIndex].ids.Count() > 0)
+            if (pakiraLeavesResult[leafIndex].ids.Count > 0)
             {
                ImmutableHashSet<int> labels = ImmutableHashSet.CreateRange(pakiraLeavesResult[leafIndex].ids.Select(id =>
                         {
@@ -145,8 +146,8 @@ namespace Amaigoma
 
       private PakiraDecisionTreeModel BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TanukiETL tanukiETL)
       {
-         ImmutableStack<ProcessLeaf> processLeaves = ImmutableStack<ProcessLeaf>.Empty;
-         ImmutableHashSet<PakiraLeaf> multipleLabelsLeaves = ImmutableHashSet<PakiraLeaf>.Empty;
+         ImmutableStack<ProcessLeaf> processLeaves = [];
+         ImmutableHashSet<PakiraLeaf> multipleLabelsLeaves = [];
 
          // Identify all the leaves to retrain
          foreach (KeyValuePair<PakiraNode, PakiraLeaf> pakiraNodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves().Where(pakiraNodeLeaf =>
@@ -240,8 +241,8 @@ namespace Amaigoma
 
          foreach (int featureIndex in randomFeatureIndices)
          {
-            Tuple<double, ImmutableHashSet<double>> minimumValues = new Tuple<double, ImmutableHashSet<double>>(double.MaxValue, ImmutableHashSet<double>.Empty);
-            Tuple<double, ImmutableHashSet<double>> maximumValues = new Tuple<double, ImmutableHashSet<double>>(double.MinValue, ImmutableHashSet<double>.Empty);
+            Tuple<double, ImmutableHashSet<double>> minimumValues = new(double.MaxValue, []);
+            Tuple<double, ImmutableHashSet<double>> maximumValues = new(double.MinValue, []);
 
             foreach (int id in ids)
             {
@@ -249,14 +250,14 @@ namespace Amaigoma
 
                if (dataSampleValue <= minimumValues.Item1)
                {
-                  ImmutableHashSet<double> labels = (dataSampleValue < minimumValues.Item1) ? ImmutableHashSet<double>.Empty : minimumValues.Item2;
+                  ImmutableHashSet<double> labels = (dataSampleValue < minimumValues.Item1) ? [] : minimumValues.Item2;
 
                   minimumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(tanukiETL.TanukiLabelExtractor(id)));
                }
 
                if (dataSampleValue >= maximumValues.Item1)
                {
-                  ImmutableHashSet<double> labels = (dataSampleValue > maximumValues.Item1) ? ImmutableHashSet<double>.Empty : maximumValues.Item2;
+                  ImmutableHashSet<double> labels = (dataSampleValue > maximumValues.Item1) ? [] : maximumValues.Item2;
 
                   maximumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(tanukiETL.TanukiLabelExtractor(id)));
                }

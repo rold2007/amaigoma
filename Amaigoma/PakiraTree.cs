@@ -151,7 +151,7 @@ namespace Amaigoma
 
       public IEnumerable<PakiraNode> GetNodes()
       {
-         ImmutableList<PakiraNode> allNodes = ImmutableList<PakiraNode>.Empty;
+         ImmutableList<PakiraNode> allNodes = [];
 
          allNodes = allNodes.Add(Root);
          allNodes = allNodes.AddRange(leftNodes.Values);

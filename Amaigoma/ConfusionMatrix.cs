@@ -20,11 +20,11 @@ namespace Amaigoma
 
             Matrix.ShouldBeNull();
 
-            Matrix = ImmutableList<ImmutableList<int>>.Empty;
+            Matrix = [];
 
             for (int i = 0; i < labelCount; i++)
             {
-               Matrix = Matrix.Add(ImmutableList<int>.Empty.AddRange(Enumerable.Repeat(0, labelCount)));
+               Matrix = Matrix.Add([.. Enumerable.Repeat(0, labelCount)]);
             }
          }
       }
@@ -95,7 +95,7 @@ namespace Amaigoma
       // Based on https://en.wikipedia.org/wiki/Matthews_correlation_coefficient
       public ImmutableList<double> ComputeMatthewsCorrelationCoefficient()
       {
-         ImmutableList<double> matthewsCorrelationCoefficients = ImmutableList<double>.Empty;
+         ImmutableList<double> matthewsCorrelationCoefficients = [];
 
          // Compute the Matthews coefficient for each class
          for (int labelIndex = 0; labelIndex < LabelCount; labelIndex++)

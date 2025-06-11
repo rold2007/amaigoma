@@ -71,10 +71,10 @@ namespace AmaigomaTests
             }
          }
 
-         AverageWindowFeature averageWindowFeature = new(positions, integralImage, FeatureFullWindowSize);
+         AverageWindowFeature averageWindowFeature = new(positions, integralImage);
 
          ImmutableList<int> averageTransformerSizes = [FeatureFullWindowSize, 7, 5, 3, 1];
-         ImmutableList<int> featureIndexAverageTransformerSizes = ImmutableList<int>.Empty;
+         ImmutableList<int> featureIndexAverageTransformerSizes = [];
 
          foreach (int averageTransformerSize in averageTransformerSizes)
          {
@@ -127,7 +127,7 @@ namespace AmaigomaTests
 
          positions = positions.Add(0, new SampleData { Position = new SixLabors.ImageSharp.Point(0, 0), Label = 0 });
 
-         AverageWindowFeature averageWindowFeature = new(positions, integralImage, FeatureFullWindowSize);
+         AverageWindowFeature averageWindowFeature = new(positions, integralImage);
 
          ImmutableList<int> averageTransformerSizes = [FeatureFullWindowSize];
 

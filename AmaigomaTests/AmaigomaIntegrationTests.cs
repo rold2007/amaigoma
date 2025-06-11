@@ -25,7 +25,7 @@ namespace AmaigomaTests
    public record IntegrationTestDataSet // ncrunch: no coverage
    {
       public string filename;
-      public ImmutableList<RegionLabel> regionLabels = ImmutableList<RegionLabel>.Empty;
+      public ImmutableList<RegionLabel> regionLabels = [];
 
       public IntegrationTestDataSet(string filename, ImmutableList<Rectangle> regions, ImmutableList<int> labels)
       {
@@ -42,10 +42,10 @@ namespace AmaigomaTests
 
    public struct DataSet
    {
-      public List<IntegrationTestDataSet> train = new List<IntegrationTestDataSet>();
-      public List<IntegrationTestDataSet> validation = new List<IntegrationTestDataSet>();
-      public List<IntegrationTestDataSet> test = new List<IntegrationTestDataSet>();
-      public List<IntegrationTestDataSet> im164 = new List<IntegrationTestDataSet>();
+      public List<IntegrationTestDataSet> train = [];
+      public List<IntegrationTestDataSet> validation = [];
+      public List<IntegrationTestDataSet> test = [];
+      public List<IntegrationTestDataSet> im164 = [];
 
       public DataSet()
       {
@@ -71,47 +71,47 @@ namespace AmaigomaTests
       static readonly int uppercaseA = 1; // ncrunch: no coverage
       static readonly int other = 2; // ncrunch: no coverage
 
-      static private readonly ImmutableList<Rectangle> train_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange(// ncrunch: no coverage
-       [
-          new Rectangle(83, 150, 1, 1),
-          new Rectangle(624, 140, 1, 1),
-          new Rectangle(670, 140, 1, 1),
-          new Rectangle(688, 140, 1, 1),
-          new Rectangle(36, 196, 1, 1),
-          new Rectangle(192, 197, 1, 1),
-          new Rectangle(181, 213, 1, 1),
-          new Rectangle(576, 216, 1, 1),
-          new Rectangle(603, 217, 1, 1),
-          new Rectangle(658, 217, 1, 1),
-          new Rectangle(109, 333, 1, 1),
-          new Rectangle(127, 333, 1, 1),
-          new Rectangle(17, 17, 300, 100),
-          new Rectangle(520, 40, 230, 90),
-          new Rectangle(20, 420, 380, 80),
-      ]);
+      static private readonly ImmutableList<Rectangle> train_507484246_Rectangles =
+      [
+         new Rectangle(83, 150, 1, 1),
+         new Rectangle(624, 140, 1, 1),
+         new Rectangle(670, 140, 1, 1),
+         new Rectangle(688, 140, 1, 1),
+         new Rectangle(36, 196, 1, 1),
+         new Rectangle(192, 197, 1, 1),
+         new Rectangle(181, 213, 1, 1),
+         new Rectangle(576, 216, 1, 1),
+         new Rectangle(603, 217, 1, 1),
+         new Rectangle(658, 217, 1, 1),
+         new Rectangle(109, 333, 1, 1),
+         new Rectangle(127, 333, 1, 1),
+         new Rectangle(17, 17, 300, 100),
+         new Rectangle(520, 40, 230, 90),
+         new Rectangle(20, 420, 380, 80),
+      ];
 
-      static private readonly ImmutableList<int> train_507484246_Labels = ImmutableList<int>.Empty.AddRange( // ncrunch: no coverage
-       [
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          uppercaseA,
-          other,
-          other,
-          other,
-      ]);
+      static private readonly ImmutableList<int> train_507484246_Labels =
+      [
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         other,
+         other,
+         other,
+      ];
 
       // UNDONE Need more background samples in the validation set to remove false positive on real letters
-      static private readonly ImmutableList<Rectangle> validation_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange( // ncrunch: no coverage
-       [
+      static private readonly ImmutableList<Rectangle> validation_507484246_Rectangles =
+      [
          new Rectangle(228, 334, 1, 1),
          new Rectangle(283, 335, 1, 1),
          new Rectangle(153, 408, 1, 1),
@@ -119,21 +119,12 @@ namespace AmaigomaTests
          new Rectangle(155, 549, 1, 1),
          new Rectangle(190, 540, 280, 20),
          new Rectangle(20, 555, 480, 215),
-      ]);
+      ];
 
-      static private readonly ImmutableList<int> validation_507484246_Labels = ImmutableList<int>.Empty.AddRange( // ncrunch: no coverage
-       [
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         other,
-         other,
-      ]);
+      static private readonly ImmutableList<int> validation_507484246_Labels = [uppercaseA, uppercaseA, uppercaseA, uppercaseA, uppercaseA, other, other];
 
-      static private readonly ImmutableList<Rectangle> test_507484246_Rectangles = ImmutableList<Rectangle>.Empty.AddRange( // ncrunch: no coverage
-       [
+      static private readonly ImmutableList<Rectangle> test_507484246_Rectangles =
+      [
          new Rectangle(218, 790, 1, 1),
          new Rectangle(411, 836, 1, 1),
          new Rectangle(137, 851, 1, 1),
@@ -143,38 +134,22 @@ namespace AmaigomaTests
          new Rectangle(95, 810, 500, 20),
          new Rectangle(20, 900, 740, 70),
          new Rectangle(180, 960, 310, 23)
-      ]);
+,
+      ];
 
-      static private readonly ImmutableList<int> test_507484246_Labels = ImmutableList<int>.Empty.AddRange( // ncrunch: no coverage
-       [
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         other,
-         other,
-         other,
-         other,
-      ]);
+      static private readonly ImmutableList<int> test_507484246_Labels = [uppercaseA, uppercaseA, uppercaseA, uppercaseA, uppercaseA, other, other, other, other];
 
-      static private readonly ImmutableList<Rectangle> im164Rectangles = ImmutableList<Rectangle>.Empty.AddRange( // ncrunch: no coverage
-       [
-         new Rectangle(8, 8, 483, 358),
-      ]);
+      static private readonly ImmutableList<Rectangle> im164Rectangles = [new Rectangle(8, 8, 483, 358)];
 
-      static private readonly ImmutableList<int> im164Labels = ImmutableList<int>.Empty.AddRange( // ncrunch: no coverage
-       [
-         other
-      ]);
+      static private readonly ImmutableList<int> im164Labels = [other];
 
       public static IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
-         DataSet dataSet = new DataSet();
-         IntegrationTestDataSet trainIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", train_507484246_Rectangles, train_507484246_Labels);
-         IntegrationTestDataSet validationIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", validation_507484246_Rectangles, validation_507484246_Labels);
-         IntegrationTestDataSet testIntegrationTestDataSet = new IntegrationTestDataSet(@"assets/text-extraction-for-ocr/507484246.tif", test_507484246_Rectangles, test_507484246_Labels);
-         IntegrationTestDataSet im164IntegrationTestDataSet = new IntegrationTestDataSet(@"assets/mirflickr08/im164.jpg", im164Rectangles, im164Labels);
+         DataSet dataSet = new();
+         IntegrationTestDataSet trainIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", train_507484246_Rectangles, train_507484246_Labels);
+         IntegrationTestDataSet validationIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", validation_507484246_Rectangles, validation_507484246_Labels);
+         IntegrationTestDataSet testIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", test_507484246_Rectangles, test_507484246_Labels);
+         IntegrationTestDataSet im164IntegrationTestDataSet = new(@"assets/mirflickr08/im164.jpg", im164Rectangles, im164Labels);
 
          dataSet.train.Add(trainIntegrationTestDataSet);
          dataSet.validation.Add(validationIntegrationTestDataSet);
@@ -191,7 +166,7 @@ namespace AmaigomaTests
          this.output = output;
       }
 
-      ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex)
+      static ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex)
       {
          ImmutableDictionary<int, SampleData> result = ImmutableDictionary<int, SampleData>.Empty;
 
@@ -210,14 +185,15 @@ namespace AmaigomaTests
          return result;
       }
 
-      AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
+      static AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          ImmutableHashSet<PakiraLeaf> leaves = ImmutableHashSet<PakiraLeaf>.Empty.Union(pakiraDecisionTreeModel.Tree.GetLeaves().Select(x => x.Value));
-         AccuracyResult accuracyResult = new AccuracyResult();
+         AccuracyResult accuracyResult = new()
+         {
+            leavesBefore = leaves
+         };
 
-         accuracyResult.leavesBefore = leaves;
-
-         PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
+         PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
          foreach (int id in ids)
          {
@@ -232,7 +208,7 @@ namespace AmaigomaTests
                }
                else
                {
-                  accuracyResult.truePositives = accuracyResult.truePositives.Add(pakiraLeafResult, ImmutableList<int>.Empty.Add(id));
+                  accuracyResult.truePositives = accuracyResult.truePositives.Add(pakiraLeafResult, [id]);
                }
             }
             else
@@ -243,7 +219,7 @@ namespace AmaigomaTests
                }
                else
                {
-                  accuracyResult.falsePositives = accuracyResult.falsePositives.Add(pakiraLeafResult, ImmutableList<int>.Empty.Add(id));
+                  accuracyResult.falsePositives = accuracyResult.falsePositives.Add(pakiraLeafResult, [id]);
                }
 
                leaves = leaves.Remove(pakiraLeafResult);
@@ -260,14 +236,13 @@ namespace AmaigomaTests
       [Timeout(600000)]
       public void UppercaseA_507484246(DataSet dataSet)
       {
-         const int FeatureFullWindowSize = 17;
          ImmutableDictionary<string, Image<L8>> sourceImages = ImmutableDictionary<string, Image<L8>>.Empty;
          ImmutableDictionary<string, Buffer2D<ulong>> integralImages = ImmutableDictionary<string, Buffer2D<ulong>>.Empty;
          ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
          ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
          ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
          ImmutableList<RegionLabel> im164Rectangles = dataSet.im164[0].regionLabels;
-         ImmutableList<IntegrationTestDataSet> allDataSets = dataSet.train.Concat(dataSet.validation).Concat(dataSet.test).Concat(dataSet.im164).ToImmutableList();
+         ImmutableList<IntegrationTestDataSet> allDataSets = [.. dataSet.train, .. dataSet.validation, .. dataSet.test, .. dataSet.im164];
 
          foreach (IntegrationTestDataSet integrationTestDataSet in allDataSets)
          {
@@ -288,20 +263,20 @@ namespace AmaigomaTests
          ImmutableDictionary<int, SampleData> im164Positions;
 
          trainPositions = LoadDataSamples(trainRectangles, 0);
-         validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count());
-         testPositions = LoadDataSamples(testRectangles, trainPositions.Count() + validationPositions.Count());
-         im164Positions = LoadDataSamples(im164Rectangles, trainPositions.Count() + validationPositions.Count() + testPositions.Count());
+         validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count);
+         testPositions = LoadDataSamples(testRectangles, trainPositions.Count + validationPositions.Count);
+         im164Positions = LoadDataSamples(im164Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count);
 
          Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
          Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
 
-         ImmutableList<int> averageTransformerSizes = [FeatureFullWindowSize, 7, 5, 3, 1];
+         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
-         AverageWindowFeature trainDataExtractor = new AverageWindowFeature(trainPositions, integralImage507484246, FeatureFullWindowSize);
-         AverageWindowFeature validationDataExtractor = new AverageWindowFeature(validationPositions, integralImage507484246, FeatureFullWindowSize);
-         AverageWindowFeature testDataExtractor = new AverageWindowFeature(testPositions, integralImage507484246, FeatureFullWindowSize);
-         AverageWindowFeature im164DataExtractor = new AverageWindowFeature(im164Positions, integralImageim164, FeatureFullWindowSize);
+         AverageWindowFeature trainDataExtractor = new(trainPositions, integralImage507484246);
+         AverageWindowFeature validationDataExtractor = new(validationPositions, integralImage507484246);
+         AverageWindowFeature testDataExtractor = new(testPositions, integralImage507484246);
+         AverageWindowFeature im164DataExtractor = new(im164Positions, integralImageim164);
 
          trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
          validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
@@ -318,7 +293,7 @@ namespace AmaigomaTests
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainPositions.Keys.Take(24), trainTanukiETL);
 
          int totalTrainSamples = trainPositions.Keys.Count();
-         ImmutableList<int> trainSampleIds = ImmutableList<int>.Empty;
+         ImmutableList<int> trainSampleIds = [];
          ImmutableHashSet<int> trainSampleIdsSet = [.. trainPositions.Keys];
 
          AccuracyResult trainAccuracyResult;
@@ -336,7 +311,7 @@ namespace AmaigomaTests
          //        - Other?
          while (!trainSampleIdsSet.IsEmpty)
          {
-            PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
+            PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, trainTanukiETL);
 
             foreach (int id in trainSampleIdsSet.Take(10))
             {
@@ -357,7 +332,7 @@ namespace AmaigomaTests
             {
                pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainSampleIds, trainTanukiETL);
                pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
-               trainSampleIds = ImmutableList<int>.Empty;
+               trainSampleIds = [];
             }
          }
 
@@ -437,11 +412,11 @@ namespace AmaigomaTests
 
          foreach (PakiraLeaf leaf in accuracyResult.leavesBefore)
          {
-            int falsePositivesCount = accuracyResult.falsePositives.GetValueOrDefault(leaf, ImmutableList<int>.Empty).Count;
+            int falsePositivesCount = accuracyResult.falsePositives.GetValueOrDefault(leaf, []).Count;
 
             if (falsePositivesCount > 0)
             {
-               int truePositivesCount = accuracyResult.truePositives.GetValueOrDefault(leaf, ImmutableList<int>.Empty).Count;
+               int truePositivesCount = accuracyResult.truePositives.GetValueOrDefault(leaf, []).Count;
 
                output.WriteLine("Leaf: {0} - {1} true positives, {2} false positives", String.Join(" ", leaf.LabelValues.Select(item => item.ToString()).ToArray()), truePositivesCount, falsePositivesCount);
             }
@@ -450,7 +425,7 @@ namespace AmaigomaTests
 
       private void PrintLeaveResults(AccuracyResult accuracyResult)
       {
-         output.WriteLine("{0}/{1} = {2}%", accuracyResult.leavesAfter.Count().ToString(), accuracyResult.leavesBefore.Count().ToString(), 100.0 * accuracyResult.leavesAfter.Count() / accuracyResult.leavesBefore.Count());
+         output.WriteLine("{0}/{1} = {2}%", accuracyResult.leavesAfter.Count.ToString(), accuracyResult.leavesBefore.Count.ToString(), 100.0 * accuracyResult.leavesAfter.Count / accuracyResult.leavesBefore.Count);
       }
 
       private void PrintEnd()

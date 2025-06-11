@@ -22,7 +22,7 @@ namespace Amaigoma
 
    public sealed record PakiraLeaf // ncrunch: no coverage
    {
-      private readonly ImmutableList<int> labelValues = ImmutableList<int>.Empty;
+      private readonly ImmutableList<int> labelValues = [];
 
       public PakiraLeaf(int labelValue)
       {

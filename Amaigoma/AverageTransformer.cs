@@ -47,7 +47,7 @@ namespace Amaigoma
          SlidingWindowSizePlusOne = slidingWindowSize + 1;
          SlidingWindowSize = slidingWindowSize;
          SlidingWindowSizeSquaredInverted = 1.0 / (slidingWindowSize * slidingWindowSize);
-         IntegralIndices = ImmutableList<int>.Empty;
+         IntegralIndices = [];
 
          int width = fullWindowsSize + 1;
 
