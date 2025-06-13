@@ -166,7 +166,7 @@ namespace AmaigomaTests
          this.output = output;
       }
 
-      static ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex)
+      static ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex, int integralImageIndex)
       {
          ImmutableDictionary<int, SampleData> result = ImmutableDictionary<int, SampleData>.Empty;
 
@@ -176,7 +176,7 @@ namespace AmaigomaTests
             {
                for (int x = regionLabel.rectangle.Left; x < regionLabel.rectangle.Right; x++)
                {
-                  result = result.Add(startingIndex, new SampleData { IntegralImageIndex = 0, Position = new Point(x, y), Label = regionLabel.label });
+                  result = result.Add(startingIndex, new SampleData { IntegralImageIndex = integralImageIndex, Position = new Point(x, y), Label = regionLabel.label });
                   startingIndex++;
                }
             }
@@ -262,10 +262,10 @@ namespace AmaigomaTests
          ImmutableDictionary<int, SampleData> testPositions;
          ImmutableDictionary<int, SampleData> im164Positions;
 
-         trainPositions = LoadDataSamples(trainRectangles, 0);
-         validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count);
-         testPositions = LoadDataSamples(testRectangles, trainPositions.Count + validationPositions.Count);
-         im164Positions = LoadDataSamples(im164Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count);
+         trainPositions = LoadDataSamples(trainRectangles, 0, 0);
+         validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count, 0);
+         testPositions = LoadDataSamples(testRectangles, trainPositions.Count + validationPositions.Count, 0);
+         im164Positions = LoadDataSamples(im164Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count, 1);
 
          Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
          Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
@@ -273,20 +273,17 @@ namespace AmaigomaTests
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
-         AverageWindowFeature trainDataExtractor = new(trainPositions, [integralImage507484246]);
+         AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions), [integralImage507484246, integralImageim164]);
          AverageWindowFeature validationDataExtractor = new(validationPositions, [integralImage507484246]);
          AverageWindowFeature testDataExtractor = new(testPositions, [integralImage507484246]);
-         AverageWindowFeature im164DataExtractor = new(im164Positions, [integralImageim164]);
 
          trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
          validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
          testDataExtractor.AddAverageTransformer(averageTransformerSizes);
-         im164DataExtractor.AddAverageTransformer(averageTransformerSizes);
 
          TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, trainDataExtractor.ExtractLabel, trainDataExtractor.FeaturesCount());
          TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
          TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
-         TanukiETL im164TanukiETL = new(im164DataExtractor.ConvertAll, im164DataExtractor.ExtractLabel, im164DataExtractor.FeaturesCount());
 
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
@@ -301,7 +298,6 @@ namespace AmaigomaTests
          AccuracyResult testAccuracyResult;
          AccuracyResult im164AccuracyResult;
 
-         // UNDONE Integrate images from mirflickr
          // UNDONE The test accuracy result shows that not a single uppercase A is correctly predicted. See if the new batch system and a proper leaf selection fixes this.
          // UNDONE Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the
          //        Test classes, inside the main library
@@ -339,7 +335,7 @@ namespace AmaigomaTests
          trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
          validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
          testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
-         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, im164Positions.Keys, im164TanukiETL);
+         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, im164Positions.Keys, trainTanukiETL);
 
          PrintFirstNodeIndex(pakiraDecisionTreeModel);
          PrintConfusionMatrix(trainAccuracyResult, "Train");
@@ -352,53 +348,52 @@ namespace AmaigomaTests
          PrintLeaveResults(im164AccuracyResult);
          PrintEnd();
 
-         // UNDONE Need to support more than one data source (integral image) in one data extractor to be able to support this
          // UNDONE Move the batch batch training logic in a seperate method/class to prevent code duplication
-         //trainSampleIds = ImmutableList<int>.Empty;
-         //trainSampleIdsSet = [.. im164Positions.Keys];
+         trainSampleIds = ImmutableList<int>.Empty;
+         trainSampleIdsSet = [.. im164Positions.Keys];
 
-         //while (!trainSampleIdsSet.IsEmpty)
-         //{
-         //   PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, im164TanukiETL);
+         while (!trainSampleIdsSet.IsEmpty)
+         {
+            PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
 
-         //   foreach (int id in trainSampleIdsSet.Take(10))
-         //   {
-         //      int expectedLabel = im164Positions[id].Label;
-         //      IEnumerable<int> resultLabels = pakiraTreeWalker.PredictLeaf(id).LabelValues;
+            foreach (int id in trainSampleIdsSet.Take(10))
+            {
+               int expectedLabel = im164Positions[id].Label;
+               IEnumerable<int> resultLabels = pakiraTreeWalker.PredictLeaf(id).LabelValues;
 
-         //      if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
-         //      {
-         //         trainSampleIds = trainSampleIds.Add(id);
-         //      }
-         //      else
-         //      {
-         //         trainSampleIdsSet = trainSampleIdsSet.Remove(id);
-         //      }
-         //   }
+               if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
+               {
+                  trainSampleIds = trainSampleIds.Add(id);
+               }
+               else
+               {
+                  trainSampleIdsSet = trainSampleIdsSet.Remove(id);
+               }
+            }
 
-         //   if (!trainSampleIds.IsEmpty)
-         //   {
-         //      pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainSampleIds, im164TanukiETL);
-         //      pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, im164TanukiETL);
-         //      trainSampleIds = ImmutableList<int>.Empty;
-         //   }
-         //}
+            if (!trainSampleIds.IsEmpty)
+            {
+               pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainSampleIds, trainTanukiETL);
+               pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
+               trainSampleIds = ImmutableList<int>.Empty;
+            }
+         }
 
-         //trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
-         //validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
-         //testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
-         //im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, im164Positions.Keys, im164TanukiETL);
+         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
+         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
+         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
+         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, im164Positions.Keys, trainTanukiETL);
 
-         //PrintFirstNodeIndex(pakiraDecisionTreeModel);
-         //PrintConfusionMatrix(trainAccuracyResult, "Train");
-         //PrintConfusionMatrix(validationAccuracyResult, "Validation");
-         //PrintConfusionMatrix(testAccuracyResult, "Test");
-         //PrintConfusionMatrix(im164AccuracyResult, "im164");
-         //PrintLeaveResults(trainAccuracyResult);
-         //PrintLeaveResults(validationAccuracyResult);
-         //PrintLeaveResults(testAccuracyResult);
-         //PrintLeaveResults(im164AccuracyResult);
-         //PrintEnd();
+         PrintFirstNodeIndex(pakiraDecisionTreeModel);
+         PrintConfusionMatrix(trainAccuracyResult, "Train");
+         PrintConfusionMatrix(validationAccuracyResult, "Validation");
+         PrintConfusionMatrix(testAccuracyResult, "Test");
+         PrintConfusionMatrix(im164AccuracyResult, "im164");
+         PrintLeaveResults(trainAccuracyResult);
+         PrintLeaveResults(validationAccuracyResult);
+         PrintLeaveResults(testAccuracyResult);
+         PrintLeaveResults(im164AccuracyResult);
+         PrintEnd();
       }
 
       private void PrintFirstNodeIndex(PakiraDecisionTreeModel pakiraDecisionTreeModel)
