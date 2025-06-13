@@ -67,11 +67,11 @@ namespace AmaigomaTests
          {
             for (int x = FeatureHalfWindowSize; x < imageSize.Width - FeatureHalfWindowSize; x++)
             {
-               positions = positions.Add(positions.Count, new SampleData { Position = new SixLabors.ImageSharp.Point(x, y), Label = 0 });
+               positions = positions.Add(positions.Count, new SampleData { IntegralImageIndex = 0, Position = new SixLabors.ImageSharp.Point(x, y), Label = 0 });
             }
          }
 
-         AverageWindowFeature averageWindowFeature = new(positions, integralImage);
+         AverageWindowFeature averageWindowFeature = new(positions, [integralImage]);
 
          ImmutableList<int> averageTransformerSizes = [FeatureFullWindowSize, 7, 5, 3, 1];
          ImmutableList<int> featureIndexAverageTransformerSizes = [];
@@ -125,9 +125,9 @@ namespace AmaigomaTests
          Image<L8> image = new(imageSize.Width, imageSize.Height);
          Buffer2D<ulong> integralImage = image.CalculateIntegralImage();
 
-         positions = positions.Add(0, new SampleData { Position = new SixLabors.ImageSharp.Point(0, 0), Label = 0 });
+         positions = positions.Add(0, new SampleData { IntegralImageIndex = 0, Position = new SixLabors.ImageSharp.Point(0, 0), Label = 0 });
 
-         AverageWindowFeature averageWindowFeature = new(positions, integralImage);
+         AverageWindowFeature averageWindowFeature = new(positions, [integralImage]);
 
          ImmutableList<int> averageTransformerSizes = [FeatureFullWindowSize];
 

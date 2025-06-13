@@ -10,6 +10,7 @@ namespace Amaigoma
 {
    public struct SampleData
    {
+      public int IntegralImageIndex;
       public Point Position;
       public int Label;
    }
@@ -34,39 +35,48 @@ namespace Amaigoma
    public record AverageWindowFeature // ncrunch: no coverage
    {
       private readonly ImmutableDictionary<int, SampleData> Samples;
-      private readonly Buffer2D<ulong> IntegralImage;
       private ImmutableList<AverageTransformer> AverageTransformers = [];
       private ImmutableList<Range> DataTransformersRanges = [];
       private static readonly RangeComparer rangeComparer = new();
-      private readonly ImmutableList<ReadOnlyMemory<ulong>> RowSpans = [];
+      private readonly ImmutableList<ImmutableList<ReadOnlyMemory<ulong>>> RowSpansPerIntegralImage;
 
-      public AverageWindowFeature(ImmutableDictionary<int, SampleData> positions, Buffer2D<ulong> integralImage)
+      public AverageWindowFeature(ImmutableDictionary<int, SampleData> positions, ImmutableList<Buffer2D<ulong>> integralImages)
       {
          Samples = positions;
-         IntegralImage = integralImage;
 
-         // Empty line of zeros for the integral
-         RowSpans = RowSpans.Add(new ReadOnlyMemory<ulong>([.. Enumerable.Repeat<ulong>(0, integralImage.Width + 1)]));
+         RowSpansPerIntegralImage = ImmutableList<ImmutableList<ReadOnlyMemory<ulong>>>.Empty;
 
-         for (int y = 0; y < integralImage.Height; y++)
+         foreach (Buffer2D<ulong> integralImage in integralImages)
          {
-            // TODO Send a list of ReadOnlyMemory in parameter instead of Buffer2D<ulong> integralImage
-            // Add one zero at the beginning for the integral
-            ReadOnlySpan<ulong> integralData = [0, .. IntegralImage.DangerousGetRowSpan(y)];
-            RowSpans = RowSpans.Add(new ReadOnlyMemory<ulong>(integralData.ToArray()));
+            ImmutableList<ReadOnlyMemory<ulong>> rowSpans = ImmutableList<ReadOnlyMemory<ulong>>.Empty;
+
+            // Empty line of zeros for the integral
+            rowSpans = rowSpans.Add(new ReadOnlyMemory<ulong>([.. Enumerable.Repeat<ulong>(0, integralImage.Width + 1)]));
+
+            for (int y = 0; y < integralImage.Height; y++)
+            {
+               // TODO Send a list of ReadOnlyMemory in parameter instead of Buffer2D<ulong> integralImage
+               // Add one zero at the beginning for the integral
+               ReadOnlySpan<ulong> integralData = [0, .. integralImage.DangerousGetRowSpan(y)];
+               rowSpans = rowSpans.Add(new ReadOnlyMemory<ulong>(integralData.ToArray()));
+            }
+
+            RowSpansPerIntegralImage = RowSpansPerIntegralImage.Add(rowSpans);
          }
       }
 
       public int ConvertAll(int id, int featureIndex)
       {
+         int integralImageIndex = Samples[id].IntegralImageIndex;
          Point position = Samples[id].Position;
          int dataTransformerIndex = DataTransformersRanges.BinarySearch(Range.StartAt(featureIndex), rangeComparer);
          int slidingWindowSize = AverageTransformers[dataTransformerIndex].SlidingWindowSize;
          int slidingWindowHalfSize = AverageTransformers[dataTransformerIndex].SlidingWindowHalfSize;
          int slidingWindowSizePlusOne = AverageTransformers[dataTransformerIndex].SlidingWindowSizePlusOne;
+         ImmutableList<ReadOnlyMemory<ulong>> rowSpans = RowSpansPerIntegralImage[integralImageIndex];
 
-         ReadOnlySpan<ulong> topRowSpan = RowSpans[position.Y - slidingWindowHalfSize].Span;
-         ReadOnlySpan<ulong> bottomRowSpan = RowSpans[position.Y + slidingWindowHalfSize + 1].Span;
+         ReadOnlySpan<ulong> topRowSpan = rowSpans[position.Y - slidingWindowHalfSize].Span;
+         ReadOnlySpan<ulong> bottomRowSpan = rowSpans[position.Y + slidingWindowHalfSize + 1].Span;
          ReadOnlySpan<ulong> topSlice = topRowSpan.Slice(position.X - slidingWindowHalfSize, slidingWindowSizePlusOne);
          ReadOnlySpan<ulong> bottomSlice = bottomRowSpan.Slice(position.X - slidingWindowHalfSize, slidingWindowSizePlusOne);
 

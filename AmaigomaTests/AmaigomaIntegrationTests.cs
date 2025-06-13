@@ -176,7 +176,7 @@ namespace AmaigomaTests
             {
                for (int x = regionLabel.rectangle.Left; x < regionLabel.rectangle.Right; x++)
                {
-                  result = result.Add(startingIndex, new SampleData { Position = new Point(x, y), Label = regionLabel.label });
+                  result = result.Add(startingIndex, new SampleData { IntegralImageIndex = 0, Position = new Point(x, y), Label = regionLabel.label });
                   startingIndex++;
                }
             }
@@ -273,10 +273,10 @@ namespace AmaigomaTests
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
-         AverageWindowFeature trainDataExtractor = new(trainPositions, integralImage507484246);
-         AverageWindowFeature validationDataExtractor = new(validationPositions, integralImage507484246);
-         AverageWindowFeature testDataExtractor = new(testPositions, integralImage507484246);
-         AverageWindowFeature im164DataExtractor = new(im164Positions, integralImageim164);
+         AverageWindowFeature trainDataExtractor = new(trainPositions, [integralImage507484246]);
+         AverageWindowFeature validationDataExtractor = new(validationPositions, [integralImage507484246]);
+         AverageWindowFeature testDataExtractor = new(testPositions, [integralImage507484246]);
+         AverageWindowFeature im164DataExtractor = new(im164Positions, [integralImageim164]);
 
          trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
          validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
