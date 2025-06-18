@@ -13,6 +13,7 @@ namespace Amaigoma
       }
    }
 
+   // TODO Rename TanukiETL to something clearer like DataETL
    public sealed record TanukiETL // ncrunch: no coverage
    {
       public DataTransformer TanukiDataTransformer { get; private set; }

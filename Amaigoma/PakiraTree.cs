@@ -7,6 +7,7 @@ using System.Linq;
 // TODO Add support for Microsoft Orleans (https://learn.microsoft.com/en-us/dotnet/orleans/) to the project
 namespace Amaigoma
 {
+   // TODO Rename Pakira to something more significative like BinaryTree or DecisionTree
    public sealed record PakiraTree // ncrunch: no coverage
    {
       private readonly ImmutableDictionary<PakiraNode, PakiraNode> leftNodes;
