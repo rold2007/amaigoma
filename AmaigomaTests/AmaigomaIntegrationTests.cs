@@ -143,7 +143,7 @@ namespace AmaigomaTests
 
       static private readonly ImmutableList<int> im164Labels = [other];
 
-      public static IEnumerable<object[]> GetUppercaseA_507484246_Data()
+      static public IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
          DataSet dataSet = new();
          IntegrationTestDataSet trainIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", train_507484246_Rectangles, train_507484246_Labels);
@@ -166,7 +166,7 @@ namespace AmaigomaTests
          this.output = output;
       }
 
-      static ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex, int integralImageIndex)
+      static private ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex, int integralImageIndex)
       {
          ImmutableDictionary<int, SampleData> result = ImmutableDictionary<int, SampleData>.Empty;
 
@@ -185,7 +185,7 @@ namespace AmaigomaTests
          return result;
       }
 
-      static AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
+      static private AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          ImmutableHashSet<PakiraLeaf> leaves = ImmutableHashSet<PakiraLeaf>.Empty.Union(pakiraDecisionTreeModel.Tree.GetLeaves().Select(x => x.Value));
          AccuracyResult accuracyResult = new()
@@ -231,6 +231,63 @@ namespace AmaigomaTests
          return accuracyResult;
       }
 
+      static private Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
+      {
+         int bestFeature = -1;
+         double bestFeatureSplit = 128.0;
+
+         // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices sequentially. or all data transformers sequentially
+         // and then randomly within each transformer.
+         // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
+         IEnumerable<int> randomFeatureIndices = Enumerable.Range(0, tanukiETL.TanukiFeatureCount);
+
+         foreach (int featureIndex in randomFeatureIndices)
+         {
+            Tuple<double, ImmutableHashSet<double>> minimumValues = new(double.MaxValue, []);
+            Tuple<double, ImmutableHashSet<double>> maximumValues = new(double.MinValue, []);
+
+            foreach (int id in ids)
+            {
+               double dataSampleValue = tanukiETL.TanukiDataTransformer(id, featureIndex);
+
+               if (dataSampleValue <= minimumValues.Item1)
+               {
+                  ImmutableHashSet<double> labels = (dataSampleValue < minimumValues.Item1) ? [] : minimumValues.Item2;
+
+                  minimumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(tanukiETL.TanukiLabelExtractor(id)));
+               }
+
+               if (dataSampleValue >= maximumValues.Item1)
+               {
+                  ImmutableHashSet<double> labels = (dataSampleValue > maximumValues.Item1) ? [] : maximumValues.Item2;
+
+                  maximumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(tanukiETL.TanukiLabelExtractor(id)));
+               }
+            }
+
+            double score = maximumValues.Item1 - minimumValues.Item1;
+
+            // Accept quickly any feature which splits some data in two
+            bool quickAccept = (score > 0) && ((minimumValues.Item2.Count != maximumValues.Item2.Count) || (!minimumValues.Item2.SymmetricExcept(maximumValues.Item2).IsEmpty));
+            bool updateBestFeature = (bestFeature == -1) || quickAccept;
+
+            if (updateBestFeature)
+            {
+               bestFeature = featureIndex;
+               bestFeatureSplit = minimumValues.Item1 + score / 2.0;
+            }
+
+            if (quickAccept)
+            {
+               break;
+            }
+         }
+
+         bestFeature.ShouldBeGreaterThanOrEqualTo(0);
+
+         return new Tuple<int, double>(bestFeature, bestFeatureSplit);
+      }
+
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       [Timeout(600000)]
@@ -256,7 +313,8 @@ namespace AmaigomaTests
             }
          }
 
-         PakiraDecisionTreeGenerator pakiraGenerator = new();
+         PakiraDecisionTreeGenerator pakiraGenerator = new(GetBestSplit);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
          ImmutableDictionary<int, SampleData> trainPositions;
          ImmutableDictionary<int, SampleData> validationPositions;
          ImmutableDictionary<int, SampleData> testPositions;
@@ -284,8 +342,6 @@ namespace AmaigomaTests
          TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, trainDataExtractor.ExtractLabel, trainDataExtractor.FeaturesCount());
          TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
          TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
-
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainPositions.Keys.Take(24), trainTanukiETL);
 

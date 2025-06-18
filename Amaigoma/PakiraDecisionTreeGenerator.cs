@@ -36,13 +36,32 @@ namespace Amaigoma
       public static readonly int UNKNOWN_CLASS_INDEX = -1; // ncrunch: no coverage
       public readonly int randomSeed = new Random().Next(); // ncrunch: no coverage
       private readonly Random RandomSource;
+      private Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> BestSplit;
 
       public PakiraDecisionTreeGenerator()
       {
          RandomSource = new(randomSeed);
+         BestSplit = GetBestSplit;
+      }
+
+      public PakiraDecisionTreeGenerator(Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> bestSplit)
+      {
+         BestSplit = bestSplit;
       }
 
       public int UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
+
+      public PakiraDecisionTreeGenerator SetBestSplit(Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> bestSplit)
+      {
+         if (bestSplit == null)
+         {
+            return new();
+         }
+         else
+         {
+            return new(bestSplit);
+         }
+      }
 
       public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
@@ -87,7 +106,7 @@ namespace Amaigoma
 
       private PakiraNode PrepareNode(IEnumerable<int> ids, TanukiETL tanukiETL)
       {
-         Tuple<int, double> tuple = GetBestSplit(ids, tanukiETL);
+         Tuple<int, double> tuple = BestSplit(ids, tanukiETL);
 
          return new PakiraNode(tuple.Item1, tuple.Item2);
       }
