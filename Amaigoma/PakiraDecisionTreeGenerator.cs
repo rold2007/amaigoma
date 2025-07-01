@@ -245,6 +245,8 @@ namespace Amaigoma
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
 
+         // UNDONE Call an "End of BuildTree callback here to update weights"
+
          return pakiraDecisionTreeModel;
       }
 

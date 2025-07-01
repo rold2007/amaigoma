@@ -64,6 +64,169 @@ namespace AmaigomaTests
       }
    }
 
+   // UNDONE Find a better name for this class
+   public record BestSplitLogic
+   {
+      private ImmutableDictionary<int, double> idWeights = ImmutableDictionary<int, double>.Empty;
+
+      // UNDONE DO NOT COMMIT DO BEFORE COMMIT put the result of each feature index in a dictionary to evaluate the best logic
+      // UNDONE The Gini coefficient is cal;cutaed, correctly I think, but there may be better coefficient. Try other ones if the results are not satisfying.
+      // UNDONE This new method SHOULD fix most false positive uppecase A. If not, find why.
+      public Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
+      {
+         int bestFeature = -1;
+         double bestFeatureSplit = 128.0;
+
+         // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices sequentially. or all data transformers sequentially
+         // and then randomly within each transformer.
+         // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
+         IEnumerable<int> featureIndices = Enumerable.Range(0, tanukiETL.TanukiFeatureCount);
+         // TODO Using entropy instead of Gini coefficient would be more accurate, but it is also more expensive to compute.
+         ImmutableList<double> giniCoefficients = ImmutableList<double>.Empty;
+
+
+         foreach (int featureIndex in featureIndices)
+         {
+            ImmutableList<int> idsList = ids.ToImmutableList();
+            ImmutableList<int> transformedData = ids.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex)).ToImmutableList();
+            int minimumValue = transformedData.Min();
+            int maximumValue = transformedData.Max();
+            double average = transformedData.Average();
+            ImmutableList<int> leftIds = ImmutableList<int>.Empty;
+            ImmutableList<int> rightIds = ImmutableList<int>.Empty;
+            ImmutableDictionary<int, double> leftLabelWeights = ImmutableDictionary<int, double>.Empty;
+            ImmutableDictionary<int, double> rightLabelWeights = ImmutableDictionary<int, double>.Empty;
+            double leftTotalWeight = 0.0;
+            double rightTotalWeight = 0.0;
+
+            for (int i = 0; i < transformedData.Count; i++)
+            {
+               int id = idsList[i];
+               int label = tanukiETL.TanukiLabelExtractor(id);
+               double idWeight;
+
+               if (idWeights.ContainsKey(id))
+               {
+                  idWeight = idWeights[id];
+               }
+               else
+               {
+                  idWeight = 1.0;
+                  idWeights = idWeights.Add(id, 1.0);
+               }
+
+               if (transformedData[i] <= average)
+               {
+                  leftIds = leftIds.Add(idsList[i]);
+
+                  if (leftLabelWeights.ContainsKey(label))
+                  {
+                     leftLabelWeights = leftLabelWeights.SetItem(label, leftLabelWeights[label] + idWeight);
+                  }
+                  else
+                  {
+                     leftLabelWeights = leftLabelWeights.Add(label, idWeight);
+                  }
+
+                  leftTotalWeight += idWeight;
+               }
+               else
+               {
+                  rightIds = rightIds.Add(idsList[i]);
+
+                  if (rightLabelWeights.ContainsKey(label))
+                  {
+                     rightLabelWeights = rightLabelWeights.SetItem(label, rightLabelWeights[label] + idWeight);
+                  }
+                  else
+                  {
+                     rightLabelWeights = rightLabelWeights.Add(label, idWeight);
+                  }
+
+                  rightTotalWeight += idWeight;
+               }
+            }
+
+            ImmutableList<int> allLabels = leftLabelWeights.Keys.Union(rightLabelWeights.Keys).ToImmutableList();
+            double leftSumWeightsSquared = 0.0;
+            double rightSumWeightsSquared = 0.0;
+
+            foreach (int label in allLabels)
+            {
+               double leftWeight = leftLabelWeights.GetValueOrDefault(label, 0.0);
+
+               // Change weights to probabilities
+               leftWeight /= leftTotalWeight;
+
+               leftSumWeightsSquared += leftWeight * leftWeight;
+
+               if (rightTotalWeight > 0)
+               {
+                  double rightWeight = rightLabelWeights.GetValueOrDefault(label, 0.0);
+
+                  // Change weights to probabilities
+                  rightWeight /= rightTotalWeight;
+
+                  rightSumWeightsSquared += rightWeight * rightWeight;
+               }
+            }
+
+            double leftGiniCoefficient = 1.0 - leftSumWeightsSquared;
+            double rightGiniCoefficient = 1.0 - rightSumWeightsSquared;
+
+            if (rightTotalWeight == 0)
+            {
+               rightGiniCoefficient = 0.5;
+            }
+
+            leftGiniCoefficient.ShouldBeInRange(0.0, 0.5);
+            rightGiniCoefficient.ShouldBeInRange(0.0, 0.5);
+
+            // https://www.analyticsvidhya.com/articles/gini-impurity/
+            double weightedGiniCoefficient = (leftTotalWeight * leftGiniCoefficient + rightTotalWeight * rightGiniCoefficient) / (leftTotalWeight + rightTotalWeight);
+
+            weightedGiniCoefficient.ShouldBeInRange(0.0, 0.5);
+
+            giniCoefficients = giniCoefficients.Add(weightedGiniCoefficient);
+
+            if (bestFeature == -1 || weightedGiniCoefficient < giniCoefficients[bestFeature])
+            {
+               bestFeature = featureIndex;
+               bestFeatureSplit = average;
+            }
+
+            if (weightedGiniCoefficient <= 0.0)
+            {
+               break;
+            }
+
+            // double score = maximumValues.Item1 - minimumValues.Item1;
+            //double score = maximumValue - minimumValue;
+            //double featureSplitValue = 
+
+            // // Accept quickly any feature which splits some data in two
+            // bool quickAccept = (score > 0) && ((minimumValues.Item2.Count != maximumValues.Item2.Count) || (!minimumValues.Item2.SymmetricExcept(maximumValues.Item2).IsEmpty));
+            // bool updateBestFeature = (bestFeature == -1) || quickAccept;
+
+            // if (updateBestFeature)
+            // {
+            //    bestFeature = featureIndex;
+            //    bestFeatureSplit = minimumValues.Item1 + score / 2.0;
+            // }
+
+            // UNDONE Restore this logic once it works well. Make sure that an early exit does not affect the accuracy too much.
+            // if (quickAccept)
+            // {
+            //    break;
+            // }
+         }
+
+         bestFeature.ShouldBeGreaterThanOrEqualTo(0);
+
+         return new Tuple<int, double>(bestFeature, bestFeatureSplit);
+      }
+   }
+
    // TODO The integration test could output interesting positions to be validated and added to the test
    public record AmaigomaIntegrationTests // ncrunch: no coverage
    {
@@ -85,9 +248,9 @@ namespace AmaigomaTests
          new Rectangle(658, 217, 1, 1),
          new Rectangle(109, 333, 1, 1),
          new Rectangle(127, 333, 1, 1),
+         new Rectangle(20, 420, 380, 80),
          new Rectangle(17, 17, 300, 100),
          new Rectangle(520, 40, 230, 90),
-         new Rectangle(20, 420, 380, 80),
       ];
 
       static private readonly ImmutableList<int> train_507484246_Labels =
@@ -231,63 +394,6 @@ namespace AmaigomaTests
          return accuracyResult;
       }
 
-      static private Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
-      {
-         int bestFeature = -1;
-         double bestFeatureSplit = 128.0;
-
-         // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices sequentially. or all data transformers sequentially
-         // and then randomly within each transformer.
-         // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
-         IEnumerable<int> randomFeatureIndices = Enumerable.Range(0, tanukiETL.TanukiFeatureCount);
-
-         foreach (int featureIndex in randomFeatureIndices)
-         {
-            Tuple<double, ImmutableHashSet<double>> minimumValues = new(double.MaxValue, []);
-            Tuple<double, ImmutableHashSet<double>> maximumValues = new(double.MinValue, []);
-
-            foreach (int id in ids)
-            {
-               double dataSampleValue = tanukiETL.TanukiDataTransformer(id, featureIndex);
-
-               if (dataSampleValue <= minimumValues.Item1)
-               {
-                  ImmutableHashSet<double> labels = (dataSampleValue < minimumValues.Item1) ? [] : minimumValues.Item2;
-
-                  minimumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(tanukiETL.TanukiLabelExtractor(id)));
-               }
-
-               if (dataSampleValue >= maximumValues.Item1)
-               {
-                  ImmutableHashSet<double> labels = (dataSampleValue > maximumValues.Item1) ? [] : maximumValues.Item2;
-
-                  maximumValues = new Tuple<double, ImmutableHashSet<double>>(dataSampleValue, labels.Add(tanukiETL.TanukiLabelExtractor(id)));
-               }
-            }
-
-            double score = maximumValues.Item1 - minimumValues.Item1;
-
-            // Accept quickly any feature which splits some data in two
-            bool quickAccept = (score > 0) && ((minimumValues.Item2.Count != maximumValues.Item2.Count) || (!minimumValues.Item2.SymmetricExcept(maximumValues.Item2).IsEmpty));
-            bool updateBestFeature = (bestFeature == -1) || quickAccept;
-
-            if (updateBestFeature)
-            {
-               bestFeature = featureIndex;
-               bestFeatureSplit = minimumValues.Item1 + score / 2.0;
-            }
-
-            if (quickAccept)
-            {
-               break;
-            }
-         }
-
-         bestFeature.ShouldBeGreaterThanOrEqualTo(0);
-
-         return new Tuple<int, double>(bestFeature, bestFeatureSplit);
-      }
-
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       [Timeout(600000)]
@@ -313,7 +419,9 @@ namespace AmaigomaTests
             }
          }
 
-         PakiraDecisionTreeGenerator pakiraGenerator = new(GetBestSplit);
+         BestSplitLogic bestSplitLogic = new();
+
+         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplit);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
          ImmutableDictionary<int, SampleData> trainPositions;
          ImmutableDictionary<int, SampleData> validationPositions;
@@ -328,7 +436,9 @@ namespace AmaigomaTests
          Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
          Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
 
-         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
+         //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
+         ImmutableList<int> averageTransformerSizes = [17, 7, 5];
+         //ImmutableList<int> averageTransformerSizes = [1, 3, 5, 7, 17];
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
          AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions), [integralImage507484246, integralImageim164]);
@@ -343,7 +453,8 @@ namespace AmaigomaTests
          TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
          TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
 
-         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainPositions.Keys.Take(24), trainTanukiETL);
+         //pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainPositions.Keys.Take(24), trainTanukiETL);
+         pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainPositions.Keys.Take(1012), trainTanukiETL);
 
          int totalTrainSamples = trainPositions.Keys.Count();
          ImmutableList<int> trainSampleIds = [];
