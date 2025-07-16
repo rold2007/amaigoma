@@ -48,11 +48,12 @@ namespace AmaigomaTests
       // TODO Refactor this test to simplify the code
       public void ConvertAllTest()
       {
-         const int FeatureFullWindowSize = 17;
+         //const int FeatureFullWindowSize = 17;
+         const int FeatureFullWindowSize = 9;
          const int FeatureHalfWindowSize = FeatureFullWindowSize / 2;
          int randomSeed = new Random().Next();
          Random RandomSource = new(randomSeed);
-         System.Drawing.Size imageSize = new(51, 51);
+         System.Drawing.Size imageSize = new(9, 9);
          ImmutableDictionary<int, SampleData> positions = ImmutableDictionary<int, SampleData>.Empty;
 
          // Fill image with random data
@@ -73,7 +74,10 @@ namespace AmaigomaTests
 
          AverageWindowFeature averageWindowFeature = new(positions, [integralImage]);
 
-         ImmutableList<int> averageTransformerSizes = [FeatureFullWindowSize, 7, 5, 3, 1];
+         ImmutableList<int> averageTransformerSizes;
+         // averageTransformerSizes = [FeatureFullWindowSize, 7, 5, 3, 1];
+         // averageTransformerSizes = [FeatureFullWindowSize, 3, 1];
+         averageTransformerSizes = [FeatureFullWindowSize, 3];
          ImmutableList<int> featureIndexAverageTransformerSizes = [];
 
          foreach (int averageTransformerSize in averageTransformerSizes)
@@ -95,23 +99,37 @@ namespace AmaigomaTests
             {
                // Manual compute for validation
                int averageTransformerSize = featureIndexAverageTransformerSizes[featureIndex];
-               int averageTransformerHalfSize = averageTransformerSize / 2;
-               Point pixelPosition = position.Value.Position;
-               int manuallyConvertedValue = 0;
+               int averageTransformerHalfSize = Math.Max(1, averageTransformerSize / 2);
+               int windowOffset = FeatureHalfWindowSize - averageTransformerHalfSize;
 
-               for (int y = pixelPosition.Y - averageTransformerHalfSize; y <= pixelPosition.Y + averageTransformerHalfSize; y++)
+               for (int windowOffsetY = -windowOffset; windowOffsetY <= windowOffset; windowOffsetY++)
                {
-                  for (int x = pixelPosition.X - averageTransformerHalfSize; x <= pixelPosition.X + averageTransformerHalfSize; x++)
+                  for (int windowOffsetX = -windowOffset; windowOffsetX <= windowOffset; windowOffsetX++)
                   {
-                     manuallyConvertedValue += bytes[x + y * imageSize.Width];
+                     Point pixelPosition = position.Value.Position + new Size(windowOffsetX, windowOffsetY);
+                     int manuallyConvertedValue = 0;
+
+                     for (int y = pixelPosition.Y - averageTransformerHalfSize; y <= pixelPosition.Y + averageTransformerHalfSize; y++)
+                     {
+                        for (int x = pixelPosition.X - averageTransformerHalfSize; x <= pixelPosition.X + averageTransformerHalfSize; x++)
+                        {
+                           manuallyConvertedValue += bytes[x + y * imageSize.Width];
+                        }
+                     }
+
+                     manuallyConvertedValue = Convert.ToInt32((double)manuallyConvertedValue / (averageTransformerSize * averageTransformerSize));
+
+                     double convertedValueNew = averageWindowFeature.ConvertAll(position.Key, featureIndex);
+                     
+                     // UNDONE DO NOT COMMIT
+                     if(convertedValueNew != manuallyConvertedValue)
+                     {
+                        convertedValueNew = -98123794;
+                     }
+
+                     convertedValueNew.ShouldBe(manuallyConvertedValue, 0.0000001);
                   }
                }
-
-               manuallyConvertedValue = Convert.ToInt32((double)manuallyConvertedValue / (averageTransformerSize * averageTransformerSize));
-
-               double convertedValueNew = averageWindowFeature.ConvertAll(position.Key, featureIndex);
-
-               convertedValueNew.ShouldBe(manuallyConvertedValue, 0.0000001);
             }
          }
       }

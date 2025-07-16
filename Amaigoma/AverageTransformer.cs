@@ -34,11 +34,17 @@ namespace Amaigoma
          get;
       }
 
+      // UNDONE I think this can be removed as it is only used by the unit tests
       private ImmutableList<int> IntegralIndices
       {
          get;
       }
 
+      // UNDONE Add a list of positions offsets instead of integral indices
+      aaa
+
+      // TODO Add support for overlapping sliding windows
+      // TODO Add support a diffrent fullWindowsSize for each slding window size
       public AverageTransformer(int slidingWindowSize, int fullWindowsSize)
       {
          fullWindowsSize.ShouldBeGreaterThanOrEqualTo(slidingWindowSize);

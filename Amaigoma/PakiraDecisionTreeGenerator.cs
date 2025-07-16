@@ -37,6 +37,10 @@ namespace Amaigoma
       public readonly int randomSeed = new Random().Next(); // ncrunch: no coverage
       private readonly Random RandomSource;
       private Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> BestSplit;
+      private Func<PakiraDecisionTreeModel, TanukiETL, bool> EndBuildTree = (pakiraDecisionTreeModel, tanukiETL) =>
+      {
+         return true;
+      };
 
       public PakiraDecisionTreeGenerator()
       {
@@ -44,45 +48,48 @@ namespace Amaigoma
          BestSplit = GetBestSplit;
       }
 
-      public PakiraDecisionTreeGenerator(Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> bestSplit)
+      public PakiraDecisionTreeGenerator(Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> bestSplit, Func<PakiraDecisionTreeModel, TanukiETL, bool> endBuildTree)
       {
          BestSplit = bestSplit;
+         EndBuildTree = endBuildTree;
       }
 
       public int UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;
 
-      public PakiraDecisionTreeGenerator SetBestSplit(Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> bestSplit)
-      {
-         if (bestSplit == null)
-         {
-            return new();
-         }
-         else
-         {
-            return new(bestSplit);
-         }
-      }
-
       public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
-         if (pakiraDecisionTreeModel.Tree.Root == null)
-         {
-            pakiraDecisionTreeModel = BuildInitialTree(pakiraDecisionTreeModel, ids, tanukiETL);
-         }
-         else
-         {
-            PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
+         PakiraDecisionTreeModel returnPakiraDecisionTreeModel = pakiraDecisionTreeModel;
+         bool buildTree = true;
 
-            foreach (int id in ids)
+         while (buildTree)
+         {
+            if (returnPakiraDecisionTreeModel.Tree.Root == null)
             {
-               // TODO Create a new PredictLeaf() which doesn't call Prefetch() to optimize this slightly
-               PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
+               returnPakiraDecisionTreeModel = BuildInitialTree(returnPakiraDecisionTreeModel, ids, tanukiETL);
+            }
+            else
+            {
+               PakiraTreeWalker pakiraTreeWalker = new(returnPakiraDecisionTreeModel.Tree, tanukiETL);
 
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeafResult, [id]);
+               foreach (int id in ids)
+               {
+                  PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
+
+                  returnPakiraDecisionTreeModel = returnPakiraDecisionTreeModel.AddDataSample(pakiraLeafResult, [id]);
+               }
+            }
+
+            returnPakiraDecisionTreeModel = BuildTree(returnPakiraDecisionTreeModel, tanukiETL);
+
+            buildTree = !EndBuildTree(returnPakiraDecisionTreeModel, tanukiETL);
+
+            if (buildTree)
+            {
+               returnPakiraDecisionTreeModel = pakiraDecisionTreeModel;
             }
          }
 
-         return BuildTree(pakiraDecisionTreeModel, tanukiETL);
+         return returnPakiraDecisionTreeModel;
       }
 
       private static bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)
@@ -244,8 +251,6 @@ namespace Amaigoma
          }
 
          pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
-
-         // UNDONE Call an "End of BuildTree callback here to update weights"
 
          return pakiraDecisionTreeModel;
       }

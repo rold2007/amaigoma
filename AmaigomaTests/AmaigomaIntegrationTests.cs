@@ -84,10 +84,10 @@ namespace AmaigomaTests
          // TODO Using entropy instead of Gini coefficient would be more accurate, but it is also more expensive to compute.
          ImmutableList<double> giniCoefficients = ImmutableList<double>.Empty;
 
-
          foreach (int featureIndex in featureIndices)
          {
             ImmutableList<int> idsList = ids.ToImmutableList();
+            // UNDONE clearly, the wrong transformer is called here
             ImmutableList<int> transformedData = ids.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex)).ToImmutableList();
             int minimumValue = transformedData.Min();
             int maximumValue = transformedData.Max();
@@ -105,15 +105,13 @@ namespace AmaigomaTests
                int label = tanukiETL.TanukiLabelExtractor(id);
                double idWeight;
 
-               if (idWeights.ContainsKey(id))
+               if (!idWeights.ContainsKey(id))
                {
-                  idWeight = idWeights[id];
-               }
-               else
-               {
-                  idWeight = 1.0;
+                  // UNDONE All weights should be initialized to 1.0/NbSamplesInClass when starting a new tree
                   idWeights = idWeights.Add(id, 1.0);
                }
+
+               idWeight = idWeights[id];
 
                if (transformedData[i] <= average)
                {
@@ -182,7 +180,7 @@ namespace AmaigomaTests
             leftGiniCoefficient.ShouldBeInRange(0.0, 0.5);
             rightGiniCoefficient.ShouldBeInRange(0.0, 0.5);
 
-            // https://www.analyticsvidhya.com/articles/gini-impurity/
+            // From https://www.analyticsvidhya.com/articles/gini-impurity/
             double weightedGiniCoefficient = (leftTotalWeight * leftGiniCoefficient + rightTotalWeight * rightGiniCoefficient) / (leftTotalWeight + rightTotalWeight);
 
             weightedGiniCoefficient.ShouldBeInRange(0.0, 0.5);
@@ -200,20 +198,6 @@ namespace AmaigomaTests
                break;
             }
 
-            // double score = maximumValues.Item1 - minimumValues.Item1;
-            //double score = maximumValue - minimumValue;
-            //double featureSplitValue = 
-
-            // // Accept quickly any feature which splits some data in two
-            // bool quickAccept = (score > 0) && ((minimumValues.Item2.Count != maximumValues.Item2.Count) || (!minimumValues.Item2.SymmetricExcept(maximumValues.Item2).IsEmpty));
-            // bool updateBestFeature = (bestFeature == -1) || quickAccept;
-
-            // if (updateBestFeature)
-            // {
-            //    bestFeature = featureIndex;
-            //    bestFeatureSplit = minimumValues.Item1 + score / 2.0;
-            // }
-
             // UNDONE Restore this logic once it works well. Make sure that an early exit does not affect the accuracy too much.
             // if (quickAccept)
             // {
@@ -225,10 +209,46 @@ namespace AmaigomaTests
 
          return new Tuple<int, double>(bestFeature, bestFeatureSplit);
       }
+
+      public bool EndBuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TanukiETL tanukiETL)
+      {
+         ImmutableDictionary<int, int> labelsNodeCount = ImmutableDictionary<int, int>.Empty;
+
+         foreach (KeyValuePair<PakiraNode, PakiraLeaf> nodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves())
+         {
+            foreach (int label in nodeLeaf.Value.LabelValues)
+            {
+               labelsNodeCount.TryGetValue(label, out int count);
+               labelsNodeCount = labelsNodeCount.SetItem(label, count + 1);
+            }
+         }
+
+         foreach (int label in labelsNodeCount.Keys)
+         {
+            int nodeCount = labelsNodeCount[label];
+            double baseLeafWeight = 1.0 / nodeCount;
+
+            foreach (KeyValuePair<PakiraNode, PakiraLeaf> nodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves())
+            {
+               if (nodeLeaf.Value.LabelValues.Contains(label))
+               {
+                  ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(nodeLeaf.Value);
+                  double weight = baseLeafWeight / ids.Count;
+
+                  foreach (int id in ids)
+                  {
+                     idWeights = idWeights.SetItem(id, weight);
+                  }
+               }
+            }
+         }
+
+         return false;
+      }
    }
 
    // TODO The integration test could output interesting positions to be validated and added to the test
-   public record AmaigomaIntegrationTests // ncrunch: no coverage
+   public record AmaigomaIntegrationTests // ncrunch: no coveraget
    {
       // UNDONE Add more classes
       static readonly int uppercaseA = 1; // ncrunch: no coverage
@@ -421,7 +441,7 @@ namespace AmaigomaTests
 
          BestSplitLogic bestSplitLogic = new();
 
-         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplit);
+         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplit, bestSplitLogic.EndBuildTree);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
          ImmutableDictionary<int, SampleData> trainPositions;
          ImmutableDictionary<int, SampleData> validationPositions;
@@ -436,9 +456,11 @@ namespace AmaigomaTests
          Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
          Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
 
+         // Number of transformers per size: 17->1, 7->4, 5->9, 3->25, 1->289
          //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
-         ImmutableList<int> averageTransformerSizes = [17, 7, 5];
+         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
          //ImmutableList<int> averageTransformerSizes = [1, 3, 5, 7, 17];
+         averageTransformerSizes = [17, 7];
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
          AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions), [integralImage507484246, integralImageim164]);
