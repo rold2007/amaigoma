@@ -1,4 +1,5 @@
 // TODO Move all classes depending on SixLabors to a different Utility project so that Amaigoma doesn't depend on it
+using Shouldly;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Memory;
 using System;
@@ -70,10 +71,14 @@ namespace Amaigoma
          int integralImageIndex = Samples[id].IntegralImageIndex;
          Point position = Samples[id].Position;
          int dataTransformerIndex = DataTransformersRanges.BinarySearch(Range.StartAt(featureIndex), rangeComparer);
+         int intraTransformerIndex = featureIndex - DataTransformersRanges[dataTransformerIndex].Start.Value;
          int slidingWindowSize = AverageTransformers[dataTransformerIndex].SlidingWindowSize;
          int slidingWindowHalfSize = AverageTransformers[dataTransformerIndex].SlidingWindowHalfSize;
          int slidingWindowSizePlusOne = AverageTransformers[dataTransformerIndex].SlidingWindowSizePlusOne;
          ImmutableList<ReadOnlyMemory<ulong>> rowSpans = RowSpansPerIntegralImage[integralImageIndex];
+         System.Drawing.Point positionOffset = AverageTransformers[dataTransformerIndex].PositionOffsets[intraTransformerIndex];
+
+         position.Offset(positionOffset.X, positionOffset.Y);
 
          ReadOnlySpan<ulong> topRowSpan = rowSpans[position.Y - slidingWindowHalfSize].Span;
          ReadOnlySpan<ulong> bottomRowSpan = rowSpans[position.Y + slidingWindowHalfSize + 1].Span;
@@ -92,6 +97,8 @@ namespace Amaigoma
 
          foreach (int slidingWindowSize in slidingWindowSizes)
          {
+            (slidingWindowSize % 2).ShouldBe(1);
+
             AverageTransformer averageTransformer = new(slidingWindowSize, maxFeatureWindowSize);
 
             endRange = startRange + averageTransformer.FeatureCount;

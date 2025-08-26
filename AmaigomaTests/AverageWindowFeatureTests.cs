@@ -48,12 +48,12 @@ namespace AmaigomaTests
       // TODO Refactor this test to simplify the code
       public void ConvertAllTest()
       {
-         //const int FeatureFullWindowSize = 17;
-         const int FeatureFullWindowSize = 9;
+         const int FeatureFullWindowSize = 17;
          const int FeatureHalfWindowSize = FeatureFullWindowSize / 2;
          int randomSeed = new Random().Next();
+
          Random RandomSource = new(randomSeed);
-         System.Drawing.Size imageSize = new(9, 9);
+         System.Drawing.Size imageSize = new(FeatureFullWindowSize, FeatureFullWindowSize);
          ImmutableDictionary<int, SampleData> positions = ImmutableDictionary<int, SampleData>.Empty;
 
          // Fill image with random data
@@ -75,36 +75,30 @@ namespace AmaigomaTests
          AverageWindowFeature averageWindowFeature = new(positions, [integralImage]);
 
          ImmutableList<int> averageTransformerSizes;
-         // averageTransformerSizes = [FeatureFullWindowSize, 7, 5, 3, 1];
-         // averageTransformerSizes = [FeatureFullWindowSize, 3, 1];
-         averageTransformerSizes = [FeatureFullWindowSize, 3];
-         ImmutableList<int> featureIndexAverageTransformerSizes = [];
-
-         foreach (int averageTransformerSize in averageTransformerSizes)
-         {
-            for (int y = 0; y <= FeatureFullWindowSize - averageTransformerSize; y += averageTransformerSize)
-            {
-               for (int x = 0; x <= FeatureFullWindowSize - averageTransformerSize; x += averageTransformerSize)
-               {
-                  featureIndexAverageTransformerSizes = featureIndexAverageTransformerSizes.Add(averageTransformerSize);
-               }
-            }
-         }
+         averageTransformerSizes = [FeatureFullWindowSize, 7, 5, 3, 1];
+         int featureIndexAverageTransformerIndex = 0;
 
          averageWindowFeature.AddAverageTransformer(averageTransformerSizes);
 
          foreach (KeyValuePair<int, SampleData> position in positions)
          {
-            for (int featureIndex = 0; featureIndex < averageWindowFeature.FeaturesCount(); featureIndex++)
+            int featureIndex = 0;
+
+            while (featureIndex < averageWindowFeature.FeaturesCount())
             {
                // Manual compute for validation
-               int averageTransformerSize = featureIndexAverageTransformerSizes[featureIndex];
-               int averageTransformerHalfSize = Math.Max(1, averageTransformerSize / 2);
+               int averageTransformerSize = averageTransformerSizes[featureIndexAverageTransformerIndex];
+               int windowCount = (FeatureFullWindowSize - averageTransformerSize) / averageTransformerSize;
+               int halfWindowCount = windowCount / 2;
+               int usedWidth = windowCount * averageTransformerSize;
+               int averageTransformerHalfSize = averageTransformerSize / 2;
                int windowOffset = FeatureHalfWindowSize - averageTransformerHalfSize;
 
-               for (int windowOffsetY = -windowOffset; windowOffsetY <= windowOffset; windowOffsetY++)
+               windowOffset = halfWindowCount * averageTransformerSize;
+
+               for (int windowOffsetY = -windowOffset; windowOffsetY <= windowOffset; windowOffsetY += averageTransformerSize)
                {
-                  for (int windowOffsetX = -windowOffset; windowOffsetX <= windowOffset; windowOffsetX++)
+                  for (int windowOffsetX = -windowOffset; windowOffsetX <= windowOffset; windowOffsetX += averageTransformerSize)
                   {
                      Point pixelPosition = position.Value.Position + new Size(windowOffsetX, windowOffsetY);
                      int manuallyConvertedValue = 0;
@@ -120,16 +114,13 @@ namespace AmaigomaTests
                      manuallyConvertedValue = Convert.ToInt32((double)manuallyConvertedValue / (averageTransformerSize * averageTransformerSize));
 
                      double convertedValueNew = averageWindowFeature.ConvertAll(position.Key, featureIndex);
-                     
-                     // UNDONE DO NOT COMMIT
-                     if(convertedValueNew != manuallyConvertedValue)
-                     {
-                        convertedValueNew = -98123794;
-                     }
 
                      convertedValueNew.ShouldBe(manuallyConvertedValue, 0.0000001);
+                     featureIndex++;
                   }
                }
+
+               featureIndexAverageTransformerIndex++;
             }
          }
       }

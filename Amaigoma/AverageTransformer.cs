@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Drawing;
 using Shouldly;
 
 namespace Amaigoma
@@ -29,19 +30,20 @@ namespace Amaigoma
          get;
       }
 
+      public ImmutableList<Point> PositionOffsets
+      {
+         get;
+      }
+
       private double SlidingWindowSizeSquaredInverted
       {
          get;
       }
 
-      // UNDONE I think this can be removed as it is only used by the unit tests
       private ImmutableList<int> IntegralIndices
       {
          get;
       }
-
-      // UNDONE Add a list of positions offsets instead of integral indices
-      aaa
 
       // TODO Add support for overlapping sliding windows
       // TODO Add support a diffrent fullWindowsSize for each slding window size
@@ -49,12 +51,16 @@ namespace Amaigoma
       {
          fullWindowsSize.ShouldBeGreaterThanOrEqualTo(slidingWindowSize);
 
+         int fullWindowHalfSize = fullWindowsSize / 2;
+
          SlidingWindowHalfSize = slidingWindowSize / 2;
          SlidingWindowSizePlusOne = slidingWindowSize + 1;
          SlidingWindowSize = slidingWindowSize;
          SlidingWindowSizeSquaredInverted = 1.0 / (slidingWindowSize * slidingWindowSize);
+         PositionOffsets = [];
          IntegralIndices = [];
 
+         Point startingOffset = new Point(SlidingWindowHalfSize - fullWindowHalfSize, SlidingWindowHalfSize - fullWindowHalfSize);
          int width = fullWindowsSize + 1;
 
          for (int y = 0; y <= (fullWindowsSize - SlidingWindowSize); y += SlidingWindowSize)
@@ -65,6 +71,11 @@ namespace Amaigoma
             for (int x = 0; x <= (fullWindowsSize - SlidingWindowSize); x += SlidingWindowSize)
             {
                int rightX = x + SlidingWindowSize;
+               Point positionOffset = new Point(x, y);
+
+               positionOffset.Offset(startingOffset.X, startingOffset.Y);
+
+               PositionOffsets = PositionOffsets.Add(positionOffset);
 
                IntegralIndices = IntegralIndices.Add(x + topOffsetY);
                IntegralIndices = IntegralIndices.Add(rightX + topOffsetY);
@@ -76,6 +87,7 @@ namespace Amaigoma
          FeatureCount = IntegralIndices.Count / 4;
       }
 
+      // UNDONE Find a way to remove this dependency from the unit tests so that IntegralIndices can be removed
       public IEnumerable<int> DataTransformersIndices(int featureIndex)
       {
          featureIndex *= 4;
