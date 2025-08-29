@@ -52,6 +52,9 @@ namespace AmaigomaTests
          const int FeatureHalfWindowSize = FeatureFullWindowSize / 2;
          int randomSeed = new Random().Next();
 
+         // UNDONE DO NOT COMMIT
+         //randomSeed = 123456; // For reproducible results
+
          Random RandomSource = new(randomSeed);
          System.Drawing.Size imageSize = new(FeatureFullWindowSize, FeatureFullWindowSize);
          ImmutableDictionary<int, SampleData> positions = ImmutableDictionary<int, SampleData>.Empty;
@@ -76,6 +79,7 @@ namespace AmaigomaTests
 
          ImmutableList<int> averageTransformerSizes;
          averageTransformerSizes = [FeatureFullWindowSize, 7, 5, 3, 1];
+         //averageTransformerSizes = [FeatureFullWindowSize, 7, 5];
          int featureIndexAverageTransformerIndex = 0;
 
          averageWindowFeature.AddAverageTransformer(averageTransformerSizes);
@@ -83,11 +87,9 @@ namespace AmaigomaTests
          foreach (KeyValuePair<int, SampleData> position in positions)
          {
             int featureIndex = 0;
-
-            while (featureIndex < averageWindowFeature.FeaturesCount())
+            foreach (int averageTransformerSize in averageTransformerSizes)
             {
                // Manual compute for validation
-               int averageTransformerSize = averageTransformerSizes[featureIndexAverageTransformerIndex];
                int windowCount = (FeatureFullWindowSize - averageTransformerSize) / averageTransformerSize;
                int halfWindowCount = windowCount / 2;
                int usedWidth = windowCount * averageTransformerSize;
@@ -115,6 +117,12 @@ namespace AmaigomaTests
 
                      double convertedValueNew = averageWindowFeature.ConvertAll(position.Key, featureIndex);
 
+                     // UNDONE DO NOT COMMIT
+                     if(convertedValueNew != manuallyConvertedValue)
+                     {
+                        manuallyConvertedValue = -1;
+                     }
+
                      convertedValueNew.ShouldBe(manuallyConvertedValue, 0.0000001);
                      featureIndex++;
                   }
@@ -122,6 +130,8 @@ namespace AmaigomaTests
 
                featureIndexAverageTransformerIndex++;
             }
+
+            featureIndex.ShouldBe(averageWindowFeature.FeaturesCount());
          }
       }
 

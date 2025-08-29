@@ -70,7 +70,7 @@ namespace AmaigomaTests
       private ImmutableDictionary<int, double> idWeights = ImmutableDictionary<int, double>.Empty;
 
       // UNDONE DO NOT COMMIT DO BEFORE COMMIT put the result of each feature index in a dictionary to evaluate the best logic
-      // UNDONE The Gini coefficient is cal;cutaed, correctly I think, but there may be better coefficient. Try other ones if the results are not satisfying.
+      // UNDONE The Gini coefficient is calcutaled, correctly I think, but there may be better coefficient. Try other ones if the results are not satisfying.
       // UNDONE This new method SHOULD fix most false positive uppecase A. If not, find why.
       public Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
       {
@@ -460,7 +460,7 @@ namespace AmaigomaTests
          //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
          //ImmutableList<int> averageTransformerSizes = [1, 3, 5, 7, 17];
-         averageTransformerSizes = [17, 7];
+         //averageTransformerSizes = [17, 7];
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
          AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions), [integralImage507484246, integralImageim164]);

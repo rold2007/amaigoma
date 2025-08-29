@@ -81,12 +81,15 @@ namespace Amaigoma
 
             returnPakiraDecisionTreeModel = BuildTree(returnPakiraDecisionTreeModel, tanukiETL);
 
-            buildTree = !EndBuildTree(returnPakiraDecisionTreeModel, tanukiETL);
+            buildTree = false;
 
-            if (buildTree)
-            {
-               returnPakiraDecisionTreeModel = pakiraDecisionTreeModel;
-            }
+            // UNDONE This was added for the weighted samples logic. But maybe it won't be used after all.
+            //buildTree = !EndBuildTree(returnPakiraDecisionTreeModel, tanukiETL);
+
+            //if (buildTree)
+            //{
+            //   returnPakiraDecisionTreeModel = pakiraDecisionTreeModel;
+            //}
          }
 
          return returnPakiraDecisionTreeModel;
