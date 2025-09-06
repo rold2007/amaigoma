@@ -1,5 +1,6 @@
 ﻿using Amaigoma;
 using Shouldly;
+using SixLabors.ImageSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,13 +14,14 @@ namespace AmaigomaTests
       public void ConvertAll()
       {
          const int FeatureFullWindowSize = 17;
+         const int FeatureHalfWindowSize = FeatureFullWindowSize / 2;
          int randomSeed = new Random().Next();
          Random RandomSource = new(randomSeed);
          List<uint> integral = [];
          int byteIndex;
          List<int> computedValues = [];
 
-         for (int windowSize = 1; windowSize < (FeatureFullWindowSize + 1); windowSize++)
+         for (int windowSize = 1; windowSize < (FeatureFullWindowSize + 1); windowSize += 2)
          {
             double windowSizeSquaredInverted = 1.0 / (windowSize * windowSize);
 
@@ -65,21 +67,33 @@ namespace AmaigomaTests
 
             computedValues.Clear();
 
-            for (int offsetY = 0; (offsetY + windowSize) <= FeatureFullWindowSize; offsetY += windowSize)
-            {
-               for (int offsetX = 0; (offsetX + windowSize) <= FeatureFullWindowSize; offsetX += windowSize)
-               {
-                  int computedValue = 0;
+            int windowCount = (FeatureFullWindowSize - windowSize) / windowSize;
+            int halfWindowCount = windowCount / 2;
+            int usedWidth = windowCount * windowSize;
+            int averageTransformerHalfSize = windowSize / 2;
+            int windowOffset = FeatureHalfWindowSize - averageTransformerHalfSize;
 
-                  for (int y = 0; y < windowSize; y++)
+            windowOffset = halfWindowCount * windowSize;
+
+            // TODO This logic was copy pasted and slightly modified from AverageTransformer.cs. It could be simplified and/or shared.
+            for (int windowOffsetY = -windowOffset; windowOffsetY <= windowOffset; windowOffsetY += windowSize)
+            {
+               for (int windowOffsetX = -windowOffset; windowOffsetX <= windowOffset; windowOffsetX += windowSize)
+               {
+                  Point pixelPosition = new Point(FeatureHalfWindowSize + windowOffsetX, FeatureHalfWindowSize + windowOffsetY);
+                  int manuallyConvertedValue = 0;
+
+                  for (int y = pixelPosition.Y - averageTransformerHalfSize; y <= pixelPosition.Y + averageTransformerHalfSize; y++)
                   {
-                     for (int x = 0; x < windowSize; x++)
+                     for (int x = pixelPosition.X - averageTransformerHalfSize; x <= pixelPosition.X + averageTransformerHalfSize; x++)
                      {
-                        computedValue += bytes[offsetX + x + (offsetY + y) * FeatureFullWindowSize];
+                        manuallyConvertedValue += bytes[x + y * FeatureFullWindowSize];
                      }
                   }
 
-                  computedValues.Add(Convert.ToInt32(computedValue * windowSizeSquaredInverted));
+                  manuallyConvertedValue = Convert.ToInt32((double)manuallyConvertedValue / (windowSize * windowSize));
+
+                  computedValues.Add(Convert.ToInt32(manuallyConvertedValue));
                }
             }
 

@@ -69,7 +69,7 @@ namespace AmaigomaTests
    {
       private ImmutableDictionary<int, double> idWeights = ImmutableDictionary<int, double>.Empty;
 
-      // UNDONE DO NOT COMMIT DO BEFORE COMMIT put the result of each feature index in a dictionary to evaluate the best logic
+      // UNDONE Put the result of each feature index in a dictionary to evaluate the best logic
       // UNDONE The Gini coefficient is calcutaled, correctly I think, but there may be better coefficient. Try other ones if the results are not satisfying.
       // UNDONE This new method SHOULD fix most false positive uppecase A. If not, find why.
       public Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)

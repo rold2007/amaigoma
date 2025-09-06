@@ -52,9 +52,6 @@ namespace AmaigomaTests
          const int FeatureHalfWindowSize = FeatureFullWindowSize / 2;
          int randomSeed = new Random().Next();
 
-         // UNDONE DO NOT COMMIT
-         //randomSeed = 123456; // For reproducible results
-
          Random RandomSource = new(randomSeed);
          System.Drawing.Size imageSize = new(FeatureFullWindowSize, FeatureFullWindowSize);
          ImmutableDictionary<int, SampleData> positions = ImmutableDictionary<int, SampleData>.Empty;
@@ -115,15 +112,7 @@ namespace AmaigomaTests
 
                      manuallyConvertedValue = Convert.ToInt32((double)manuallyConvertedValue / (averageTransformerSize * averageTransformerSize));
 
-                     double convertedValueNew = averageWindowFeature.ConvertAll(position.Key, featureIndex);
-
-                     // UNDONE DO NOT COMMIT
-                     if(convertedValueNew != manuallyConvertedValue)
-                     {
-                        manuallyConvertedValue = -1;
-                     }
-
-                     convertedValueNew.ShouldBe(manuallyConvertedValue, 0.0000001);
+                     averageWindowFeature.ConvertAll(position.Key, featureIndex).ShouldBe(manuallyConvertedValue);
                      featureIndex++;
                   }
                }
