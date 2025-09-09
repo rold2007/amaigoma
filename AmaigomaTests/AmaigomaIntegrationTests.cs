@@ -64,11 +64,8 @@ namespace AmaigomaTests
       }
    }
 
-   // UNDONE Find a better name for this class
-   public record BestSplitLogic
+   public record TreeNodeSplit
    {
-      private ImmutableDictionary<int, double> idWeights = ImmutableDictionary<int, double>.Empty;
-
       // UNDONE Put the result of each feature index in a dictionary to evaluate the best logic
       // UNDONE The Gini coefficient is calcutaled, correctly I think, but there may be better coefficient. Try other ones if the results are not satisfying.
       // UNDONE This new method SHOULD fix most false positive uppecase A. If not, find why.
@@ -87,31 +84,21 @@ namespace AmaigomaTests
          foreach (int featureIndex in featureIndices)
          {
             ImmutableList<int> idsList = ids.ToImmutableList();
-            // UNDONE clearly, the wrong transformer is called here
             ImmutableList<int> transformedData = ids.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex)).ToImmutableList();
             int minimumValue = transformedData.Min();
             int maximumValue = transformedData.Max();
             double average = transformedData.Average();
             ImmutableList<int> leftIds = ImmutableList<int>.Empty;
             ImmutableList<int> rightIds = ImmutableList<int>.Empty;
-            ImmutableDictionary<int, double> leftLabelWeights = ImmutableDictionary<int, double>.Empty;
-            ImmutableDictionary<int, double> rightLabelWeights = ImmutableDictionary<int, double>.Empty;
-            double leftTotalWeight = 0.0;
-            double rightTotalWeight = 0.0;
+            ImmutableDictionary<int, int> leftLabelWeights = ImmutableDictionary<int, int>.Empty;
+            ImmutableDictionary<int, int> rightLabelWeights = ImmutableDictionary<int, int>.Empty;
+            int leftTotalWeight = 0;
+            int rightTotalWeight = 0;
 
             for (int i = 0; i < transformedData.Count; i++)
             {
                int id = idsList[i];
                int label = tanukiETL.TanukiLabelExtractor(id);
-               double idWeight;
-
-               if (!idWeights.ContainsKey(id))
-               {
-                  // UNDONE All weights should be initialized to 1.0/NbSamplesInClass when starting a new tree
-                  idWeights = idWeights.Add(id, 1.0);
-               }
-
-               idWeight = idWeights[id];
 
                if (transformedData[i] <= average)
                {
@@ -119,14 +106,14 @@ namespace AmaigomaTests
 
                   if (leftLabelWeights.ContainsKey(label))
                   {
-                     leftLabelWeights = leftLabelWeights.SetItem(label, leftLabelWeights[label] + idWeight);
+                     leftLabelWeights = leftLabelWeights.SetItem(label, leftLabelWeights[label] + 1);
                   }
                   else
                   {
-                     leftLabelWeights = leftLabelWeights.Add(label, idWeight);
+                     leftLabelWeights = leftLabelWeights.Add(label, 1);
                   }
 
-                  leftTotalWeight += idWeight;
+                  leftTotalWeight++;
                }
                else
                {
@@ -134,14 +121,14 @@ namespace AmaigomaTests
 
                   if (rightLabelWeights.ContainsKey(label))
                   {
-                     rightLabelWeights = rightLabelWeights.SetItem(label, rightLabelWeights[label] + idWeight);
+                     rightLabelWeights = rightLabelWeights.SetItem(label, rightLabelWeights[label] + 1);
                   }
                   else
                   {
-                     rightLabelWeights = rightLabelWeights.Add(label, idWeight);
+                     rightLabelWeights = rightLabelWeights.Add(label, 1);
                   }
 
-                  rightTotalWeight += idWeight;
+                  rightTotalWeight++;
                }
             }
 
@@ -151,7 +138,7 @@ namespace AmaigomaTests
 
             foreach (int label in allLabels)
             {
-               double leftWeight = leftLabelWeights.GetValueOrDefault(label, 0.0);
+               double leftWeight = leftLabelWeights.GetValueOrDefault(label, 0);
 
                // Change weights to probabilities
                leftWeight /= leftTotalWeight;
@@ -160,7 +147,7 @@ namespace AmaigomaTests
 
                if (rightTotalWeight > 0)
                {
-                  double rightWeight = rightLabelWeights.GetValueOrDefault(label, 0.0);
+                  double rightWeight = rightLabelWeights.GetValueOrDefault(label, 0);
 
                   // Change weights to probabilities
                   rightWeight /= rightTotalWeight;
@@ -208,42 +195,6 @@ namespace AmaigomaTests
          bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
          return new Tuple<int, double>(bestFeature, bestFeatureSplit);
-      }
-
-      public bool EndBuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TanukiETL tanukiETL)
-      {
-         ImmutableDictionary<int, int> labelsNodeCount = ImmutableDictionary<int, int>.Empty;
-
-         foreach (KeyValuePair<PakiraNode, PakiraLeaf> nodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves())
-         {
-            foreach (int label in nodeLeaf.Value.LabelValues)
-            {
-               labelsNodeCount.TryGetValue(label, out int count);
-               labelsNodeCount = labelsNodeCount.SetItem(label, count + 1);
-            }
-         }
-
-         foreach (int label in labelsNodeCount.Keys)
-         {
-            int nodeCount = labelsNodeCount[label];
-            double baseLeafWeight = 1.0 / nodeCount;
-
-            foreach (KeyValuePair<PakiraNode, PakiraLeaf> nodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves())
-            {
-               if (nodeLeaf.Value.LabelValues.Contains(label))
-               {
-                  ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(nodeLeaf.Value);
-                  double weight = baseLeafWeight / ids.Count;
-
-                  foreach (int id in ids)
-                  {
-                     idWeights = idWeights.SetItem(id, weight);
-                  }
-               }
-            }
-         }
-
-         return false;
       }
    }
 
@@ -439,7 +390,7 @@ namespace AmaigomaTests
             }
          }
 
-         BestSplitLogic bestSplitLogic = new();
+         TreeNodeSplit bestSplitLogic = new();
 
          PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplit, bestSplitLogic.EndBuildTree);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
@@ -456,11 +407,9 @@ namespace AmaigomaTests
          Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
          Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
 
-         // Number of transformers per size: 17->1, 7->4, 5->9, 3->25, 1->289
+         // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
          //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
-         //ImmutableList<int> averageTransformerSizes = [1, 3, 5, 7, 17];
-         //averageTransformerSizes = [17, 7];
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
          AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions), [integralImage507484246, integralImageim164]);
