@@ -37,10 +37,6 @@ namespace Amaigoma
       public readonly int randomSeed = new Random().Next(); // ncrunch: no coverage
       private readonly Random RandomSource;
       private Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> BestSplit;
-      private Func<PakiraDecisionTreeModel, TanukiETL, bool> EndBuildTree = (pakiraDecisionTreeModel, tanukiETL) =>
-      {
-         return true;
-      };
 
       public PakiraDecisionTreeGenerator()
       {
@@ -48,10 +44,9 @@ namespace Amaigoma
          BestSplit = GetBestSplit;
       }
 
-      public PakiraDecisionTreeGenerator(Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> bestSplit, Func<PakiraDecisionTreeModel, TanukiETL, bool> endBuildTree)
+      public PakiraDecisionTreeGenerator(Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> bestSplit)
       {
          BestSplit = bestSplit;
-         EndBuildTree = endBuildTree;
       }
 
       public int UnknownLabelValue { get; private set; } = UNKNOWN_CLASS_INDEX;

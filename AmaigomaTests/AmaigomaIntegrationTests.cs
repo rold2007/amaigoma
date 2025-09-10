@@ -392,7 +392,7 @@ namespace AmaigomaTests
 
          TreeNodeSplit bestSplitLogic = new();
 
-         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplit, bestSplitLogic.EndBuildTree);
+         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplit);
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
          ImmutableDictionary<int, SampleData> trainPositions;
          ImmutableDictionary<int, SampleData> validationPositions;
