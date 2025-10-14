@@ -54,38 +54,24 @@ namespace Amaigoma
       public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          PakiraDecisionTreeModel returnPakiraDecisionTreeModel = pakiraDecisionTreeModel;
-         bool buildTree = true;
 
-         while (buildTree)
+         if (returnPakiraDecisionTreeModel.Tree.Root == null)
          {
-            if (returnPakiraDecisionTreeModel.Tree.Root == null)
-            {
-               returnPakiraDecisionTreeModel = BuildInitialTree(returnPakiraDecisionTreeModel, ids, tanukiETL);
-            }
-            else
-            {
-               PakiraTreeWalker pakiraTreeWalker = new(returnPakiraDecisionTreeModel.Tree, tanukiETL);
-
-               foreach (int id in ids)
-               {
-                  PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
-
-                  returnPakiraDecisionTreeModel = returnPakiraDecisionTreeModel.AddDataSample(pakiraLeafResult, [id]);
-               }
-            }
-
-            returnPakiraDecisionTreeModel = BuildTree(returnPakiraDecisionTreeModel, tanukiETL);
-
-            buildTree = false;
-
-            // UNDONE This was added for the weighted samples logic. But maybe it won't be used after all.
-            //buildTree = !EndBuildTree(returnPakiraDecisionTreeModel, tanukiETL);
-
-            //if (buildTree)
-            //{
-            //   returnPakiraDecisionTreeModel = pakiraDecisionTreeModel;
-            //}
+            returnPakiraDecisionTreeModel = BuildInitialTree(returnPakiraDecisionTreeModel, ids, tanukiETL);
          }
+         else
+         {
+            PakiraTreeWalker pakiraTreeWalker = new(returnPakiraDecisionTreeModel.Tree, tanukiETL);
+
+            foreach (int id in ids)
+            {
+               PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
+
+               returnPakiraDecisionTreeModel = returnPakiraDecisionTreeModel.AddDataSample(pakiraLeafResult, [id]);
+            }
+         }
+
+         returnPakiraDecisionTreeModel = BuildTree(returnPakiraDecisionTreeModel, tanukiETL);
 
          return returnPakiraDecisionTreeModel;
       }
@@ -188,14 +174,14 @@ namespace Amaigoma
             {
                int currentLabel = tanukiETL.TanukiLabelExtractor(id);
 
-               if (uniqueLabelFound && uniqueLabel != currentLabel)
-               {
-                  multipleLabelsLeaves = multipleLabelsLeaves.Add(pakiraNodeLeaf.Value);
-                  return true;
-               }
+                  if (uniqueLabelFound && uniqueLabel != currentLabel)
+                  {
+                     multipleLabelsLeaves = multipleLabelsLeaves.Add(pakiraNodeLeaf.Value);
+                     return true;
+                  }
 
-               uniqueLabel = currentLabel;
-               uniqueLabelFound = true;
+                  uniqueLabel = currentLabel;
+                  uniqueLabelFound = true;
             }
 
             if (uniqueLabelFound)
