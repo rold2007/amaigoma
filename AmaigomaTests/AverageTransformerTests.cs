@@ -14,6 +14,7 @@ namespace AmaigomaTests
       public void ConvertAll()
       {
          const int FeatureFullWindowSize = 17;
+         const int FeatureFullWindowSizePlusOne = FeatureFullWindowSize + 1;
          const int FeatureHalfWindowSize = FeatureFullWindowSize / 2;
          int randomSeed = new Random().Next();
          Random RandomSource = new(randomSeed);
@@ -56,11 +57,16 @@ namespace AmaigomaTests
             for (int featureIndex = 0; featureIndex < averageTransformer.FeatureCount; featureIndex++)
             {
                List<uint> newSample = [];
+               System.Drawing.Point point = averageTransformer.PositionOffsets[featureIndex];
+               int leftX = FeatureHalfWindowSize + point.X - windowSize / 2;
+               int rightX = FeatureHalfWindowSize + point.X + 1 + windowSize / 2;
+               int topY = FeatureHalfWindowSize + point.Y - windowSize / 2;
+               int bottomY = FeatureHalfWindowSize + point.Y + 1 + windowSize / 2;
 
-               foreach (int dataIndex in averageTransformer.DataTransformersIndices(featureIndex))
-               {
-                  newSample.Add(integral[dataIndex]);
-               }
+               newSample.Add(integral[leftX + topY * FeatureFullWindowSizePlusOne]);
+               newSample.Add(integral[rightX + topY * FeatureFullWindowSizePlusOne]);
+               newSample.Add(integral[leftX + bottomY * FeatureFullWindowSizePlusOne]);
+               newSample.Add(integral[rightX + bottomY * FeatureFullWindowSizePlusOne]);
 
                convertedValues.Add(averageTransformer.DataTransformers(newSample));
             }
