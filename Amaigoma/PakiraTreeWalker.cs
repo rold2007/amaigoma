@@ -13,46 +13,25 @@ namespace Amaigoma
          TanukiETL = tanukiETL;
       }
 
-      public PakiraLeaf PredictLeaf(int id)
+      public BinaryTreeLeaf PredictLeaf(int id)
       {
          return WalkNode(id);
       }
 
-      private PakiraLeaf WalkNode(int id)
+      private BinaryTreeLeaf WalkNode(int id)
       {
-         PakiraNode node = Tree.Root;
+         int nextNodeIndex = 0;
+         BinaryTreeNode? node = Tree.Node(nextNodeIndex);
 
-         do
+         while (node.HasValue)
          {
-            // Get the index of the feature for this node.
-            int col = node.Column;
+            double columnValue = TanukiETL.TanukiDataTransformer(id, node.Value.featureIndex);
 
-            double columnValue = TanukiETL.TanukiDataTransformer(id, col);
-
-            PakiraNode subNode;
-
-            if (columnValue <= node.Threshold)
-            {
-               subNode = Tree.GetLeftNodeSafe(node);
-
-               if (subNode == null)
-               {
-                  return Tree.GetLeftLeaf(node);
-               }
-            }
-            else
-            {
-               subNode = Tree.GetRightNodeSafe(node);
-
-               if (subNode == null)
-               {
-                  return Tree.GetRightLeaf(node);
-               }
-            }
-
-            node = subNode;
+            nextNodeIndex = (columnValue <= node.Value.splitThreshold) ? node.Value.leftNodeIndex : node.Value.rightNodeIndex;
+            node = Tree.Node(nextNodeIndex);
          }
-         while (true);
+
+         return Tree.Leaf(nextNodeIndex);
       }
    }
 }

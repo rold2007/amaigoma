@@ -1,4 +1,5 @@
 ﻿using Shouldly;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Amaigoma
@@ -7,13 +8,13 @@ namespace Amaigoma
    {
       public PakiraTree Tree { get; } = new();
 
-      private ImmutableDictionary<PakiraLeaf, ImmutableList<int>> LeafTrainDataCache { get; } = ImmutableDictionary<PakiraLeaf, ImmutableList<int>>.Empty;
+      private ImmutableDictionary<int, ImmutableList<int>> LeafTrainDataCache { get; } = ImmutableDictionary<int, ImmutableList<int>>.Empty;
 
       public PakiraDecisionTreeModel()
       {
       }
 
-      private PakiraDecisionTreeModel(PakiraTree tree, ImmutableDictionary<PakiraLeaf, ImmutableList<int>> leafTrainDataCache)
+      private PakiraDecisionTreeModel(PakiraTree tree, ImmutableDictionary<int, ImmutableList<int>> leafTrainDataCache)
       {
          Tree = tree;
          LeafTrainDataCache = leafTrainDataCache;
@@ -24,7 +25,19 @@ namespace Amaigoma
          return new PakiraDecisionTreeModel(tree, LeafTrainDataCache);
       }
 
-      public PakiraDecisionTreeModel AddDataSample(PakiraLeaf pakiraLeaf, ImmutableList<int> ids)
+      public PakiraDecisionTreeModel AddDataSample(int pakiraLeaf, int id)
+      {
+         if (LeafTrainDataCache.TryGetValue(pakiraLeaf, out ImmutableList<int> leafTrainDataCache))
+         {
+            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.SetItem(pakiraLeaf, leafTrainDataCache.Add(id)));
+         }
+         else
+         {
+            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.Add(pakiraLeaf, ImmutableList<int>.Empty.Add(id)));
+         }
+      }
+
+      public PakiraDecisionTreeModel AddDataSample(int pakiraLeaf, IEnumerable<int> ids)
       {
          if (LeafTrainDataCache.TryGetValue(pakiraLeaf, out ImmutableList<int> leafTrainDataCache))
          {
@@ -32,16 +45,16 @@ namespace Amaigoma
          }
          else
          {
-            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.Add(pakiraLeaf, ids));
+            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.Add(pakiraLeaf, ids.ToImmutableList()));
          }
       }
 
-      public ImmutableList<int> DataSamples(PakiraLeaf pakiraLeaf)
+      public ImmutableList<int> DataSamples(int pakiraLeaf)
       {
          return LeafTrainDataCache[pakiraLeaf];
       }
 
-      public PakiraDecisionTreeModel RemoveDataSample(PakiraLeaf pakiraLeaf)
+      public PakiraDecisionTreeModel RemoveDataSample(int pakiraLeaf)
       {
          LeafTrainDataCache.ContainsKey(pakiraLeaf).ShouldBeTrue();
 

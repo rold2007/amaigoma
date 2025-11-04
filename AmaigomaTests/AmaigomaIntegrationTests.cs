@@ -1,4 +1,7 @@
-﻿using Amaigoma;
+﻿global using BinaryTreeNode = (int id, int featureIndex, int splitThreshold, int leftNodeIndex, int rightNodeIndex);
+global using BinaryTreeLeaf = (int id, int labelValue);
+
+using Amaigoma;
 using NCrunch.Framework;
 using Shouldly;
 using SixLabors.ImageSharp;
@@ -56,10 +59,10 @@ namespace AmaigomaTests
 
    public struct AccuracyResult
    {
-      public ImmutableHashSet<PakiraLeaf> leavesBefore;
-      public ImmutableHashSet<PakiraLeaf> leavesAfter;
-      public ImmutableDictionary<PakiraLeaf, ImmutableList<int>> truePositives = ImmutableDictionary<PakiraLeaf, ImmutableList<int>>.Empty;
-      public ImmutableDictionary<PakiraLeaf, ImmutableList<int>> falsePositives = ImmutableDictionary<PakiraLeaf, ImmutableList<int>>.Empty;
+      public ImmutableHashSet<BinaryTreeLeaf> leavesBefore;
+      public ImmutableHashSet<BinaryTreeLeaf> leavesAfter;
+      public ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> truePositives = ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>>.Empty;
+      public ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> falsePositives = ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>>.Empty;
 
       public AccuracyResult()
       {
@@ -91,7 +94,7 @@ namespace AmaigomaTests
          return entropy;
       }
 
-      public Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
+      public (int featureIndex, double splitThreshold) GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
@@ -168,7 +171,7 @@ namespace AmaigomaTests
 
          bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
-         return new Tuple<int, double>(bestFeature, bestFeatureSplit);
+         return (bestFeature, bestFeatureSplit);
       }
    }
 
@@ -335,7 +338,7 @@ namespace AmaigomaTests
       static private AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, ImmutableDictionary<int, SampleData> positions, TanukiETL tanukiETL)
       {
          IEnumerable<int> ids = positions.Keys;
-         ImmutableHashSet<PakiraLeaf> leaves = ImmutableHashSet<PakiraLeaf>.Empty.Union(pakiraDecisionTreeModel.Tree.GetLeaves().Select(x => x.Value));
+         ImmutableHashSet<BinaryTreeLeaf> leaves = pakiraDecisionTreeModel.Tree.Leaves().ToImmutableHashSet();
          AccuracyResult accuracyResult = new()
          {
             leavesBefore = leaves
@@ -345,32 +348,32 @@ namespace AmaigomaTests
 
          foreach (int id in ids)
          {
-            PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
+            BinaryTreeLeaf BinaryTreeLeafResult = pakiraTreeWalker.PredictLeaf(id);
             int label = tanukiETL.TanukiLabelExtractor(id);
 
-            if (pakiraLeafResult.LabelValues.Contains(label))
+            if (BinaryTreeLeafResult.labelValue == label)
             {
-               if (accuracyResult.truePositives.ContainsKey(pakiraLeafResult))
+               if (accuracyResult.truePositives.ContainsKey(BinaryTreeLeafResult))
                {
-                  accuracyResult.truePositives = accuracyResult.truePositives.SetItem(pakiraLeafResult, accuracyResult.truePositives[pakiraLeafResult].Add(id));
+                  accuracyResult.truePositives = accuracyResult.truePositives.SetItem(BinaryTreeLeafResult, accuracyResult.truePositives[BinaryTreeLeafResult].Add(id));
                }
                else
                {
-                  accuracyResult.truePositives = accuracyResult.truePositives.Add(pakiraLeafResult, [id]);
+                  accuracyResult.truePositives = accuracyResult.truePositives.Add(BinaryTreeLeafResult, [id]);
                }
             }
             else
             {
-               if (accuracyResult.falsePositives.ContainsKey(pakiraLeafResult))
+               if (accuracyResult.falsePositives.ContainsKey(BinaryTreeLeafResult))
                {
-                  accuracyResult.falsePositives = accuracyResult.falsePositives.SetItem(pakiraLeafResult, accuracyResult.falsePositives[pakiraLeafResult].Add(id));
+                  accuracyResult.falsePositives = accuracyResult.falsePositives.SetItem(BinaryTreeLeafResult, accuracyResult.falsePositives[BinaryTreeLeafResult].Add(id));
                }
                else
                {
-                  accuracyResult.falsePositives = accuracyResult.falsePositives.Add(pakiraLeafResult, [id]);
+                  accuracyResult.falsePositives = accuracyResult.falsePositives.Add(BinaryTreeLeafResult, [id]);
                }
 
-               leaves = leaves.Remove(pakiraLeafResult);
+               leaves = leaves.Remove(BinaryTreeLeafResult);
             }
          }
 
@@ -473,7 +476,6 @@ namespace AmaigomaTests
             im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
             im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
 
-            PrintFirstNodeIndex(pakiraDecisionTreeModelAllData);
             PrintConfusionMatrix(trainAccuracyResult, "Train");
             PrintConfusionMatrix(validationAccuracyResult, "Validation");
             PrintConfusionMatrix(testAccuracyResult, "Test");
@@ -487,66 +489,66 @@ namespace AmaigomaTests
             PrintEnd();
 
             return;
-            foreach (KeyValuePair<PakiraNode, PakiraLeaf> pair in pakiraDecisionTreeModelAllData.Tree.GetLeaves())
-            {
-               PakiraLeaf pakiraLeaf = pair.Value;
-               ImmutableList<int> dataSamples = pakiraDecisionTreeModelAllData.DataSamples(pakiraLeaf);
-               ImmutableHashSet<int> foundlabels = ImmutableHashSet<int>.Empty;
+            //foreach (KeyValuePair<int, int> pair in pakiraDecisionTreeModelAllData.Tree.GetLeaves())
+            //{
+            //   BinaryTreeLeaf BinaryTreeLeaf = pair.Value;
+            //   ImmutableList<int> dataSamples = pakiraDecisionTreeModelAllData.DataSamples(BinaryTreeLeaf);
+            //   ImmutableHashSet<int> foundlabels = ImmutableHashSet<int>.Empty;
 
-               foreach (int id in dataSamples)
-               {
-                  int label = trainPositions[id].Label;
+            //   foreach (int id in dataSamples)
+            //   {
+            //      int label = trainPositions[id].Label;
 
-                  if (!foundlabels.Contains(label))
-                  {
-                     foundlabels = foundlabels.Add(label);
-                     retrainIds = retrainIds.Add(id);
-                  }
-               }
-            }
+            //      if (!foundlabels.Contains(label))
+            //      {
+            //         foundlabels = foundlabels.Add(label);
+            //         retrainIds = retrainIds.Add(id);
+            //      }
+            //   }
+            //}
 
-            pakiraDecisionTreeModelLimitedDistribution = pakiraGenerator.Generate(pakiraDecisionTreeModelLimitedDistribution, retrainIds, trainTanukiETL);
-            initialPakiraDecisionTreeModel = pakiraDecisionTreeModelLimitedDistribution;
+            //pakiraDecisionTreeModelLimitedDistribution = pakiraGenerator.Generate(pakiraDecisionTreeModelLimitedDistribution, retrainIds, trainTanukiETL);
+            //initialPakiraDecisionTreeModel = pakiraDecisionTreeModelLimitedDistribution;
 
-            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, trainPositions, trainTanukiETL);
-            validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, validationPositions, validationTanukiETL);
-            testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, testPositions, testTanukiETL);
-            im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, im164Positions, trainTanukiETL);
+            //trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, trainPositions, trainTanukiETL);
+            //validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, validationPositions, validationTanukiETL);
+            //testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, testPositions, testTanukiETL);
+            //im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, im164Positions, trainTanukiETL);
 
-            PrintFirstNodeIndex(pakiraDecisionTreeModelLimitedDistribution);
-            PrintConfusionMatrix(trainAccuracyResult, "Train2");
-            PrintConfusionMatrix(validationAccuracyResult, "Validation2");
-            PrintConfusionMatrix(testAccuracyResult, "Test2");
-            PrintConfusionMatrix(im164AccuracyResult, "im164");
-            PrintLeaveResults(trainAccuracyResult);
-            PrintLeaveResults(validationAccuracyResult);
-            PrintLeaveResults(testAccuracyResult);
-            PrintLeaveResults(im164AccuracyResult);
-            PrintEnd();
+            //PrintFirstNodeIndex(pakiraDecisionTreeModelLimitedDistribution);
+            //PrintConfusionMatrix(trainAccuracyResult, "Train2");
+            //PrintConfusionMatrix(validationAccuracyResult, "Validation2");
+            //PrintConfusionMatrix(testAccuracyResult, "Test2");
+            //PrintConfusionMatrix(im164AccuracyResult, "im164");
+            //PrintLeaveResults(trainAccuracyResult);
+            //PrintLeaveResults(validationAccuracyResult);
+            //PrintLeaveResults(testAccuracyResult);
+            //PrintLeaveResults(im164AccuracyResult);
+            //PrintEnd();
          }
 
-         initialPakiraDecisionTreeModel = pakiraGenerator.Generate(new(), retrainIds, trainTanukiETL);
-         initialPakiraDecisionTreeModel = pakiraGenerator.Generate(initialPakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
+         //initialPakiraDecisionTreeModel = pakiraGenerator.Generate(new(), retrainIds, trainTanukiETL);
+         //initialPakiraDecisionTreeModel = pakiraGenerator.Generate(initialPakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
 
-         trainAccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, trainPositions, trainTanukiETL);
-         validationAccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, validationPositions, validationTanukiETL);
-         testAccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, testPositions, testTanukiETL);
-         im164AccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, im164Positions, trainTanukiETL);
+         //trainAccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, trainPositions, trainTanukiETL);
+         //validationAccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, validationPositions, validationTanukiETL);
+         //testAccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, testPositions, testTanukiETL);
+         //im164AccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, im164Positions, trainTanukiETL);
 
-         PrintFirstNodeIndex(initialPakiraDecisionTreeModel);
-         PrintConfusionMatrix(trainAccuracyResult, "Train3");
-         PrintConfusionMatrix(validationAccuracyResult, "Validation3");
-         PrintConfusionMatrix(testAccuracyResult, "Test3");
-         PrintConfusionMatrix(im164AccuracyResult, "im164");
-         PrintLeaveResults(trainAccuracyResult);
-         PrintLeaveResults(validationAccuracyResult);
-         PrintLeaveResults(testAccuracyResult);
-         PrintLeaveResults(im164AccuracyResult);
-         PrintEnd();
+         //PrintFirstNodeIndex(initialPakiraDecisionTreeModel);
+         //PrintConfusionMatrix(trainAccuracyResult, "Train3");
+         //PrintConfusionMatrix(validationAccuracyResult, "Validation3");
+         //PrintConfusionMatrix(testAccuracyResult, "Test3");
+         //PrintConfusionMatrix(im164AccuracyResult, "im164");
+         //PrintLeaveResults(trainAccuracyResult);
+         //PrintLeaveResults(validationAccuracyResult);
+         //PrintLeaveResults(testAccuracyResult);
+         //PrintLeaveResults(im164AccuracyResult);
+         //PrintEnd();
 
-         int totalTrainSamples = trainPositions.Keys.Count();
-         ImmutableList<int> trainSampleIds = [];
-         ImmutableHashSet<int> trainSampleIdsSet = [.. trainPositions.Keys];
+         //int totalTrainSamples = trainPositions.Keys.Count();
+         //ImmutableList<int> trainSampleIds = [];
+         //ImmutableHashSet<int> trainSampleIdsSet = [.. trainPositions.Keys];
 
          // TODO Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the
          //        Test classes, inside the main library
@@ -641,16 +643,11 @@ namespace AmaigomaTests
          //PrintEnd();
       }
 
-      private void PrintFirstNodeIndex(PakiraDecisionTreeModel pakiraDecisionTreeModel)
-      {
-         output.WriteLine("First node index: " + pakiraDecisionTreeModel.Tree.Root.Column.ToString());
-      }
-
       private void PrintConfusionMatrix(AccuracyResult accuracyResult, string title)
       {
          output.WriteLine("Confusion matrix for {0}", title);
 
-         foreach (PakiraLeaf leaf in accuracyResult.leavesBefore)
+         foreach (BinaryTreeLeaf leaf in accuracyResult.leavesBefore)
          {
             int falsePositivesCount = accuracyResult.falsePositives.GetValueOrDefault(leaf, []).Count;
 
@@ -658,7 +655,7 @@ namespace AmaigomaTests
             {
                int truePositivesCount = accuracyResult.truePositives.GetValueOrDefault(leaf, []).Count;
 
-               output.WriteLine("Leaf: {0} - {1} true positives, {2} false positives", String.Join(" ", leaf.LabelValues.Select(item => item.ToString()).ToArray()), truePositivesCount, falsePositivesCount);
+               output.WriteLine("Leaf: {0} - {1} true positives, {2} false positives", String.Join(" ", leaf.labelValue.ToString()), truePositivesCount, falsePositivesCount);
             }
          }
       }

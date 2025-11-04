@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Amaigoma
@@ -27,16 +28,10 @@ namespace Amaigoma
 
    public sealed record PakiraDecisionTreeGenerator // ncrunch: no coverage
    {
-      private sealed record PakiraLeafResult // ncrunch: no coverage
-      {
-         public PakiraLeaf pakiraLeaf;
-         public ImmutableList<int> ids;
-      }
-
       public static readonly int UNKNOWN_CLASS_INDEX = -1; // ncrunch: no coverage
       public readonly int randomSeed = new Random().Next(); // ncrunch: no coverage
       private readonly Random RandomSource;
-      private Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> BestSplit;
+      private Func<IEnumerable<int>, TanukiETL, (int featureIndex, double splitThreshold)> BestSplit;
 
       public PakiraDecisionTreeGenerator()
       {
@@ -44,7 +39,7 @@ namespace Amaigoma
          BestSplit = GetBestSplit;
       }
 
-      public PakiraDecisionTreeGenerator(Func<IEnumerable<int>, TanukiETL, Tuple<int, double>> bestSplit)
+      public PakiraDecisionTreeGenerator(Func<IEnumerable<int>, TanukiETL, (int featureIndex, double splitThreshold)> bestSplit)
       {
          BestSplit = bestSplit;
       }
@@ -53,27 +48,22 @@ namespace Amaigoma
 
       public PakiraDecisionTreeModel Generate(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
       {
-         PakiraDecisionTreeModel returnPakiraDecisionTreeModel = pakiraDecisionTreeModel;
-
-         if (returnPakiraDecisionTreeModel.Tree.Root == null)
+         if (!pakiraDecisionTreeModel.Tree.Nodes().Any())
          {
-            returnPakiraDecisionTreeModel = BuildInitialTree(returnPakiraDecisionTreeModel, ids, tanukiETL);
-         }
-         else
-         {
-            PakiraTreeWalker pakiraTreeWalker = new(returnPakiraDecisionTreeModel.Tree, tanukiETL);
-
-            foreach (int id in ids)
-            {
-               PakiraLeaf pakiraLeafResult = pakiraTreeWalker.PredictLeaf(id);
-
-               returnPakiraDecisionTreeModel = returnPakiraDecisionTreeModel.AddDataSample(pakiraLeafResult, [id]);
-            }
+            // Build initial tree with only one leaf
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(new PakiraTree(UnknownLabelValue));
          }
 
-         returnPakiraDecisionTreeModel = BuildTree(returnPakiraDecisionTreeModel, tanukiETL);
+         PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         return returnPakiraDecisionTreeModel;
+         foreach (int id in ids)
+         {
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraTreeWalker.PredictLeaf(id).id, id);
+         }
+
+         pakiraDecisionTreeModel = BuildTree(pakiraDecisionTreeModel, tanukiETL);
+
+         return pakiraDecisionTreeModel;
       }
 
       private static bool ThresholdCompareLessThanOrEqual(double inputValue, double threshold)
@@ -81,165 +71,75 @@ namespace Amaigoma
          return inputValue <= threshold;
       }
 
-      private struct ProcessLeaf
+      private int PrepareTreeLeavelabel(IEnumerable<int> dataSamples, TanukiETL tanukiETL)
       {
-         public ProcessLeaf(PakiraNode parentNode, PakiraLeaf leaf, ImmutableList<int> trainSamplesCache)
+         if (dataSamples.Any())
          {
-            ParentNode = parentNode;
-            Leaf = leaf;
-            TrainSamplesCache = trainSamplesCache;
-         }
+            int labelValue = tanukiETL.TanukiLabelExtractor(dataSamples.First());
 
-         public PakiraNode ParentNode;
-         public PakiraLeaf Leaf;
-         public ImmutableList<int> TrainSamplesCache;
-      };
-
-      private PakiraNode PrepareNode(IEnumerable<int> ids, TanukiETL tanukiETL)
-      {
-         Tuple<int, double> tuple = BestSplit(ids, tanukiETL);
-
-         return new PakiraNode(tuple.Item1, tuple.Item2);
-      }
-
-      private PakiraLeafResult[] PrepareLeaves(int featureIndex, double threshold, IEnumerable<int> ids, TanukiETL tanukiETL)
-      {
-         PakiraLeafResult[] pakiraLeavesResult = new PakiraLeafResult[2];
-
-         for (int leafIndex = 0; leafIndex < 2; leafIndex++)
-         {
-            bool theKey = (leafIndex == 0);
-
-            pakiraLeavesResult[leafIndex] = new PakiraLeafResult
+            if (!dataSamples.Any(x => tanukiETL.TanukiLabelExtractor(x) != labelValue))
             {
-               ids = [.. ids.Where(id =>
-                                       {
-                                          return ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, featureIndex), threshold) == theKey;
-                                       })]
-            };
-         }
-
-         for (int leafIndex = 0; leafIndex < 2; leafIndex++)
-         {
-            if (pakiraLeavesResult[leafIndex].ids.Count > 0)
-            {
-               ImmutableHashSet<int> labels = ImmutableHashSet.CreateRange(pakiraLeavesResult[leafIndex].ids.Select(id =>
-                        {
-                           return tanukiETL.TanukiLabelExtractor(id);
-                        }));
-
-               pakiraLeavesResult[leafIndex].pakiraLeaf = new PakiraLeaf(labels);
-            }
-            else
-            {
-               // We don't have any training data for this node
-               pakiraLeavesResult[leafIndex].pakiraLeaf = new PakiraLeaf(UnknownLabelValue);
+               return labelValue;
             }
          }
 
-         return pakiraLeavesResult;
-      }
-
-      private PakiraDecisionTreeModel BuildInitialTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, IEnumerable<int> ids, TanukiETL tanukiETL)
-      {
-         pakiraDecisionTreeModel.Tree.Root.ShouldBeNull();
-
-         PakiraNode pakiraNode = PrepareNode(ids, tanukiETL);
-         PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, ids, tanukiETL);
-
-         pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf));
-         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[0].ids);
-         pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeavesResults[1].pakiraLeaf, pakiraLeavesResults[1].ids);
-
-         return pakiraDecisionTreeModel;
+         return UnknownLabelValue;
       }
 
       private PakiraDecisionTreeModel BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TanukiETL tanukiETL)
       {
-         ImmutableStack<ProcessLeaf> processLeaves = [];
-         ImmutableHashSet<PakiraLeaf> multipleLabelsLeaves = [];
+         ImmutableList<int> retrainLeaves = ImmutableList<int>.Empty;
 
          // Identify all the leaves to retrain
-         foreach (KeyValuePair<PakiraNode, PakiraLeaf> pakiraNodeLeaf in pakiraDecisionTreeModel.Tree.GetLeaves().Where(pakiraNodeLeaf =>
+         foreach (int leaf in pakiraDecisionTreeModel.Tree.Leaves().Where(leaf =>
          {
-            if (pakiraNodeLeaf.Value.LabelValues.Count() != 1)
+            foreach (int id in pakiraDecisionTreeModel.DataSamples(leaf.id))
             {
-               return true;
-            }
-
-            int uniqueLabel = 0;
-            bool uniqueLabelFound = false;
-
-            foreach (int id in pakiraDecisionTreeModel.DataSamples(pakiraNodeLeaf.Value))
-            {
-               int currentLabel = tanukiETL.TanukiLabelExtractor(id);
-
-                  if (uniqueLabelFound && uniqueLabel != currentLabel)
-                  {
-                     multipleLabelsLeaves = multipleLabelsLeaves.Add(pakiraNodeLeaf.Value);
-                     return true;
-                  }
-
-                  uniqueLabel = currentLabel;
-                  uniqueLabelFound = true;
-            }
-
-            if (uniqueLabelFound)
-            {
-               return uniqueLabel != pakiraNodeLeaf.Value.LabelValues.First();
-            }
-            else
-            {
-               return false;
-            }
-         }))
-         {
-            processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNodeLeaf.Key, pakiraNodeLeaf.Value, pakiraDecisionTreeModel.DataSamples(pakiraNodeLeaf.Value)));
-         }
-
-         while (!processLeaves.IsEmpty)
-         {
-            processLeaves = processLeaves.Pop(out ProcessLeaf processLeaf);
-
-            ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(processLeaf.Leaf);
-
-            if (processLeaf.Leaf.LabelValues.First() == UnknownLabelValue && !multipleLabelsLeaves.Contains(processLeaf.Leaf))
-            {
-               ImmutableHashSet<int> labels = [.. ids.Select(id => tanukiETL.TanukiLabelExtractor(id))];
-               PakiraLeaf updatedLeaf = new(labels);
-
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, updatedLeaf));
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(processLeaf.Leaf);
-               pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(updatedLeaf, ids);
-            }
-            else
-            {
-               PakiraNode pakiraNode = PrepareNode(ids, tanukiETL);
-
-               PakiraLeafResult[] pakiraLeavesResults = PrepareLeaves(pakiraNode.Column, pakiraNode.Threshold, ids, tanukiETL);
-
-               if ((pakiraLeavesResults[0].pakiraLeaf.LabelValues.First() != UnknownLabelValue) && pakiraLeavesResults[1].pakiraLeaf.LabelValues.First() != UnknownLabelValue)
+               if (tanukiETL.TanukiLabelExtractor(id) != leaf.labelValue)
                {
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeaf(processLeaf.ParentNode, processLeaf.Leaf, new PakiraTree().AddNode(pakiraNode, pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[1].pakiraLeaf)));
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(processLeaf.Leaf);
-
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeavesResults[0].pakiraLeaf, pakiraLeavesResults[0].ids);
-                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(pakiraLeavesResults[1].pakiraLeaf, pakiraLeavesResults[1].ids);
-
-                  foreach (PakiraLeafResult pakiraLeafResult in pakiraLeavesResults.Where(pakiraLeafResult => (pakiraLeafResult.pakiraLeaf.LabelValues.Count() > 1)))
-                  {
-                     processLeaves = processLeaves.Push(new ProcessLeaf(pakiraNode, pakiraLeafResult.pakiraLeaf, pakiraDecisionTreeModel.DataSamples(pakiraLeafResult.pakiraLeaf)));
-                  }
+                  return true;
                }
             }
+
+            return false;
+         }).Select(leaf => leaf.id))
+         {
+            retrainLeaves = retrainLeaves.Add(leaf);
          }
 
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         while (!retrainLeaves.IsEmpty)
+         {
+            int leafId = retrainLeaves[0];
+            retrainLeaves = retrainLeaves.RemoveAt(0);
+            ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(leafId);
+
+            (int featureIndex, double splitThreshold) bestSplit = BestSplit(ids, tanukiETL);
+            ILookup<bool, int> updatedDataSamples = pakiraDecisionTreeModel.DataSamples(leafId).ToLookup(id => ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, bestSplit.featureIndex), bestSplit.splitThreshold));
+            int leftLabel = PrepareTreeLeavelabel(updatedDataSamples[true], tanukiETL);
+            int rightLabel = PrepareTreeLeavelabel(updatedDataSamples[false], tanukiETL);
+
+            (PakiraTree tree, int leftLeafId, int rightLeafId) replaceLeafResult = pakiraDecisionTreeModel.Tree.ReplaceLeaf(leafId, bestSplit.featureIndex, bestSplit.splitThreshold, leftLabel, rightLabel);
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(replaceLeafResult.tree);
+
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(leafId);
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(replaceLeafResult.leftLeafId, updatedDataSamples[true]);
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(replaceLeafResult.rightLeafId, updatedDataSamples[false]);
+
+            if (leftLabel == UnknownLabelValue)
+            {
+               retrainLeaves = retrainLeaves.Add(replaceLeafResult.leftLeafId);
+            }
+
+            if (rightLabel == UnknownLabelValue)
+            {
+               retrainLeaves = retrainLeaves.Add(replaceLeafResult.rightLeafId);
+            }
+         }
 
          return pakiraDecisionTreeModel;
       }
 
-      private Tuple<int, double> GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
+      private (int featureIndex, double splitThreshold) GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
@@ -293,7 +193,7 @@ namespace Amaigoma
 
          bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
-         return new Tuple<int, double>(bestFeature, bestFeatureSplit);
+         return (bestFeature, bestFeatureSplit);
       }
    }
 }

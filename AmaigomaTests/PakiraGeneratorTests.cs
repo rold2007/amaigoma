@@ -59,16 +59,13 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
 
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         pakiraDecisionTreeModel.Tree.Node(0).HasValue.ShouldBeTrue();
 
          PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(0).labelValue.ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).labelValue.ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).labelValue.ShouldBe(labels[2]);
       }
 
       [Fact]
@@ -89,16 +86,13 @@ namespace AmaigomaTests
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         pakiraDecisionTreeModel.Tree.Node(0).HasValue.ShouldBeTrue();
 
          PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(0).labelValue.ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).labelValue.ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).labelValue.ShouldBe(labels[2]);
 
          data = data.Add([3, 91]);
          data = data.Add([128, 95]);
@@ -110,31 +104,22 @@ namespace AmaigomaTests
          TanukiETL tanukiETL2 = new(data, labels);
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(3, 3), tanukiETL2);
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         pakiraDecisionTreeModel.Tree.Node(0).HasValue.ShouldBeTrue();
 
          pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(0).labelValue.ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).labelValue.ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).labelValue.ShouldBe(labels[2]);
 
          PakiraTreeWalker pakiraTreeWalker2 = new(pakiraDecisionTreeModel.Tree, tanukiETL2);
 
-         pakiraTreeWalker2.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker2.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         pakiraTreeWalker2.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         pakiraTreeWalker2.PredictLeaf(3).LabelValues.First().ShouldBe(labels[3]);
-         pakiraTreeWalker2.PredictLeaf(4).LabelValues.First().ShouldBe(labels[4]);
-         pakiraTreeWalker2.PredictLeaf(5).LabelValues.First().ShouldBe(labels[5]);
-         pakiraTreeWalker2.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker2.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker2.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker2.PredictLeaf(3).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker2.PredictLeaf(4).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker2.PredictLeaf(5).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker2.PredictLeaf(0).labelValue.ShouldBe(labels[0]);
+         pakiraTreeWalker2.PredictLeaf(1).labelValue.ShouldBe(labels[1]);
+         pakiraTreeWalker2.PredictLeaf(2).labelValue.ShouldBe(labels[2]);
+         pakiraTreeWalker2.PredictLeaf(3).labelValue.ShouldBe(labels[3]);
+         pakiraTreeWalker2.PredictLeaf(4).labelValue.ShouldBe(labels[4]);
+         pakiraTreeWalker2.PredictLeaf(5).labelValue.ShouldBe(labels[5]);
       }
 
       [Fact]
@@ -172,19 +157,16 @@ namespace AmaigomaTests
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         pakiraDecisionTreeModel.Tree.Node(0).HasValue.ShouldBeTrue();
 
          PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(0).labelValue.ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).labelValue.ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).labelValue.ShouldBe(labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(1);
+         pakiraDecisionTreeModel.Tree.Nodes().Count().ShouldBe(1);
       }
 
       [Fact]
@@ -220,19 +202,16 @@ namespace AmaigomaTests
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         pakiraDecisionTreeModel.Tree.Node(0).HasValue.ShouldBeTrue();
 
          PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(0).labelValue.ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).labelValue.ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).labelValue.ShouldBe(labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBeInRange(1, 5);
+         pakiraDecisionTreeModel.Tree.Nodes().Count().ShouldBeInRange(1, 5);
       }
 
       [Fact]
@@ -255,19 +234,16 @@ namespace AmaigomaTests
          PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         pakiraDecisionTreeModel.Tree.Node(0).HasValue.ShouldBeTrue();
 
          PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(0).labelValue.ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).labelValue.ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).labelValue.ShouldBe(labels[2]);
 
          // The data transformers should allow to produce a very shallow tree
-         pakiraDecisionTreeModel.Tree.GetNodes().Count().ShouldBe(1);
+         pakiraDecisionTreeModel.Tree.Nodes().Count().ShouldBe(1);
       }
 
       [Fact]
@@ -301,21 +277,17 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
 
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         pakiraDecisionTreeModel.Tree.Node(0).HasValue.ShouldBeTrue();
 
          PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
+         pakiraTreeWalker.PredictLeaf(0).labelValue.ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).labelValue.ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).labelValue.ShouldBe(labels[2]);
 
          for (int i = 0; i < data.Count; i++)
          {
-            pakiraTreeWalker.PredictLeaf(i).LabelValues.First().ShouldBe(labels[i], "i=" + i.ToString());
-            pakiraTreeWalker.PredictLeaf(i).LabelValues.Count().ShouldBe(1);
+            pakiraTreeWalker.PredictLeaf(i).labelValue.ShouldBe(labels[i], "i=" + i.ToString());
          }
       }
 
@@ -338,120 +310,13 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
 
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
+         pakiraDecisionTreeModel.Tree.Node(0).HasValue.ShouldBeTrue();
 
          PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
 
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.First().ShouldBe(labels[1]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
-      }
-
-      [Fact]
-      public void GenerateCannotSplit()
-      {
-         ImmutableList<ImmutableList<int>> data = [];
-         ImmutableList<int> labels = [];
-
-         data = data.Add([2, 90]);
-         data = data.Add([250, 140]);
-         data = data.Add([250, 140]);
-
-         labels = labels.Add(42);
-         labels = labels.Add(54);
-         labels = labels.Add(42);
-
-         TanukiETL tanukiETL = new(data, labels);
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
-
-         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
-
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
-
-         PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
-
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.First().ShouldBe(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(2);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.Count().ShouldBe(2);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[1]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[2]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.ShouldContain(labels[1]);
-         pakiraTreeWalker.PredictLeaf(2).LabelValues.ShouldContain(labels[2]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(1);
-      }
-
-      [Fact]
-      public void GenerateCannotSplit2()
-      {
-         ImmutableList<ImmutableList<int>> data = [];
-         ImmutableList<int> labels = [];
-
-         data = data.Add([250, 140]);
-         data = data.Add([250, 140]);
-
-         labels = labels.Add(54);
-         labels = labels.Add(42);
-
-         TanukiETL tanukiETL = new(data, labels);
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
-
-         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
-
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
-
-         PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
-
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(2);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(2);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.ShouldContain(labels[0]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.ShouldContain(labels[1]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[1]);
-      }
-
-      [Fact]
-      public void CallPakiraTreeReplaceLeaf()
-      {
-         ImmutableList<ImmutableList<int>> data = [];
-         ImmutableList<int> labels = [];
-
-         data = data.Add([2]);
-         data = data.Add([2]);
-
-         labels = labels.Add(42);
-         labels = labels.Add(54);
-
-         TanukiETL tanukiETL = new(data, labels);
-         PakiraDecisionTreeModel pakiraDecisionTreeModel = new();
-
-         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(0, data.Count), tanukiETL);
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
-
-         data = data.Add([215]);
-
-         labels = labels.Add(42);
-
-         TanukiETL tanukiETL2 = new(data, labels);
-
-         pakiraDecisionTreeModel = pakiraDecisionTreeGenerator.Generate(pakiraDecisionTreeModel, Enumerable.Range(2, 1), tanukiETL2);
-         pakiraDecisionTreeModel.Tree.Root.ShouldNotBeNull();
-
-         PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
-
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.Count().ShouldBe(2);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.Count().ShouldBe(2);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.ShouldContain(labels[0]);
-         pakiraTreeWalker.PredictLeaf(0).LabelValues.ShouldContain(labels[1]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[0]);
-         pakiraTreeWalker.PredictLeaf(1).LabelValues.ShouldContain(labels[1]);
-
-         PakiraTreeWalker pakiraTreeWalker2 = new(pakiraDecisionTreeModel.Tree, tanukiETL2);
-
-         pakiraTreeWalker2.PredictLeaf(2).LabelValues.Count().ShouldBe(1);
-         pakiraTreeWalker2.PredictLeaf(2).LabelValues.First().ShouldBe(labels[2]);
+         pakiraTreeWalker.PredictLeaf(0).labelValue.ShouldBe(labels[0]);
+         pakiraTreeWalker.PredictLeaf(1).labelValue.ShouldBe(labels[1]);
+         pakiraTreeWalker.PredictLeaf(2).labelValue.ShouldBe(labels[2]);
       }
    }
 }
