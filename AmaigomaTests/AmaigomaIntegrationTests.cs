@@ -73,13 +73,7 @@ namespace AmaigomaTests
    {
       static double CalculateEntropy(IEnumerable<int> counts)
       {
-         int total = 0;
-
-         foreach (int count in counts)
-         {
-            total += count;
-         }
-
+         int total = counts.Sum();
          double entropy = 0.0;
 
          foreach (int count in counts)
@@ -348,32 +342,32 @@ namespace AmaigomaTests
 
          foreach (int id in ids)
          {
-            BinaryTreeLeaf BinaryTreeLeafResult = pakiraTreeWalker.PredictLeaf(id);
+            BinaryTreeLeaf binaryTreeLeafResult = pakiraTreeWalker.PredictLeaf(id);
             int label = tanukiETL.TanukiLabelExtractor(id);
 
-            if (BinaryTreeLeafResult.labelValue == label)
+            if (binaryTreeLeafResult.labelValue == label)
             {
-               if (accuracyResult.truePositives.ContainsKey(BinaryTreeLeafResult))
+               if (accuracyResult.truePositives.ContainsKey(binaryTreeLeafResult))
                {
-                  accuracyResult.truePositives = accuracyResult.truePositives.SetItem(BinaryTreeLeafResult, accuracyResult.truePositives[BinaryTreeLeafResult].Add(id));
+                  accuracyResult.truePositives = accuracyResult.truePositives.SetItem(binaryTreeLeafResult, accuracyResult.truePositives[binaryTreeLeafResult].Add(id));
                }
                else
                {
-                  accuracyResult.truePositives = accuracyResult.truePositives.Add(BinaryTreeLeafResult, [id]);
+                  accuracyResult.truePositives = accuracyResult.truePositives.Add(binaryTreeLeafResult, [id]);
                }
             }
             else
             {
-               if (accuracyResult.falsePositives.ContainsKey(BinaryTreeLeafResult))
+               if (accuracyResult.falsePositives.ContainsKey(binaryTreeLeafResult))
                {
-                  accuracyResult.falsePositives = accuracyResult.falsePositives.SetItem(BinaryTreeLeafResult, accuracyResult.falsePositives[BinaryTreeLeafResult].Add(id));
+                  accuracyResult.falsePositives = accuracyResult.falsePositives.SetItem(binaryTreeLeafResult, accuracyResult.falsePositives[binaryTreeLeafResult].Add(id));
                }
                else
                {
-                  accuracyResult.falsePositives = accuracyResult.falsePositives.Add(BinaryTreeLeafResult, [id]);
+                  accuracyResult.falsePositives = accuracyResult.falsePositives.Add(binaryTreeLeafResult, [id]);
                }
 
-               leaves = leaves.Remove(BinaryTreeLeafResult);
+               leaves = leaves.Remove(binaryTreeLeafResult);
             }
          }
 
@@ -655,7 +649,7 @@ namespace AmaigomaTests
             {
                int truePositivesCount = accuracyResult.truePositives.GetValueOrDefault(leaf, []).Count;
 
-               output.WriteLine("Leaf: {0} - {1} true positives, {2} false positives", String.Join(" ", leaf.labelValue.ToString()), truePositivesCount, falsePositivesCount);
+               output.WriteLine("Leaf: {3} {0} - {1} true positives, {2} false positives", String.Join(" ", leaf.labelValue.ToString()), truePositivesCount, falsePositivesCount, leaf.id);
             }
          }
       }

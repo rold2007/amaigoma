@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Amaigoma
+﻿namespace Amaigoma
 {
    public sealed record PakiraTreeWalker // ncrunch: no coverage
    {
@@ -15,11 +13,6 @@ namespace Amaigoma
 
       public BinaryTreeLeaf PredictLeaf(int id)
       {
-         return WalkNode(id);
-      }
-
-      private BinaryTreeLeaf WalkNode(int id)
-      {
          int nextNodeIndex = 0;
          BinaryTreeNode? node = Tree.Node(nextNodeIndex);
 
@@ -31,7 +24,9 @@ namespace Amaigoma
             node = Tree.Node(nextNodeIndex);
          }
 
-         return Tree.Leaf(nextNodeIndex);
+         BinaryTreeLeaf leaf = Tree.Leaf(nextNodeIndex);
+
+         return new(leaf.id, leaf.labelValue);
       }
    }
 }
