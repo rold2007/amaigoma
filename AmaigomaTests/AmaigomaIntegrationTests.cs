@@ -70,13 +70,7 @@ namespace AmaigomaTests
    {
       static double CalculateEntropy(IEnumerable<int> counts)
       {
-         int total = 0;
-
-         foreach (int count in counts)
-         {
-            total += count;
-         }
-
+         int total = counts.Sum();
          double entropy = 0.0;
 
          foreach (int count in counts)
