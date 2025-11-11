@@ -1,8 +1,6 @@
-﻿global using BinaryTreeNode = (int id, int featureIndex, int splitThreshold, int leftNodeIndex, int rightNodeIndex);
-global using BinaryTreeLeaf = (int id, int labelValue);
+﻿global using BinaryTreeLeaf = (int id, int labelValue);
 
 using Amaigoma;
-using NCrunch.Framework;
 using Shouldly;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Memory;
@@ -15,8 +13,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Xunit;
-using Xunit.Abstractions;
-using System.Threading;
 
 namespace AmaigomaTests
 {
