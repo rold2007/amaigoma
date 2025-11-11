@@ -16,6 +16,7 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
+using System.Threading;
 
 namespace AmaigomaTests
 {
@@ -94,7 +95,82 @@ namespace AmaigomaTests
          return entropy;
       }
 
-      public (int featureIndex, double splitThreshold) GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
+      public (int featureIndex, double splitThreshold) GetBestSplitBaseline(IEnumerable<int> ids, TanukiETL tanukiETL)
+      {
+         int bestFeature = -1;
+         double bestFeatureSplit = 128.0;
+
+         IEnumerable<int> featureIndices = Enumerable.Range(0, tanukiETL.TanukiFeatureCount);
+         // TODO No need to keep all entropies, only the best one
+         ImmutableList<double> weigthedEntropies = ImmutableList<double>.Empty;
+         ImmutableList<int> sampleIds = ids.Take(1000).ToImmutableList();
+
+         foreach (int featureIndex in featureIndices)
+         {
+            ImmutableList<int> transformedData = sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex)).ToImmutableList();
+
+            if (!transformedData.IsEmpty)
+            {
+               double splitValue = transformedData.Average();
+
+               ImmutableDictionary<int, int> leftLabelTotalCount = ImmutableDictionary<int, int>.Empty;
+               ImmutableDictionary<int, int> rightLabelTotalCount = ImmutableDictionary<int, int>.Empty;
+               int leftTotalCount = 0;
+               int rightTotalCount = 0;
+
+               for (int i = 0; i < transformedData.Count; i++)
+               {
+                  int id = sampleIds[i];
+                  int label = tanukiETL.TanukiLabelExtractor(id);
+
+                  if (transformedData[i] <= splitValue)
+                  {
+                     if (leftLabelTotalCount.ContainsKey(label))
+                     {
+                        leftLabelTotalCount = leftLabelTotalCount.SetItem(label, leftLabelTotalCount[label] + 1);
+                     }
+                     else
+                     {
+                        leftLabelTotalCount = leftLabelTotalCount.Add(label, 1);
+                     }
+
+                     leftTotalCount++;
+                  }
+                  else
+                  {
+                     if (rightLabelTotalCount.ContainsKey(label))
+                     {
+                        rightLabelTotalCount = rightLabelTotalCount.SetItem(label, rightLabelTotalCount[label] + 1);
+                     }
+                     else
+                     {
+                        rightLabelTotalCount = rightLabelTotalCount.Add(label, 1);
+                     }
+
+                     rightTotalCount++;
+                  }
+               }
+
+               double leftEntropy = CalculateEntropy(leftLabelTotalCount.Select(c => c.Value));
+               double rightEntropy = CalculateEntropy(rightLabelTotalCount.Select(c => c.Value));
+               double weightedEntropy = (leftTotalCount * leftEntropy + rightTotalCount * rightEntropy) / transformedData.Count;
+
+               weigthedEntropies = weigthedEntropies.Add(weightedEntropy);
+
+               if (bestFeature == -1 || weigthedEntropies[featureIndex] < weigthedEntropies[bestFeature])
+               {
+                  bestFeature = featureIndex;
+                  bestFeatureSplit = splitValue;
+               }
+            }
+         }
+
+         bestFeature.ShouldBeGreaterThanOrEqualTo(0);
+
+         return (bestFeature, bestFeatureSplit);
+      }
+
+      public (int featureIndex, double splitThreshold) GetBestSplitOptimized(IEnumerable<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
@@ -110,63 +186,96 @@ namespace AmaigomaTests
          foreach (int featureIndex in featureIndices)
          {
             ImmutableList<int> transformedData = sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex)).ToImmutableList();
-            // UNDONE The split value could be iterated as we are very dependent on data distribution here.
-            double splitValue = transformedData.Average();
-            ImmutableDictionary<int, int> leftLabelTotalCount = ImmutableDictionary<int, int>.Empty;
-            ImmutableDictionary<int, int> rightLabelTotalCount = ImmutableDictionary<int, int>.Empty;
-            int leftTotalCount = 0;
-            int rightTotalCount = 0;
 
-            for (int i = 0; i < transformedData.Count; i++)
+            if (!transformedData.IsEmpty)
             {
-               int id = sampleIds[i];
-               int label = tanukiETL.TanukiLabelExtractor(id);
+               int bestSplitValue = -1;
+               double bestWeightedEntropy = double.MaxValue;
+               int bestSplitCount = 0;
 
-               if (transformedData[i] <= splitValue)
+               // UNDONE The split value could be iterated as we are very dependent on data distribution here.
+               //double splitValue = transformedData.Average();
+               (int minValue, int maxValue) minMaxResult = transformedData.Aggregate(
+                     (minValue: int.MaxValue, maxValue: int.MinValue),
+                     (accumulator, transformedValue) =>
+                     (Math.Min(transformedValue, accumulator.minValue), Math.Max(transformedValue, accumulator.maxValue)));
+
+               for (int splitValue = minMaxResult.minValue; splitValue < minMaxResult.maxValue; splitValue++)
                {
-                  if (leftLabelTotalCount.ContainsKey(label))
+                  ImmutableDictionary<int, int> leftLabelTotalCount = ImmutableDictionary<int, int>.Empty;
+                  ImmutableDictionary<int, int> rightLabelTotalCount = ImmutableDictionary<int, int>.Empty;
+                  int leftTotalCount = 0;
+                  int rightTotalCount = 0;
+
+                  for (int i = 0; i < transformedData.Count; i++)
                   {
-                     leftLabelTotalCount = leftLabelTotalCount.SetItem(label, leftLabelTotalCount[label] + 1);
-                  }
-                  else
-                  {
-                     leftLabelTotalCount = leftLabelTotalCount.Add(label, 1);
+                     int id = sampleIds[i];
+                     int label = tanukiETL.TanukiLabelExtractor(id);
+
+                     if (transformedData[i] <= splitValue)
+                     {
+                        if (leftLabelTotalCount.ContainsKey(label))
+                        {
+                           leftLabelTotalCount = leftLabelTotalCount.SetItem(label, leftLabelTotalCount[label] + 1);
+                        }
+                        else
+                        {
+                           leftLabelTotalCount = leftLabelTotalCount.Add(label, 1);
+                        }
+
+                        leftTotalCount++;
+                     }
+                     else
+                     {
+                        if (rightLabelTotalCount.ContainsKey(label))
+                        {
+                           rightLabelTotalCount = rightLabelTotalCount.SetItem(label, rightLabelTotalCount[label] + 1);
+                        }
+                        else
+                        {
+                           rightLabelTotalCount = rightLabelTotalCount.Add(label, 1);
+                        }
+
+                        rightTotalCount++;
+                     }
                   }
 
-                  leftTotalCount++;
+                  double leftEntropy = CalculateEntropy(leftLabelTotalCount.Select(c => c.Value));
+                  double rightEntropy = CalculateEntropy(rightLabelTotalCount.Select(c => c.Value));
+                  double weightedEntropy = (leftTotalCount * leftEntropy + rightTotalCount * rightEntropy);
+
+                  if (weightedEntropy < bestWeightedEntropy)
+                  {
+                     bestWeightedEntropy = weightedEntropy;
+                     bestSplitValue = splitValue;
+                     bestSplitCount = 0;
+                  }
+                  else if (weightedEntropy == bestWeightedEntropy)
+                  {
+                     bestSplitValue.ShouldBeGreaterThanOrEqualTo(0);
+                     bestSplitCount++;
+                  }
                }
-               else
+
+               weigthedEntropies = weigthedEntropies.Add(bestWeightedEntropy / transformedData.Count);
+
+               if (bestFeature == -1 || weigthedEntropies[featureIndex] < weigthedEntropies[bestFeature])
                {
-                  if (rightLabelTotalCount.ContainsKey(label))
+                  if (bestSplitCount > 1)
                   {
-                     rightLabelTotalCount = rightLabelTotalCount.SetItem(label, rightLabelTotalCount[label] + 1);
-                  }
-                  else
-                  {
-                     rightLabelTotalCount = rightLabelTotalCount.Add(label, 1);
+                     bestSplitValue = bestSplitValue + (bestSplitCount / 2);
                   }
 
-                  rightTotalCount++;
+                  bestFeature = featureIndex;
+                  bestFeatureSplit = bestSplitValue;
                }
+
+               // UNDONE Restore this logic once it works well. Make sure that an early exit does not affect the accuracy too much.
+               // if (quickAccept)
+               // {
+               //    break;
+               // }
             }
-
-            double leftEntropy = CalculateEntropy(leftLabelTotalCount.Select(c => c.Value));
-            double rightEntropy = CalculateEntropy(rightLabelTotalCount.Select(c => c.Value));
-            double weightedEntropy = (leftTotalCount * leftEntropy + rightTotalCount * rightEntropy) / transformedData.Count;
-
-            weigthedEntropies = weigthedEntropies.Add(weightedEntropy);
-
-            if (bestFeature == -1 || weigthedEntropies[featureIndex] < weigthedEntropies[bestFeature])
-            {
-               bestFeature = featureIndex;
-               bestFeatureSplit = splitValue;
-            }
-
-            // UNDONE Restore this logic once it works well. Make sure that an early exit does not affect the accuracy too much.
-            // if (quickAccept)
-            // {
-            //    break;
-            // }
          }
 
          bestFeature.ShouldBeGreaterThanOrEqualTo(0);
@@ -384,7 +493,103 @@ namespace AmaigomaTests
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
-      [Timeout(600000)]
+      public void UppercaseA_507484246_Baseline(DataSet dataSet)
+      {
+         ImmutableDictionary<string, Image<L8>> sourceImages = ImmutableDictionary<string, Image<L8>>.Empty;
+         ImmutableDictionary<string, Buffer2D<ulong>> integralImages = ImmutableDictionary<string, Buffer2D<ulong>>.Empty;
+         ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
+         ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
+         ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
+         ImmutableList<RegionLabel> im164Rectangles = dataSet.im164[0].regionLabels;
+         ImmutableList<RegionLabel> im10Rectangles = dataSet.im10[0].regionLabels;
+         ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.ti31149327_9330[0].regionLabels;
+         ImmutableList<IntegrationTestDataSet> allDataSets = [.. dataSet.train, .. dataSet.validation, .. dataSet.test, .. dataSet.im164, .. dataSet.im10, .. dataSet.ti31149327_9330];
+
+         foreach (IntegrationTestDataSet integrationTestDataSet in allDataSets)
+         {
+            if (!sourceImages.ContainsKey(integrationTestDataSet.filename))
+            {
+               string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), integrationTestDataSet.filename);
+               Image<L8> sourceImage = Image.Load<L8>(fullImagePath);
+
+               sourceImages = sourceImages.Add(integrationTestDataSet.filename, sourceImage);
+               integralImages = integralImages.Add(integrationTestDataSet.filename, sourceImage.CalculateIntegralImage());
+            }
+         }
+
+         TreeNodeSplit bestSplitLogic = new();
+
+         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplitBaseline);
+         ImmutableDictionary<int, SampleData> trainPositions;
+         ImmutableDictionary<int, SampleData> validationPositions;
+         ImmutableDictionary<int, SampleData> testPositions;
+         ImmutableDictionary<int, SampleData> im164Positions;
+         ImmutableDictionary<int, SampleData> im10Positions;
+         ImmutableDictionary<int, SampleData> ti31149327_9330Positions;
+
+         // TODO Need to simplify the logic to add more data samples
+         trainPositions = LoadDataSamples(trainRectangles, 0, 0);
+         validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count, 0);
+         testPositions = LoadDataSamples(testRectangles, trainPositions.Count + validationPositions.Count, 0);
+         im164Positions = LoadDataSamples(im164Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count, 1);
+         im10Positions = LoadDataSamples(im10Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count, 2);
+         ti31149327_9330Positions = LoadDataSamples(ti31149327_9330Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count + im10Positions.Count, 3);
+
+         Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
+         Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
+         Buffer2D<ulong> integralImageim10 = integralImages[dataSet.im10[0].filename];
+         Buffer2D<ulong> integralImageti31149327_9330 = integralImages[dataSet.ti31149327_9330[0].filename];
+
+         // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
+         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+
+         // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
+         AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions).AddRange(im10Positions).AddRange(ti31149327_9330Positions), [integralImage507484246, integralImageim164, integralImageim10, integralImageti31149327_9330]);
+         AverageWindowFeature validationDataExtractor = new(validationPositions, [integralImage507484246]);
+         AverageWindowFeature testDataExtractor = new(testPositions, [integralImage507484246]);
+
+         trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
+         validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
+         testDataExtractor.AddAverageTransformer(averageTransformerSizes);
+
+         TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, trainDataExtractor.ExtractLabel, trainDataExtractor.FeaturesCount());
+         TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
+         TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
+
+         ImmutableHashSet<int> retrainIds = ImmutableHashSet<int>.Empty;
+         PakiraDecisionTreeModel initialPakiraDecisionTreeModel = new();
+         AccuracyResult trainAccuracyResult;
+         AccuracyResult validationAccuracyResult;
+         AccuracyResult testAccuracyResult;
+         AccuracyResult im164AccuracyResult;
+         AccuracyResult im10AccuracyResult;
+         IEnumerable<int> allTrainIds = trainPositions.Keys.Union(im164Positions.Keys).Union(im10Positions.Keys);//.Union(ti31149327_9330Positions.Keys);
+
+         PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
+
+         pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(initialPakiraDecisionTreeModel, allTrainIds, trainTanukiETL);
+
+         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, trainPositions, trainTanukiETL);
+         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, validationPositions, validationTanukiETL);
+         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
+         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
+         im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
+
+         PrintConfusionMatrix(trainAccuracyResult, "Train");
+         PrintConfusionMatrix(validationAccuracyResult, "Validation");
+         PrintConfusionMatrix(testAccuracyResult, "Test");
+         PrintConfusionMatrix(im164AccuracyResult, "im164");
+         PrintConfusionMatrix(im10AccuracyResult, "im10");
+         PrintLeaveResults(trainAccuracyResult);
+         PrintLeaveResults(validationAccuracyResult);
+         PrintLeaveResults(testAccuracyResult);
+         PrintLeaveResults(im164AccuracyResult);
+         PrintLeaveResults(im10AccuracyResult);
+         PrintEnd();
+      }
+
+      [Theory]
+      [MemberData(nameof(GetUppercaseA_507484246_Data))]
       public void UppercaseA_507484246(DataSet dataSet)
       {
          ImmutableDictionary<string, Image<L8>> sourceImages = ImmutableDictionary<string, Image<L8>>.Empty;
@@ -411,7 +616,7 @@ namespace AmaigomaTests
 
          TreeNodeSplit bestSplitLogic = new();
 
-         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplit);
+         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplitOptimized);
          ImmutableDictionary<int, SampleData> trainPositions;
          ImmutableDictionary<int, SampleData> validationPositions;
          ImmutableDictionary<int, SampleData> testPositions;
@@ -458,13 +663,11 @@ namespace AmaigomaTests
          AccuracyResult im164AccuracyResult;
          AccuracyResult im10AccuracyResult;
          IEnumerable<int> allTrainIds = trainPositions.Keys.Union(im164Positions.Keys).Union(im10Positions.Keys);//.Union(ti31149327_9330Positions.Keys);
-         //IEnumerable<int> allTrainIds = trainPositions.Keys.Union(ti31149327_9330Positions.Keys);
 
          // UNDONE Find a better condition to stop the training loop
          while (previousRetrainIdCount != retrainIds.Count)
          {
             PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
-            PakiraDecisionTreeModel pakiraDecisionTreeModelLimitedDistribution = initialPakiraDecisionTreeModel;
 
             previousRetrainIdCount = retrainIds.Count;
 
@@ -489,158 +692,7 @@ namespace AmaigomaTests
             PrintEnd();
 
             return;
-            //foreach (KeyValuePair<int, int> pair in pakiraDecisionTreeModelAllData.Tree.GetLeaves())
-            //{
-            //   BinaryTreeLeaf BinaryTreeLeaf = pair.Value;
-            //   ImmutableList<int> dataSamples = pakiraDecisionTreeModelAllData.DataSamples(BinaryTreeLeaf);
-            //   ImmutableHashSet<int> foundlabels = ImmutableHashSet<int>.Empty;
-
-            //   foreach (int id in dataSamples)
-            //   {
-            //      int label = trainPositions[id].Label;
-
-            //      if (!foundlabels.Contains(label))
-            //      {
-            //         foundlabels = foundlabels.Add(label);
-            //         retrainIds = retrainIds.Add(id);
-            //      }
-            //   }
-            //}
-
-            //pakiraDecisionTreeModelLimitedDistribution = pakiraGenerator.Generate(pakiraDecisionTreeModelLimitedDistribution, retrainIds, trainTanukiETL);
-            //initialPakiraDecisionTreeModel = pakiraDecisionTreeModelLimitedDistribution;
-
-            //trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, trainPositions, trainTanukiETL);
-            //validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, validationPositions, validationTanukiETL);
-            //testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, testPositions, testTanukiETL);
-            //im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelLimitedDistribution, im164Positions, trainTanukiETL);
-
-            //PrintFirstNodeIndex(pakiraDecisionTreeModelLimitedDistribution);
-            //PrintConfusionMatrix(trainAccuracyResult, "Train2");
-            //PrintConfusionMatrix(validationAccuracyResult, "Validation2");
-            //PrintConfusionMatrix(testAccuracyResult, "Test2");
-            //PrintConfusionMatrix(im164AccuracyResult, "im164");
-            //PrintLeaveResults(trainAccuracyResult);
-            //PrintLeaveResults(validationAccuracyResult);
-            //PrintLeaveResults(testAccuracyResult);
-            //PrintLeaveResults(im164AccuracyResult);
-            //PrintEnd();
          }
-
-         //initialPakiraDecisionTreeModel = pakiraGenerator.Generate(new(), retrainIds, trainTanukiETL);
-         //initialPakiraDecisionTreeModel = pakiraGenerator.Generate(initialPakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
-
-         //trainAccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, trainPositions, trainTanukiETL);
-         //validationAccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, validationPositions, validationTanukiETL);
-         //testAccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, testPositions, testTanukiETL);
-         //im164AccuracyResult = ComputeAccuracy(initialPakiraDecisionTreeModel, im164Positions, trainTanukiETL);
-
-         //PrintFirstNodeIndex(initialPakiraDecisionTreeModel);
-         //PrintConfusionMatrix(trainAccuracyResult, "Train3");
-         //PrintConfusionMatrix(validationAccuracyResult, "Validation3");
-         //PrintConfusionMatrix(testAccuracyResult, "Test3");
-         //PrintConfusionMatrix(im164AccuracyResult, "im164");
-         //PrintLeaveResults(trainAccuracyResult);
-         //PrintLeaveResults(validationAccuracyResult);
-         //PrintLeaveResults(testAccuracyResult);
-         //PrintLeaveResults(im164AccuracyResult);
-         //PrintEnd();
-
-         //int totalTrainSamples = trainPositions.Keys.Count();
-         //ImmutableList<int> trainSampleIds = [];
-         //ImmutableHashSet<int> trainSampleIdsSet = [.. trainPositions.Keys];
-
-         // TODO Move the batch processing/training along with the tree evaluation (true/false positive leaves) in an utility class outside of the
-         //        Test classes, inside the main library
-         //while (!trainSampleIdsSet.IsEmpty)
-         //{
-         //   PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, trainTanukiETL);
-
-         //   foreach (int id in trainSampleIdsSet.Take(10))
-         //   {
-         //      int expectedLabel = trainPositions[id].Label;
-         //      IEnumerable<int> resultLabels = pakiraTreeWalker.PredictLeaf(id).LabelValues;
-
-         //      if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
-         //      {
-         //         trainSampleIds = trainSampleIds.Add(id);
-         //      }
-         //      else
-         //      {
-         //         trainSampleIdsSet = trainSampleIdsSet.Remove(id);
-         //      }
-         //   }
-
-         //   if (!trainSampleIds.IsEmpty)
-         //   {
-         //      pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainSampleIds, trainTanukiETL);
-         //      pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
-         //      trainSampleIds = [];
-         //   }
-         //}
-
-         //trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
-         //validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
-         //testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
-         //im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, im164Positions.Keys, trainTanukiETL);
-
-         //PrintFirstNodeIndex(pakiraDecisionTreeModel);
-         //PrintConfusionMatrix(trainAccuracyResult, "Train");
-         //PrintConfusionMatrix(validationAccuracyResult, "Validation");
-         //PrintConfusionMatrix(testAccuracyResult, "Test");
-         //PrintConfusionMatrix(im164AccuracyResult, "im164");
-         //PrintLeaveResults(trainAccuracyResult);
-         //PrintLeaveResults(validationAccuracyResult);
-         //PrintLeaveResults(testAccuracyResult);
-         //PrintLeaveResults(im164AccuracyResult);
-         //PrintEnd();
-
-         //// UNDONE Move the batch batch training logic in a seperate method/class to prevent code duplication
-         //trainSampleIds = ImmutableList<int>.Empty;
-         //trainSampleIdsSet = [.. im164Positions.Keys];
-
-         //while (!trainSampleIdsSet.IsEmpty)
-         //{
-         //   PakiraTreeWalker pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
-
-         //   foreach (int id in trainSampleIdsSet.Take(10))
-         //   {
-         //      int expectedLabel = im164Positions[id].Label;
-         //      IEnumerable<int> resultLabels = pakiraTreeWalker.PredictLeaf(id).LabelValues;
-
-         //      if (resultLabels.Count() > 1 || !resultLabels.Contains(expectedLabel))
-         //      {
-         //         trainSampleIds = trainSampleIds.Add(id);
-         //      }
-         //      else
-         //      {
-         //         trainSampleIdsSet = trainSampleIdsSet.Remove(id);
-         //      }
-         //   }
-
-         //   if (!trainSampleIds.IsEmpty)
-         //   {
-         //      pakiraDecisionTreeModel = pakiraGenerator.Generate(pakiraDecisionTreeModel, trainSampleIds, trainTanukiETL);
-         //      pakiraTreeWalker = new PakiraTreeWalker(pakiraDecisionTreeModel.Tree, trainTanukiETL);
-         //      trainSampleIds = ImmutableList<int>.Empty;
-         //   }
-         //}
-
-         //trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, trainPositions.Keys, trainTanukiETL);
-         //validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, validationPositions.Keys, validationTanukiETL);
-         //testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, testPositions.Keys, testTanukiETL);
-         //im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModel, im164Positions.Keys, trainTanukiETL);
-
-         //PrintFirstNodeIndex(pakiraDecisionTreeModel);
-         //PrintConfusionMatrix(trainAccuracyResult, "Train");
-         //PrintConfusionMatrix(validationAccuracyResult, "Validation");
-         //PrintConfusionMatrix(testAccuracyResult, "Test");
-         //PrintConfusionMatrix(im164AccuracyResult, "im164");
-         //PrintLeaveResults(trainAccuracyResult);
-         //PrintLeaveResults(validationAccuracyResult);
-         //PrintLeaveResults(testAccuracyResult);
-         //PrintLeaveResults(im164AccuracyResult);
-         //PrintEnd();
       }
 
       private void PrintConfusionMatrix(AccuracyResult accuracyResult, string title)
@@ -655,7 +707,7 @@ namespace AmaigomaTests
             {
                int truePositivesCount = accuracyResult.truePositives.GetValueOrDefault(leaf, []).Count;
 
-               output.WriteLine("Leaf: {0} - {1} true positives, {2} false positives", String.Join(" ", leaf.labelValue.ToString()), truePositivesCount, falsePositivesCount);
+               output.WriteLine("Leaf: Id: {3} Label:{0} - {1} true positives, {2} false positives", String.Join(" ", leaf.labelValue.ToString()), truePositivesCount, falsePositivesCount, leaf.id);
             }
          }
       }
