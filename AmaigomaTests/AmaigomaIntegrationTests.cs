@@ -89,13 +89,11 @@ namespace AmaigomaTests
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
+         double bestWeigthedEntropy = 128.0;
 
-         IEnumerable<int> featureIndices = Enumerable.Range(0, tanukiETL.TanukiFeatureCount);
-         // TODO No need to keep all entropies, only the best one
-         ImmutableList<double> weigthedEntropies = ImmutableList<double>.Empty;
          ImmutableList<int> sampleIds = ids.Take(1000).ToImmutableList();
 
-         foreach (int featureIndex in featureIndices)
+         for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
          {
             ImmutableList<int> transformedData = sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex)).ToImmutableList();
 
@@ -143,19 +141,19 @@ namespace AmaigomaTests
 
                double leftEntropy = CalculateEntropy(leftLabelTotalCount.Select(c => c.Value));
                double rightEntropy = CalculateEntropy(rightLabelTotalCount.Select(c => c.Value));
-               double weightedEntropy = (leftTotalCount * leftEntropy + rightTotalCount * rightEntropy) / transformedData.Count;
+               double weightedEntropy = (leftTotalCount * leftEntropy + rightTotalCount * rightEntropy);
 
-               weigthedEntropies = weigthedEntropies.Add(weightedEntropy);
-
-               if (bestFeature == -1 || weigthedEntropies[featureIndex] < weigthedEntropies[bestFeature])
+               if (bestFeature == -1 || weightedEntropy < bestWeigthedEntropy)
                {
                   bestFeature = featureIndex;
                   bestFeatureSplit = splitValue;
+                  bestWeigthedEntropy = weightedEntropy;
                }
             }
          }
 
          bestFeature.ShouldBeGreaterThanOrEqualTo(0);
+         bestWeigthedEntropy /= sampleIds.Count;
 
          return (bestFeature, bestFeatureSplit);
       }
@@ -165,15 +163,11 @@ namespace AmaigomaTests
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
 
-         // TODO Instead of shuffling randomly, it might make more sense to simply cycle through all available feature indices sequentially. or all data transformers sequentially
-         // and then randomly within each transformer.
-         // TODO All data transformers should have the same probability of being chosen, otherwise the AverageTransformer with a bigger windowSize will barely be selected
-         IEnumerable<int> featureIndices = Enumerable.Range(0, tanukiETL.TanukiFeatureCount);
          // TODO No need to keep all entropies, only the best one
          ImmutableList<double> weigthedEntropies = ImmutableList<double>.Empty;
-         ImmutableList<int> sampleIds = ids.Take(1000).ToImmutableList();
+         ImmutableList<int> sampleIds = ids.ToImmutableList();
 
-         foreach (int featureIndex in featureIndices)
+         for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
          {
             ImmutableList<int> transformedData = sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex)).ToImmutableList();
 
@@ -183,8 +177,6 @@ namespace AmaigomaTests
                double bestWeightedEntropy = double.MaxValue;
                int bestSplitCount = 0;
 
-               // UNDONE The split value could be iterated as we are very dependent on data distribution here.
-               //double splitValue = transformedData.Average();
                (int minValue, int maxValue) minMaxResult = transformedData.Aggregate(
                      (minValue: int.MaxValue, maxValue: int.MinValue),
                      (accumulator, transformedValue) =>
@@ -247,7 +239,7 @@ namespace AmaigomaTests
                   }
                }
 
-               weigthedEntropies = weigthedEntropies.Add(bestWeightedEntropy / transformedData.Count);
+               weigthedEntropies = weigthedEntropies.Add(bestWeightedEntropy);
 
                if (bestFeature == -1 || weigthedEntropies[featureIndex] < weigthedEntropies[bestFeature])
                {
@@ -259,16 +251,13 @@ namespace AmaigomaTests
                   bestFeature = featureIndex;
                   bestFeatureSplit = bestSplitValue;
                }
-
-               // UNDONE Restore this logic once it works well. Make sure that an early exit does not affect the accuracy too much.
-               // if (quickAccept)
-               // {
-               //    break;
-               // }
             }
          }
 
          bestFeature.ShouldBeGreaterThanOrEqualTo(0);
+
+         // TODO This is not even returned, but maybe it could be returned and then used as tree quality criteria
+         weigthedEntropies = weigthedEntropies.SetItem(bestFeature, weigthedEntropies[bestFeature] / sampleIds.Count);
 
          return (bestFeature, bestFeatureSplit);
       }
@@ -283,19 +272,6 @@ namespace AmaigomaTests
 
       static private readonly ImmutableList<Rectangle> train_507484246_Rectangles =
       [
-         //new Rectangle(83, 150, 1, 1),
-         //new Rectangle(624, 140, 1, 1),
-         //new Rectangle(670, 140, 1, 1),
-         //new Rectangle(688, 140, 1, 1),
-         //new Rectangle(36, 196, 1, 1),
-         //new Rectangle(192, 197, 1, 1),
-         //new Rectangle(181, 213, 1, 1),
-         //new Rectangle(576, 216, 1, 1),
-         //new Rectangle(603, 217, 1, 1),
-         //new Rectangle(658, 217, 1, 1),
-         //new Rectangle(109, 333, 1, 1),
-         //new Rectangle(127, 333, 1, 1),
-
          new Rectangle(82, 149, 3, 3),
          new Rectangle(623, 139, 3, 3),
          new Rectangle(669, 139, 3, 3),
@@ -546,7 +522,6 @@ namespace AmaigomaTests
          TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
          TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
 
-         ImmutableHashSet<int> retrainIds = ImmutableHashSet<int>.Empty;
          PakiraDecisionTreeModel initialPakiraDecisionTreeModel = new();
          AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
@@ -580,7 +555,8 @@ namespace AmaigomaTests
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
-      public void UppercaseA_507484246(DataSet dataSet)
+      // UNDONE Complete this integration test
+      public void UppercaseA_507484246_AccuracyOptimized(DataSet dataSet)
       {
          ImmutableDictionary<string, Image<L8>> sourceImages = ImmutableDictionary<string, Image<L8>>.Empty;
          ImmutableDictionary<string, Buffer2D<ulong>> integralImages = ImmutableDictionary<string, Buffer2D<ulong>>.Empty;
@@ -644,45 +620,35 @@ namespace AmaigomaTests
          TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
          TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
 
-         ImmutableHashSet<int> retrainIds = ImmutableHashSet<int>.Empty;
          PakiraDecisionTreeModel initialPakiraDecisionTreeModel = new();
-         int previousRetrainIdCount = -1;
          AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
          AccuracyResult testAccuracyResult;
          AccuracyResult im164AccuracyResult;
          AccuracyResult im10AccuracyResult;
-         IEnumerable<int> allTrainIds = trainPositions.Keys.Union(im164Positions.Keys).Union(im10Positions.Keys);//.Union(ti31149327_9330Positions.Keys);
+         IEnumerable<int> allTrainIds = trainPositions.Keys.Take(216);
 
-         // UNDONE Find a better condition to stop the training loop
-         while (previousRetrainIdCount != retrainIds.Count)
-         {
-            PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
+         PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
 
-            previousRetrainIdCount = retrainIds.Count;
+         pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(initialPakiraDecisionTreeModel, allTrainIds, trainTanukiETL);
 
-            pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(initialPakiraDecisionTreeModel, allTrainIds, trainTanukiETL);
+         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, trainPositions, trainTanukiETL);
+         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, validationPositions, validationTanukiETL);
+         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
+         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
+         im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
 
-            trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, trainPositions, trainTanukiETL);
-            validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, validationPositions, validationTanukiETL);
-            testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
-            im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
-            im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
-
-            PrintConfusionMatrix(trainAccuracyResult, "Train");
-            PrintConfusionMatrix(validationAccuracyResult, "Validation");
-            PrintConfusionMatrix(testAccuracyResult, "Test");
-            PrintConfusionMatrix(im164AccuracyResult, "im164");
-            PrintConfusionMatrix(im10AccuracyResult, "im10");
-            PrintLeaveResults(trainAccuracyResult);
-            PrintLeaveResults(validationAccuracyResult);
-            PrintLeaveResults(testAccuracyResult);
-            PrintLeaveResults(im164AccuracyResult);
-            PrintLeaveResults(im10AccuracyResult);
-            PrintEnd();
-
-            return;
-         }
+         PrintConfusionMatrix(trainAccuracyResult, "Train");
+         PrintConfusionMatrix(validationAccuracyResult, "Validation");
+         PrintConfusionMatrix(testAccuracyResult, "Test");
+         PrintConfusionMatrix(im164AccuracyResult, "im164");
+         PrintConfusionMatrix(im10AccuracyResult, "im10");
+         PrintLeaveResults(trainAccuracyResult);
+         PrintLeaveResults(validationAccuracyResult);
+         PrintLeaveResults(testAccuracyResult);
+         PrintLeaveResults(im164AccuracyResult);
+         PrintLeaveResults(im10AccuracyResult);
+         PrintEnd();
       }
 
       private void PrintConfusionMatrix(AccuracyResult accuracyResult, string title)

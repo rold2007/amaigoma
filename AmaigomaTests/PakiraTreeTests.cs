@@ -15,7 +15,7 @@ namespace AmaigomaTests
          pakiraTree.Node(0).HasValue.ShouldBeFalse();
       }
 
-      // UNDONE Restore unit tests and make sure to have 100% code coverage for PakiraTree from these tests
+      // TODO Restore unit tests and make sure to have 100% code coverage for PakiraTree from these tests
       //[Fact]
       //public void AddNodeTopBottom()
       //{

@@ -41,7 +41,7 @@ namespace Amaigoma
       }
 
       // TODO Add support for overlapping sliding windows
-      // TODO Add support a diffrent fullWindowsSize for each slding window size
+      // TODO Add support a different fullWindowsSize for each slding window size
       public AverageTransformer(int slidingWindowSize, int fullWindowsSize)
       {
          fullWindowsSize.ShouldBeGreaterThanOrEqualTo(slidingWindowSize);
