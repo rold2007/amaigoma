@@ -48,6 +48,7 @@ namespace AmaigomaTests
       public List<IntegrationTestDataSet> im164 = [];
       public List<IntegrationTestDataSet> im10 = [];
       public List<IntegrationTestDataSet> ti31149327_9330 = [];
+      public List<IntegrationTestDataSet> trainOptimized = [];
 
       public DataSet()
       {
@@ -79,13 +80,13 @@ namespace AmaigomaTests
 
             double p = (double)count / total;
 
-            entropy -= p * Math.Log(p, 2); // log base 2
+            entropy -= p * Math.Log2(p);
          }
 
          return entropy;
       }
 
-      public (int featureIndex, double splitThreshold) GetBestSplitBaseline(IEnumerable<int> ids, TanukiETL tanukiETL)
+      public (int featureIndex, double splitThreshold) GetBestSplitBaseline(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
@@ -158,7 +159,7 @@ namespace AmaigomaTests
          return (bestFeature, bestFeatureSplit);
       }
 
-      public (int featureIndex, double splitThreshold) GetBestSplitOptimized(IEnumerable<int> ids, TanukiETL tanukiETL)
+      public (int featureIndex, double splitThreshold) GetBestSplitOptimized(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
@@ -177,6 +178,7 @@ namespace AmaigomaTests
                double bestWeightedEntropy = double.MaxValue;
                int bestSplitCount = 0;
 
+               // UNDONE Optimization: Instead of iterating over all possible split values, put the transformed data in histograms and then find the split value using the histograms
                (int minValue, int maxValue) minMaxResult = transformedData.Aggregate(
                      (minValue: int.MaxValue, maxValue: int.MinValue),
                      (accumulator, transformedValue) =>
@@ -364,15 +366,56 @@ namespace AmaigomaTests
          other,
       ];
 
+      static private readonly ImmutableList<Rectangle> trainOptimized_507484246_Rectangles =
+      [
+         new Rectangle(82, 149, 3, 3),
+         new Rectangle(623, 139, 3, 3),
+         new Rectangle(669, 139, 3, 3),
+         new Rectangle(687, 139, 3, 3),
+         new Rectangle(35, 195, 3, 3),
+         new Rectangle(191, 196, 3, 3),
+         new Rectangle(180, 212, 3, 3),
+         new Rectangle(575, 215, 3, 3),
+         new Rectangle(602, 216, 3, 3),
+         new Rectangle(657, 216, 3, 3),
+         new Rectangle(108, 332, 3, 3),
+         new Rectangle(126, 332, 3, 3),
+
+         new Rectangle(20, 420, 380, 80),
+         new Rectangle(17, 17, 300, 100),
+         new Rectangle(520, 40, 230, 90),
+      ];
+
+      static private readonly ImmutableList<int> trainOptimized_507484246_Labels =
+      [
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         uppercaseA,
+         other,
+         other,
+         other,
+      ];
+
       static public IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
          DataSet dataSet = new();
+         // UNDONE Regroup all images and prepare the integral images in parallel and a as pre-step for the test
          IntegrationTestDataSet trainIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", train_507484246_Rectangles, train_507484246_Labels);
          IntegrationTestDataSet validationIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", validation_507484246_Rectangles, validation_507484246_Labels);
          IntegrationTestDataSet testIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", test_507484246_Rectangles, test_507484246_Labels);
          IntegrationTestDataSet im164IntegrationTestDataSet = new(@"assets/mirflickr08/im164.jpg", im164Rectangles, im164Labels);
          IntegrationTestDataSet im10IntegrationTestDataSet = new(@"assets/mirflickr08/im10.jpg", im10Rectangles, im10Labels);
          IntegrationTestDataSet ti31149327_9330IntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/ti31149327_9330.tif", train_ti31149327_9330_Rectangles, train_ti31149327_9330_Labels);
+         IntegrationTestDataSet trainOptimizedIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", trainOptimized_507484246_Rectangles, trainOptimized_507484246_Labels);
 
          dataSet.train.Add(trainIntegrationTestDataSet);
          dataSet.validation.Add(validationIntegrationTestDataSet);
@@ -380,6 +423,7 @@ namespace AmaigomaTests
          dataSet.im164.Add(im164IntegrationTestDataSet);
          dataSet.im10.Add(im10IntegrationTestDataSet);
          dataSet.ti31149327_9330.Add(ti31149327_9330IntegrationTestDataSet);
+         dataSet.trainOptimized.Add(trainOptimizedIntegrationTestDataSet);
 
          yield return new object[] { dataSet };
       }
@@ -551,6 +595,14 @@ namespace AmaigomaTests
          PrintLeaveResults(im164AccuracyResult);
          PrintLeaveResults(im10AccuracyResult);
          PrintEnd();
+
+         trainAccuracyResult.leavesAfter.Count.ShouldBe(91);
+         validationAccuracyResult.leavesAfter.Count.ShouldBe(71);
+         validationAccuracyResult.leavesBefore.Count.ShouldBe(91);
+         testAccuracyResult.leavesAfter.Count.ShouldBe(76);
+         testAccuracyResult.leavesBefore.Count.ShouldBe(91);
+         im164AccuracyResult.leavesAfter.Count.ShouldBe(91);
+         im10AccuracyResult.leavesAfter.Count.ShouldBe(91);
       }
 
       [Theory]
@@ -649,10 +701,21 @@ namespace AmaigomaTests
          PrintLeaveResults(im164AccuracyResult);
          PrintLeaveResults(im10AccuracyResult);
          PrintEnd();
+
+         // UNDONE Add the appropriate validations here when the test is completed
+         //trainAccuracyResult.leavesAfter.Count.ShouldBe(91);
+         //validationAccuracyResult.leavesAfter.Count.ShouldBe(71);
+         //validationAccuracyResult.leavesBefore.Count.ShouldBe(91);
+         //testAccuracyResult.leavesAfter.Count.ShouldBe(76);
+         //testAccuracyResult.leavesBefore.Count.ShouldBe(91);
+         //im164AccuracyResult.leavesAfter.Count.ShouldBe(91);
+         //im10AccuracyResult.leavesAfter.Count.ShouldBe(91);
       }
 
       private void PrintConfusionMatrix(AccuracyResult accuracyResult, string title)
       {
+         int totalFalsePositivesCount = 0;
+
          output.WriteLine("Confusion matrix for {0}", title);
 
          foreach (BinaryTreeLeaf leaf in accuracyResult.leavesBefore)
@@ -664,7 +727,13 @@ namespace AmaigomaTests
                int truePositivesCount = accuracyResult.truePositives.GetValueOrDefault(leaf, []).Count;
 
                output.WriteLine("Leaf: Id: {3} Label:{0} - {1} true positives, {2} false positives", String.Join(" ", leaf.labelValue.ToString()), truePositivesCount, falsePositivesCount, leaf.id);
+               totalFalsePositivesCount += falsePositivesCount;
             }
+         }
+
+         if (totalFalsePositivesCount > 0)
+         {
+            output.WriteLine("Total false positives {0}", totalFalsePositivesCount);
          }
       }
 

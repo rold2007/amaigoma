@@ -31,7 +31,7 @@ namespace Amaigoma
       public static readonly int UNKNOWN_CLASS_INDEX = -1; // ncrunch: no coverage
       public readonly int randomSeed = new Random().Next(); // ncrunch: no coverage
       private readonly Random RandomSource;
-      private Func<IEnumerable<int>, TanukiETL, (int featureIndex, double splitThreshold)> BestSplit;
+      private Func<IReadOnlyList<int>, TanukiETL, (int featureIndex, double splitThreshold)> BestSplit;
 
       public PakiraDecisionTreeGenerator()
       {
@@ -39,7 +39,7 @@ namespace Amaigoma
          BestSplit = GetBestSplit;
       }
 
-      public PakiraDecisionTreeGenerator(Func<IEnumerable<int>, TanukiETL, (int featureIndex, double splitThreshold)> bestSplit)
+      public PakiraDecisionTreeGenerator(Func<IReadOnlyList<int>, TanukiETL, (int featureIndex, double splitThreshold)> bestSplit)
       {
          BestSplit = bestSplit;
       }
@@ -139,7 +139,7 @@ namespace Amaigoma
          return pakiraDecisionTreeModel;
       }
 
-      private (int featureIndex, double splitThreshold) GetBestSplit(IEnumerable<int> ids, TanukiETL tanukiETL)
+      private (int featureIndex, double splitThreshold) GetBestSplit(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
