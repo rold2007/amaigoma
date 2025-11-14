@@ -54,19 +54,15 @@ namespace Amaigoma
          SlidingWindowSizeSquaredInverted = 1.0 / (slidingWindowSize * slidingWindowSize);
          PositionOffsets = [];
 
-         //Point startingOffset = new Point(SlidingWindowHalfSize - fullWindowHalfSize, SlidingWindowHalfSize - fullWindowHalfSize);
-         int abc = Math.Max(0, ((fullWindowHalfSize - SlidingWindowHalfSize) / slidingWindowSize) /*- 1*/);
-         Point startingOffset = new Point(fullWindowHalfSize - (abc * slidingWindowSize), fullWindowHalfSize - (abc * slidingWindowSize));
+         int offsetAdjustment = Math.Max(0, ((fullWindowHalfSize - SlidingWindowHalfSize) / slidingWindowSize));
+         Point startingOffset = new(fullWindowHalfSize - (offsetAdjustment * slidingWindowSize), fullWindowHalfSize - (offsetAdjustment * slidingWindowSize));
 
-         //for (int y = 0; y <= (fullWindowsSize - SlidingWindowSize); y += SlidingWindowSize)
          for (int y = startingOffset.Y - SlidingWindowHalfSize; y <= (fullWindowsSize - SlidingWindowSize); y += SlidingWindowSize)
          {
-            //for (int x = 0; x <= (fullWindowsSize - SlidingWindowSize); x += SlidingWindowSize)
             for (int x = startingOffset.X - SlidingWindowHalfSize; x <= (fullWindowsSize - SlidingWindowSize); x += SlidingWindowSize)
             {
-               Point positionOffset = new Point(x + SlidingWindowHalfSize, y + SlidingWindowHalfSize);
+               Point positionOffset = new(x + SlidingWindowHalfSize, y + SlidingWindowHalfSize);
 
-               //positionOffset.Offset(startingOffset.X, startingOffset.Y);
                positionOffset.Offset(-fullWindowHalfSize, -fullWindowHalfSize);
 
                PositionOffsets = PositionOffsets.Add(positionOffset);

@@ -31,7 +31,7 @@ namespace Amaigoma
       public static readonly int UNKNOWN_CLASS_INDEX = -1; // ncrunch: no coverage
       public readonly int randomSeed = new Random().Next(); // ncrunch: no coverage
       private readonly Random RandomSource;
-      private Func<IReadOnlyList<int>, TanukiETL, (int featureIndex, double splitThreshold)> BestSplit;
+      private readonly Func<IReadOnlyList<int>, TanukiETL, (int featureIndex, double splitThreshold)> BestSplit;
 
       public PakiraDecisionTreeGenerator()
       {
@@ -113,26 +113,26 @@ namespace Amaigoma
             retrainLeaves = retrainLeaves.RemoveAt(0);
             ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(leafId);
 
-            (int featureIndex, double splitThreshold) bestSplit = BestSplit(ids, tanukiETL);
-            ILookup<bool, int> updatedDataSamples = pakiraDecisionTreeModel.DataSamples(leafId).ToLookup(id => ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, bestSplit.featureIndex), bestSplit.splitThreshold));
+            (int featureIndex, double splitThreshold) = BestSplit(ids, tanukiETL);
+            ILookup<bool, int> updatedDataSamples = pakiraDecisionTreeModel.DataSamples(leafId).ToLookup(id => ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, featureIndex), splitThreshold));
             int leftLabel = PrepareTreeLeavelabel(updatedDataSamples[true], tanukiETL);
             int rightLabel = PrepareTreeLeavelabel(updatedDataSamples[false], tanukiETL);
 
-            (PakiraTree tree, int leftLeafId, int rightLeafId) replaceLeafResult = pakiraDecisionTreeModel.Tree.ReplaceLeaf(leafId, bestSplit.featureIndex, bestSplit.splitThreshold, leftLabel, rightLabel);
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(replaceLeafResult.tree);
+            (PakiraTree tree, int leftLeafId, int rightLeafId) = pakiraDecisionTreeModel.Tree.ReplaceLeaf(leafId, featureIndex, splitThreshold, leftLabel, rightLabel);
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(tree);
 
             pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(leafId);
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(replaceLeafResult.leftLeafId, updatedDataSamples[true]);
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(replaceLeafResult.rightLeafId, updatedDataSamples[false]);
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(leftLeafId, updatedDataSamples[true]);
+            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(rightLeafId, updatedDataSamples[false]);
 
             if (leftLabel == UnknownLabelValue)
             {
-               retrainLeaves = retrainLeaves.Add(replaceLeafResult.leftLeafId);
+               retrainLeaves = retrainLeaves.Add(leftLeafId);
             }
 
             if (rightLabel == UnknownLabelValue)
             {
-               retrainLeaves = retrainLeaves.Add(replaceLeafResult.rightLeafId);
+               retrainLeaves = retrainLeaves.Add(rightLeafId);
             }
          }
 

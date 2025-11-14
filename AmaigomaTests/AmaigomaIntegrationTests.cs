@@ -86,17 +86,17 @@ namespace AmaigomaTests
          return entropy;
       }
 
-      public (int featureIndex, double splitThreshold) GetBestSplitBaseline(IReadOnlyList<int> ids, TanukiETL tanukiETL)
+      public static (int featureIndex, double splitThreshold) GetBestSplitBaseline(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
          double bestWeigthedEntropy = 128.0;
 
-         ImmutableList<int> sampleIds = ids.Take(1000).ToImmutableList();
+         ImmutableList<int> sampleIds = [.. ids.Take(1000)];
 
          for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
          {
-            ImmutableList<int> transformedData = sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex)).ToImmutableList();
+            ImmutableList<int> transformedData = [.. sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex))];
 
             if (!transformedData.IsEmpty)
             {
@@ -159,18 +159,18 @@ namespace AmaigomaTests
          return (bestFeature, bestFeatureSplit);
       }
 
-      public (int featureIndex, double splitThreshold) GetBestSplitOptimized(IReadOnlyList<int> ids, TanukiETL tanukiETL)
+      public static (int featureIndex, double splitThreshold) GetBestSplitOptimized(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = 128.0;
 
          // TODO No need to keep all entropies, only the best one
          ImmutableList<double> weigthedEntropies = ImmutableList<double>.Empty;
-         ImmutableList<int> sampleIds = ids.ToImmutableList();
+         ImmutableList<int> sampleIds = [.. ids];
 
          for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
          {
-            ImmutableList<int> transformedData = sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex)).ToImmutableList();
+            ImmutableList<int> transformedData = [.. sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex))];
 
             if (!transformedData.IsEmpty)
             {
@@ -179,12 +179,12 @@ namespace AmaigomaTests
                int bestSplitCount = 0;
 
                // UNDONE Optimization: Instead of iterating over all possible split values, put the transformed data in histograms and then find the split value using the histograms
-               (int minValue, int maxValue) minMaxResult = transformedData.Aggregate(
+               (int minValue, int maxValue) = transformedData.Aggregate(
                      (minValue: int.MaxValue, maxValue: int.MinValue),
                      (accumulator, transformedValue) =>
                      (Math.Min(transformedValue, accumulator.minValue), Math.Max(transformedValue, accumulator.maxValue)));
 
-               for (int splitValue = minMaxResult.minValue; splitValue < minMaxResult.maxValue; splitValue++)
+               for (int splitValue = minValue; splitValue < maxValue; splitValue++)
                {
                   ImmutableDictionary<int, int> leftLabelTotalCount = ImmutableDictionary<int, int>.Empty;
                   ImmutableDictionary<int, int> rightLabelTotalCount = ImmutableDictionary<int, int>.Empty;
@@ -247,7 +247,7 @@ namespace AmaigomaTests
                {
                   if (bestSplitCount > 1)
                   {
-                     bestSplitValue = bestSplitValue + (bestSplitCount / 2);
+                     bestSplitValue += (bestSplitCount / 2);
                   }
 
                   bestFeature = featureIndex;
@@ -369,39 +369,12 @@ namespace AmaigomaTests
       static private readonly ImmutableList<Rectangle> trainOptimized_507484246_Rectangles =
       [
          new Rectangle(82, 149, 3, 3),
-         new Rectangle(623, 139, 3, 3),
-         new Rectangle(669, 139, 3, 3),
-         new Rectangle(687, 139, 3, 3),
-         new Rectangle(35, 195, 3, 3),
-         new Rectangle(191, 196, 3, 3),
-         new Rectangle(180, 212, 3, 3),
-         new Rectangle(575, 215, 3, 3),
-         new Rectangle(602, 216, 3, 3),
-         new Rectangle(657, 216, 3, 3),
-         new Rectangle(108, 332, 3, 3),
-         new Rectangle(126, 332, 3, 3),
-
-         new Rectangle(20, 420, 380, 80),
-         new Rectangle(17, 17, 300, 100),
-         new Rectangle(520, 40, 230, 90),
+         new Rectangle(20, 420, 3, 3),
       ];
 
       static private readonly ImmutableList<int> trainOptimized_507484246_Labels =
       [
          uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         uppercaseA,
-         other,
-         other,
          other,
       ];
 
@@ -457,7 +430,7 @@ namespace AmaigomaTests
       static private AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, ImmutableDictionary<int, SampleData> positions, TanukiETL tanukiETL)
       {
          IEnumerable<int> ids = positions.Keys;
-         ImmutableHashSet<BinaryTreeLeaf> leaves = pakiraDecisionTreeModel.Tree.Leaves().ToImmutableHashSet();
+         ImmutableHashSet<BinaryTreeLeaf> leaves = [.. pakiraDecisionTreeModel.Tree.Leaves()];
          AccuracyResult accuracyResult = new()
          {
             leavesBefore = leaves
@@ -529,7 +502,7 @@ namespace AmaigomaTests
 
          TreeNodeSplit bestSplitLogic = new();
 
-         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplitBaseline);
+         PakiraDecisionTreeGenerator pakiraGenerator = new(TreeNodeSplit.GetBestSplitBaseline);
          ImmutableDictionary<int, SampleData> trainPositions;
          ImmutableDictionary<int, SampleData> validationPositions;
          ImmutableDictionary<int, SampleData> testPositions;
@@ -618,7 +591,8 @@ namespace AmaigomaTests
          ImmutableList<RegionLabel> im164Rectangles = dataSet.im164[0].regionLabels;
          ImmutableList<RegionLabel> im10Rectangles = dataSet.im10[0].regionLabels;
          ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.ti31149327_9330[0].regionLabels;
-         ImmutableList<IntegrationTestDataSet> allDataSets = [.. dataSet.train, .. dataSet.validation, .. dataSet.test, .. dataSet.im164, .. dataSet.im10, .. dataSet.ti31149327_9330];
+         ImmutableList<RegionLabel> trainOptimizedRectangles = dataSet.trainOptimized[0].regionLabels;
+         ImmutableList<IntegrationTestDataSet> allDataSets = [.. dataSet.train, .. dataSet.validation, .. dataSet.test, .. dataSet.im164, .. dataSet.im10, .. dataSet.ti31149327_9330, .. dataSet.trainOptimized];
 
          foreach (IntegrationTestDataSet integrationTestDataSet in allDataSets)
          {
@@ -634,13 +608,14 @@ namespace AmaigomaTests
 
          TreeNodeSplit bestSplitLogic = new();
 
-         PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplitOptimized);
+         PakiraDecisionTreeGenerator pakiraGenerator = new(TreeNodeSplit.GetBestSplitOptimized);
          ImmutableDictionary<int, SampleData> trainPositions;
          ImmutableDictionary<int, SampleData> validationPositions;
          ImmutableDictionary<int, SampleData> testPositions;
          ImmutableDictionary<int, SampleData> im164Positions;
          ImmutableDictionary<int, SampleData> im10Positions;
          ImmutableDictionary<int, SampleData> ti31149327_9330Positions;
+         ImmutableDictionary<int, SampleData> trainOptimizedPositions;
 
          // TODO Need to simplify the logic to add more data samples
          trainPositions = LoadDataSamples(trainRectangles, 0, 0);
@@ -649,6 +624,7 @@ namespace AmaigomaTests
          im164Positions = LoadDataSamples(im164Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count, 1);
          im10Positions = LoadDataSamples(im10Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count, 2);
          ti31149327_9330Positions = LoadDataSamples(ti31149327_9330Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count + im10Positions.Count, 3);
+         trainOptimizedPositions = LoadDataSamples(trainOptimizedRectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count + im10Positions.Count + ti31149327_9330Positions.Count, 0);
 
          Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
          Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
@@ -660,7 +636,7 @@ namespace AmaigomaTests
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
-         AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions).AddRange(im10Positions).AddRange(ti31149327_9330Positions), [integralImage507484246, integralImageim164, integralImageim10, integralImageti31149327_9330]);
+         AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions).AddRange(im10Positions).AddRange(ti31149327_9330Positions).AddRange(trainOptimizedPositions), [integralImage507484246, integralImageim164, integralImageim10, integralImageti31149327_9330]);
          AverageWindowFeature validationDataExtractor = new(validationPositions, [integralImage507484246]);
          AverageWindowFeature testDataExtractor = new(testPositions, [integralImage507484246]);
 
@@ -678,7 +654,9 @@ namespace AmaigomaTests
          AccuracyResult testAccuracyResult;
          AccuracyResult im164AccuracyResult;
          AccuracyResult im10AccuracyResult;
-         IEnumerable<int> allTrainIds = trainPositions.Keys.Take(216);
+         AccuracyResult ti31149327_9330AccuracyResult;
+         AccuracyResult trainOptimizedAccuracyResult;
+         IEnumerable<int> allTrainIds = trainPositions.Keys.Take(18);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
 
@@ -689,17 +667,23 @@ namespace AmaigomaTests
          testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
          im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
          im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
+         ti31149327_9330AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, ti31149327_9330Positions, trainTanukiETL);
+         trainOptimizedAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, trainOptimizedPositions, trainTanukiETL);
 
          PrintConfusionMatrix(trainAccuracyResult, "Train");
          PrintConfusionMatrix(validationAccuracyResult, "Validation");
          PrintConfusionMatrix(testAccuracyResult, "Test");
          PrintConfusionMatrix(im164AccuracyResult, "im164");
          PrintConfusionMatrix(im10AccuracyResult, "im10");
+         PrintConfusionMatrix(ti31149327_9330AccuracyResult, "ti31149327_9330");
+         PrintConfusionMatrix(trainOptimizedAccuracyResult, "TrainOptimized");
          PrintLeaveResults(trainAccuracyResult);
          PrintLeaveResults(validationAccuracyResult);
          PrintLeaveResults(testAccuracyResult);
          PrintLeaveResults(im164AccuracyResult);
          PrintLeaveResults(im10AccuracyResult);
+         PrintLeaveResults(ti31149327_9330AccuracyResult);
+         PrintLeaveResults(trainOptimizedAccuracyResult);
          PrintEnd();
 
          // UNDONE Add the appropriate validations here when the test is completed

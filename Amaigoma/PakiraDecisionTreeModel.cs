@@ -33,7 +33,7 @@ namespace Amaigoma
          }
          else
          {
-            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.Add(pakiraLeaf, ImmutableList<int>.Empty.Add(id)));
+            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.Add(pakiraLeaf, [id]));
          }
       }
 
@@ -45,7 +45,7 @@ namespace Amaigoma
          }
          else
          {
-            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.Add(pakiraLeaf, ids.ToImmutableList()));
+            return new PakiraDecisionTreeModel(Tree, LeafTrainDataCache.Add(pakiraLeaf, [.. ids]));
          }
       }
 

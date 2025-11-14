@@ -6,13 +6,6 @@ namespace Amaigoma
    using DataTransformer = Func<int, int, int>;
    using LabelExtractor = Func<int, int>;
 
-   public record SimpleSabotenCacheExtractor // ncrunch: no coverage
-   {
-      public SimpleSabotenCacheExtractor()
-      {
-      }
-   }
-
    // TODO Rename TanukiETL to something clearer like DataETL
    public sealed record TanukiETL // ncrunch: no coverage
    {
@@ -26,8 +19,6 @@ namespace Amaigoma
 
       public TanukiETL(DataTransformer dataTransformer, LabelExtractor labelExtractor, int featureCount)
       {
-         SimpleSabotenCacheExtractor simpleSabotenCacheExtractor = new();
-
          TanukiDataTransformer = dataTransformer;
          TanukiLabelExtractor = labelExtractor;
          TanukiFeatureCount = featureCount;
