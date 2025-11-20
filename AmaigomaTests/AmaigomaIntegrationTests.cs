@@ -370,11 +370,17 @@ namespace AmaigomaTests
       [
          new Rectangle(82, 149, 3, 3),
          new Rectangle(20, 420, 3, 3),
+         new Rectangle(291, 18, 3, 3),
+         new Rectangle(236, 39, 3, 3),
+         new Rectangle(315, 54, 3, 3),
       ];
 
       static private readonly ImmutableList<int> trainOptimized_507484246_Labels =
       [
          uppercaseA,
+         other,
+         other,
+         other,
          other,
       ];
 
@@ -648,7 +654,7 @@ namespace AmaigomaTests
          TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
          TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
 
-         PakiraDecisionTreeModel initialPakiraDecisionTreeModel = new();
+         PakiraDecisionTreeModel decisionTreeModel = new();
          AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
          AccuracyResult testAccuracyResult;
@@ -656,19 +662,35 @@ namespace AmaigomaTests
          AccuracyResult im10AccuracyResult;
          AccuracyResult ti31149327_9330AccuracyResult;
          AccuracyResult trainOptimizedAccuracyResult;
-         IEnumerable<int> allTrainIds = trainPositions.Keys.Take(18);
+         IEnumerable<int> allTrainIds = trainOptimizedPositions.Keys.Take(18);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
+         decisionTreeModel = pakiraGenerator.Generate(decisionTreeModel, allTrainIds, trainTanukiETL);
 
-         pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(initialPakiraDecisionTreeModel, allTrainIds, trainTanukiETL);
+         trainAccuracyResult = ComputeAccuracy(decisionTreeModel, trainPositions, trainTanukiETL);
 
-         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, trainPositions, trainTanukiETL);
-         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, validationPositions, validationTanukiETL);
-         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
-         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
-         im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
-         ti31149327_9330AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, ti31149327_9330Positions, trainTanukiETL);
-         trainOptimizedAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, trainOptimizedPositions, trainTanukiETL);
+         allTrainIds = allTrainIds.Union(trainOptimizedPositions.Keys.Skip(18).Take(9));
+         decisionTreeModel = pakiraGenerator.Generate(decisionTreeModel, allTrainIds, trainTanukiETL);
+         trainAccuracyResult = ComputeAccuracy(decisionTreeModel, trainPositions, trainTanukiETL);
+
+         allTrainIds = allTrainIds.Union(trainOptimizedPositions.Keys.Skip(27).Take(9));
+         decisionTreeModel = pakiraGenerator.Generate(decisionTreeModel, allTrainIds, trainTanukiETL);
+         trainAccuracyResult = ComputeAccuracy(decisionTreeModel, trainPositions, trainTanukiETL);
+
+         allTrainIds = allTrainIds.Union(trainOptimizedPositions.Keys.Skip(36).Take(9));
+         decisionTreeModel = pakiraGenerator.Generate(decisionTreeModel, allTrainIds, trainTanukiETL);
+         trainAccuracyResult = ComputeAccuracy(decisionTreeModel, trainPositions, trainTanukiETL);
+
+         // UNDONE Try to save ONLY the leaf with the most false positive samples first as first strategy. But also test by saving the one with the least false positive too.
+         // UNDONE The validation set leaves should be used to identify which leaves to save and add in the train data
+         // UNDONE Document the strategy used step-by-step, with the reason for each decision
+         SaveImage(trainAccuracyResult.falsePositives, trainPositions, "TestImage.png");
+
+         validationAccuracyResult = ComputeAccuracy(decisionTreeModel, validationPositions, validationTanukiETL);
+         testAccuracyResult = ComputeAccuracy(decisionTreeModel, testPositions, testTanukiETL);
+         im164AccuracyResult = ComputeAccuracy(decisionTreeModel, im164Positions, trainTanukiETL);
+         im10AccuracyResult = ComputeAccuracy(decisionTreeModel, im10Positions, trainTanukiETL);
+         ti31149327_9330AccuracyResult = ComputeAccuracy(decisionTreeModel, ti31149327_9330Positions, trainTanukiETL);
+         trainOptimizedAccuracyResult = ComputeAccuracy(decisionTreeModel, trainOptimizedPositions, trainTanukiETL);
 
          PrintConfusionMatrix(trainAccuracyResult, "Train");
          PrintConfusionMatrix(validationAccuracyResult, "Validation");
@@ -694,6 +716,26 @@ namespace AmaigomaTests
          //testAccuracyResult.leavesBefore.Count.ShouldBe(91);
          //im164AccuracyResult.leavesAfter.Count.ShouldBe(91);
          //im10AccuracyResult.leavesAfter.Count.ShouldBe(91);
+      }
+
+      private void SaveImage(ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> falsePositives, ImmutableDictionary<int, SampleData> positions, string imageName)
+      {
+         Rgba32 color = new(0, 0, 255, 255);
+
+         using (Image<Rgba32> image = new Image<Rgba32>(1000, 1000))
+         {
+            foreach (var kvp in falsePositives)
+            {
+               foreach (int id in kvp.Value)
+               {
+                  Point position = positions[id].Position;
+
+                  image[position.X, position.Y] = color;
+               }
+            }
+
+            image.SaveAsPng(imageName);
+         }
       }
 
       private void PrintConfusionMatrix(AccuracyResult accuracyResult, string title)
