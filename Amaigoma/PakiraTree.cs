@@ -23,13 +23,13 @@ namespace Amaigoma
 
       public PakiraTree()
       {
-         nodes = ImmutableDictionary<int, BinaryTreeNodeInternal>.Empty;
-         leaves = ImmutableDictionary<int, BinaryTreeLeafInternal>.Empty;
+         nodes = [];
+         leaves = [];
       }
 
       public PakiraTree(int label)
       {
-         nodes = ImmutableDictionary<int, BinaryTreeNodeInternal>.Empty;
+         nodes = [];
          leaves = ImmutableDictionary<int, BinaryTreeLeafInternal>.Empty.Add(0, new BinaryTreeLeafInternal { labelValue = label });
       }
 

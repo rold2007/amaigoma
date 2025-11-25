@@ -86,7 +86,7 @@ namespace AmaigomaTests
             {
                for (int windowOffsetX = -windowOffset; windowOffsetX <= windowOffset; windowOffsetX += windowSize)
                {
-                  Point pixelPosition = new Point(FeatureHalfWindowSize + windowOffsetX, FeatureHalfWindowSize + windowOffsetY);
+                  Point pixelPosition = new(FeatureHalfWindowSize + windowOffsetX, FeatureHalfWindowSize + windowOffsetY);
                   int manuallyConvertedValue = 0;
 
                   for (int y = pixelPosition.Y - averageTransformerHalfSize; y <= pixelPosition.Y + averageTransformerHalfSize; y++)

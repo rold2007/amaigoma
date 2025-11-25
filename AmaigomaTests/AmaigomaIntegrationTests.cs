@@ -59,8 +59,8 @@ namespace AmaigomaTests
    {
       public ImmutableHashSet<BinaryTreeLeaf> leavesBefore;
       public ImmutableHashSet<BinaryTreeLeaf> leavesAfter;
-      public ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> truePositives = ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>>.Empty;
-      public ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> falsePositives = ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>>.Empty;
+      public ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> truePositives = [];
+      public ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> falsePositives = [];
 
       public AccuracyResult()
       {
@@ -102,8 +102,8 @@ namespace AmaigomaTests
             {
                double splitValue = transformedData.Average();
 
-               ImmutableDictionary<int, int> leftLabelTotalCount = ImmutableDictionary<int, int>.Empty;
-               ImmutableDictionary<int, int> rightLabelTotalCount = ImmutableDictionary<int, int>.Empty;
+               ImmutableDictionary<int, int> leftLabelTotalCount = [];
+               ImmutableDictionary<int, int> rightLabelTotalCount = [];
                int leftTotalCount = 0;
                int rightTotalCount = 0;
 
@@ -165,7 +165,7 @@ namespace AmaigomaTests
          double bestFeatureSplit = 128.0;
 
          // TODO No need to keep all entropies, only the best one
-         ImmutableList<double> weigthedEntropies = ImmutableList<double>.Empty;
+         ImmutableList<double> weigthedEntropies = [];
          ImmutableList<int> sampleIds = [.. ids];
 
          for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
@@ -186,8 +186,8 @@ namespace AmaigomaTests
 
                for (int splitValue = minValue; splitValue < maxValue; splitValue++)
                {
-                  ImmutableDictionary<int, int> leftLabelTotalCount = ImmutableDictionary<int, int>.Empty;
-                  ImmutableDictionary<int, int> rightLabelTotalCount = ImmutableDictionary<int, int>.Empty;
+                  ImmutableDictionary<int, int> leftLabelTotalCount = [];
+                  ImmutableDictionary<int, int> rightLabelTotalCount = [];
                   int leftTotalCount = 0;
                   int rightTotalCount = 0;
 
@@ -370,9 +370,15 @@ namespace AmaigomaTests
       [
          new Rectangle(82, 149, 3, 3),
          new Rectangle(20, 420, 3, 3),
-         new Rectangle(291, 18, 3, 3),
-         new Rectangle(236, 39, 3, 3),
-         new Rectangle(315, 54, 3, 3),
+         new Rectangle(290, 17, 3, 3),
+         new Rectangle(296, 17, 3, 3),
+         new Rectangle(537, 54, 3, 3),
+         new Rectangle(657, 55, 3, 3),
+         new Rectangle(566, 59, 3, 3),
+         new Rectangle(585, 59, 3, 3),
+         new Rectangle(134, 424, 3, 3),
+         new Rectangle(51, 472, 3, 3),
+         new Rectangle(180, 212, 3, 3),
       ];
 
       static private readonly ImmutableList<int> trainOptimized_507484246_Labels =
@@ -382,6 +388,12 @@ namespace AmaigomaTests
          other,
          other,
          other,
+         other,
+         other,
+         other,
+         other,
+         other,
+         uppercaseA,
       ];
 
       static public IEnumerable<object[]> GetUppercaseA_507484246_Data()
@@ -416,7 +428,7 @@ namespace AmaigomaTests
 
       static private ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex, int integralImageIndex)
       {
-         ImmutableDictionary<int, SampleData> result = ImmutableDictionary<int, SampleData>.Empty;
+         ImmutableDictionary<int, SampleData> result = [];
 
          foreach (RegionLabel regionLabel in rectangles)
          {
@@ -484,8 +496,8 @@ namespace AmaigomaTests
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       public void UppercaseA_507484246_Baseline(DataSet dataSet)
       {
-         ImmutableDictionary<string, Image<L8>> sourceImages = ImmutableDictionary<string, Image<L8>>.Empty;
-         ImmutableDictionary<string, Buffer2D<ulong>> integralImages = ImmutableDictionary<string, Buffer2D<ulong>>.Empty;
+         ImmutableDictionary<string, Image<L8>> sourceImages = [];
+         ImmutableDictionary<string, Buffer2D<ulong>> integralImages = [];
          ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
          ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
          ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
@@ -589,8 +601,8 @@ namespace AmaigomaTests
       // UNDONE Complete this integration test
       public void UppercaseA_507484246_AccuracyOptimized(DataSet dataSet)
       {
-         ImmutableDictionary<string, Image<L8>> sourceImages = ImmutableDictionary<string, Image<L8>>.Empty;
-         ImmutableDictionary<string, Buffer2D<ulong>> integralImages = ImmutableDictionary<string, Buffer2D<ulong>>.Empty;
+         ImmutableDictionary<string, Image<L8>> sourceImages = [];
+         ImmutableDictionary<string, Buffer2D<ulong>> integralImages = [];
          ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
          ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
          ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
@@ -646,6 +658,7 @@ namespace AmaigomaTests
          AverageWindowFeature validationDataExtractor = new(validationPositions, [integralImage507484246]);
          AverageWindowFeature testDataExtractor = new(testPositions, [integralImage507484246]);
 
+         // UNDONE Add random features which will act as honeypot to identify overfitting
          trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
          validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
          testDataExtractor.AddAverageTransformer(averageTransformerSizes);
@@ -655,41 +668,45 @@ namespace AmaigomaTests
          TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
 
          PakiraDecisionTreeModel decisionTreeModel = new();
-         AccuracyResult trainAccuracyResult;
-         AccuracyResult validationAccuracyResult;
-         AccuracyResult testAccuracyResult;
-         AccuracyResult im164AccuracyResult;
-         AccuracyResult im10AccuracyResult;
-         AccuracyResult ti31149327_9330AccuracyResult;
-         AccuracyResult trainOptimizedAccuracyResult;
-         IEnumerable<int> allTrainIds = trainOptimizedPositions.Keys.Take(18);
+         AccuracyResult trainAccuracyResult = new();
+         AccuracyResult validationAccuracyResult = new();
+         AccuracyResult testAccuracyResult = new();
+         AccuracyResult im164AccuracyResult = new();
+         AccuracyResult im10AccuracyResult = new();
+         AccuracyResult ti31149327_9330AccuracyResult = new();
+         AccuracyResult trainOptimizedAccuracyResult = new();
+         IEnumerable<int> allTrainIds;
 
-         decisionTreeModel = pakiraGenerator.Generate(decisionTreeModel, allTrainIds, trainTanukiETL);
+         int takeCount = 18;
+         int iteration = 0;
 
-         trainAccuracyResult = ComputeAccuracy(decisionTreeModel, trainPositions, trainTanukiETL);
+         while (takeCount <= trainOptimizedPositions.Count)
+         {
+            allTrainIds = trainOptimizedPositions.Keys.Take(takeCount);
 
-         allTrainIds = allTrainIds.Union(trainOptimizedPositions.Keys.Skip(18).Take(9));
-         decisionTreeModel = pakiraGenerator.Generate(decisionTreeModel, allTrainIds, trainTanukiETL);
-         trainAccuracyResult = ComputeAccuracy(decisionTreeModel, trainPositions, trainTanukiETL);
+            decisionTreeModel = pakiraGenerator.Generate(decisionTreeModel, allTrainIds, trainTanukiETL);
 
-         allTrainIds = allTrainIds.Union(trainOptimizedPositions.Keys.Skip(27).Take(9));
-         decisionTreeModel = pakiraGenerator.Generate(decisionTreeModel, allTrainIds, trainTanukiETL);
-         trainAccuracyResult = ComputeAccuracy(decisionTreeModel, trainPositions, trainTanukiETL);
+            trainAccuracyResult = ComputeAccuracy(decisionTreeModel, trainPositions, trainTanukiETL);
+            validationAccuracyResult = ComputeAccuracy(decisionTreeModel, validationPositions, validationTanukiETL);
+            testAccuracyResult = ComputeAccuracy(decisionTreeModel, testPositions, testTanukiETL);
+            im164AccuracyResult = ComputeAccuracy(decisionTreeModel, im164Positions, trainTanukiETL);
+            im10AccuracyResult = ComputeAccuracy(decisionTreeModel, im10Positions, trainTanukiETL);
+            ti31149327_9330AccuracyResult = ComputeAccuracy(decisionTreeModel, ti31149327_9330Positions, trainTanukiETL);
 
-         allTrainIds = allTrainIds.Union(trainOptimizedPositions.Keys.Skip(36).Take(9));
-         decisionTreeModel = pakiraGenerator.Generate(decisionTreeModel, allTrainIds, trainTanukiETL);
-         trainAccuracyResult = ComputeAccuracy(decisionTreeModel, trainPositions, trainTanukiETL);
+            // UNDONE Try to save ONLY the leaf with the most false positive samples first as first strategy. But also test by saving the one with the least false positive too.
+            // UNDONE The validation set leaves should be used to identify which leaves to save and add in the train data
+            // UNDONE Document the strategy used step-by-step, with the reason for each decision
+            SaveAllImages(trainAccuracyResult.falsePositives, trainPositions, $"TrainImage_{iteration}", new(0, 0, 255, 255));
+            SaveAllImages(validationAccuracyResult.falsePositives, validationPositions, $"ValidationImage_{iteration}", new(255, 0, 0, 255));
+            SaveAllImages(testAccuracyResult.falsePositives, testPositions, $"TestImage_{iteration}", new(255, 0, 0, 255));
+            SaveAllImages(im164AccuracyResult.falsePositives, im164Positions, $"im164Image_{iteration}", new(255, 0, 0, 255));
+            SaveAllImages(im10AccuracyResult.falsePositives, im10Positions, $"im10Image_{iteration}", new(255, 0, 0, 255));
+            SaveAllImages(ti31149327_9330AccuracyResult.falsePositives, ti31149327_9330Positions, $"ti31149327_9330Image_{iteration}", new(255, 0, 0, 255));
 
-         // UNDONE Try to save ONLY the leaf with the most false positive samples first as first strategy. But also test by saving the one with the least false positive too.
-         // UNDONE The validation set leaves should be used to identify which leaves to save and add in the train data
-         // UNDONE Document the strategy used step-by-step, with the reason for each decision
-         SaveImage(trainAccuracyResult.falsePositives, trainPositions, "TestImage.png");
+            takeCount += 9;
+            iteration++;
+         }
 
-         validationAccuracyResult = ComputeAccuracy(decisionTreeModel, validationPositions, validationTanukiETL);
-         testAccuracyResult = ComputeAccuracy(decisionTreeModel, testPositions, testTanukiETL);
-         im164AccuracyResult = ComputeAccuracy(decisionTreeModel, im164Positions, trainTanukiETL);
-         im10AccuracyResult = ComputeAccuracy(decisionTreeModel, im10Positions, trainTanukiETL);
-         ti31149327_9330AccuracyResult = ComputeAccuracy(decisionTreeModel, ti31149327_9330Positions, trainTanukiETL);
          trainOptimizedAccuracyResult = ComputeAccuracy(decisionTreeModel, trainOptimizedPositions, trainTanukiETL);
 
          PrintConfusionMatrix(trainAccuracyResult, "Train");
@@ -718,24 +735,33 @@ namespace AmaigomaTests
          //im10AccuracyResult.leavesAfter.Count.ShouldBe(91);
       }
 
-      private void SaveImage(ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> falsePositives, ImmutableDictionary<int, SampleData> positions, string imageName)
+      private static void SaveAllImages(ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> falsePositives, ImmutableDictionary<int, SampleData> positions, string imageName, Rgba32 color)
       {
-         Rgba32 color = new(0, 0, 255, 255);
-
-         using (Image<Rgba32> image = new Image<Rgba32>(1000, 1000))
+         using Image<Rgba32> image = new(1000, 1000);
+         foreach (var kvp in falsePositives)
          {
-            foreach (var kvp in falsePositives)
+            foreach (int id in kvp.Value)
             {
-               foreach (int id in kvp.Value)
-               {
-                  Point position = positions[id].Position;
+               Point position = positions[id].Position;
 
-                  image[position.X, position.Y] = color;
-               }
+               image[position.X, position.Y] = color;
             }
 
-            image.SaveAsPng(imageName);
+            SaveImage(kvp.Value, positions, imageName + $"_{kvp.Key.id}_{kvp.Key.labelValue}_{kvp.Value.Count}" + $"" + ".png", color);
          }
+      }
+
+      private static void SaveImage(ImmutableList<int> ids, ImmutableDictionary<int, SampleData> positions, string imageName, Rgba32 color)
+      {
+         using Image<Rgba32> image = new(1000, 1000);
+         foreach (int id in ids)
+         {
+            Point position = positions[id].Position;
+
+            image[position.X, position.Y] = color;
+         }
+
+         image.SaveAsPng(imageName);
       }
 
       private void PrintConfusionMatrix(AccuracyResult accuracyResult, string title)

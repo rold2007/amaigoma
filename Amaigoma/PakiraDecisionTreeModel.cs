@@ -8,7 +8,7 @@ namespace Amaigoma
    {
       public PakiraTree Tree { get; } = new();
 
-      private ImmutableDictionary<int, ImmutableList<int>> LeafTrainDataCache { get; } = ImmutableDictionary<int, ImmutableList<int>>.Empty;
+      private ImmutableDictionary<int, ImmutableList<int>> LeafTrainDataCache { get; } = [];
 
       public PakiraDecisionTreeModel()
       {

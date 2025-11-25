@@ -45,11 +45,11 @@ namespace Amaigoma
       {
          Samples = positions;
 
-         RowSpansPerIntegralImage = ImmutableList<ImmutableList<ReadOnlyMemory<ulong>>>.Empty;
+         RowSpansPerIntegralImage = [];
 
          foreach (Buffer2D<ulong> integralImage in integralImages)
          {
-            ImmutableList<ReadOnlyMemory<ulong>> rowSpans = ImmutableList<ReadOnlyMemory<ulong>>.Empty;
+            ImmutableList<ReadOnlyMemory<ulong>> rowSpans = [];
 
             // Empty line of zeros for the integral
             rowSpans = rowSpans.Add(new ReadOnlyMemory<ulong>([.. Enumerable.Repeat<ulong>(0, integralImage.Width + 1)]));

@@ -88,7 +88,7 @@ namespace Amaigoma
 
       private PakiraDecisionTreeModel BuildTree(PakiraDecisionTreeModel pakiraDecisionTreeModel, TanukiETL tanukiETL)
       {
-         ImmutableList<int> retrainLeaves = ImmutableList<int>.Empty;
+         ImmutableList<int> retrainLeaves = [];
 
          // Identify all the leaves to retrain
          foreach (int leaf in pakiraDecisionTreeModel.Tree.Leaves().Where(leaf =>

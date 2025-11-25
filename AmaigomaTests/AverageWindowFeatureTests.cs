@@ -54,7 +54,7 @@ namespace AmaigomaTests
 
          Random RandomSource = new(randomSeed);
          System.Drawing.Size imageSize = new(FeatureFullWindowSize, FeatureFullWindowSize);
-         ImmutableDictionary<int, SampleData> positions = ImmutableDictionary<int, SampleData>.Empty;
+         ImmutableDictionary<int, SampleData> positions = [];
 
          // Fill image with random data
          byte[] bytes = new byte[imageSize.Width * imageSize.Height];
@@ -129,7 +129,7 @@ namespace AmaigomaTests
       {
          const int FeatureFullWindowSize = 17;
          System.Drawing.Size imageSize = new(16, 16);
-         ImmutableDictionary<int, SampleData> positions = ImmutableDictionary<int, SampleData>.Empty;
+         ImmutableDictionary<int, SampleData> positions = [];
          Image<L8> image = new(imageSize.Width, imageSize.Height);
          Buffer2D<ulong> integralImage = image.CalculateIntegralImage();
 
