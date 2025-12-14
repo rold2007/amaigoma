@@ -24,8 +24,6 @@ namespace AmaigomaTests
 
          for (int windowSize = 1; windowSize < (FeatureFullWindowSize + 1); windowSize += 2)
          {
-            double windowSizeSquaredInverted = 1.0 / (windowSize * windowSize);
-
             AverageTransformer averageTransformer = new(windowSize, FeatureFullWindowSize);
 
             byte[] bytes = new byte[FeatureFullWindowSize * FeatureFullWindowSize];
@@ -75,11 +73,8 @@ namespace AmaigomaTests
 
             int windowCount = (FeatureFullWindowSize - windowSize) / windowSize;
             int halfWindowCount = windowCount / 2;
-            int usedWidth = windowCount * windowSize;
             int averageTransformerHalfSize = windowSize / 2;
-            int windowOffset = FeatureHalfWindowSize - averageTransformerHalfSize;
-
-            windowOffset = halfWindowCount * windowSize;
+            int windowOffset = halfWindowCount * windowSize;
 
             // TODO This logic was copy pasted and slightly modified from AverageTransformer.cs. It could be simplified and/or shared.
             for (int windowOffsetY = -windowOffset; windowOffsetY <= windowOffset; windowOffsetY += windowSize)
