@@ -119,9 +119,15 @@ namespace Amaigoma
             int rightLabel = PrepareTreeLeavelabel(updatedDataSamples[false], tanukiETL);
 
             (PakiraTree tree, int leftLeafId, int rightLeafId) = pakiraDecisionTreeModel.Tree.ReplaceLeaf(leafId, featureIndex, splitThreshold, leftLabel, rightLabel);
+
             pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(tree);
 
             pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(leafId);
+
+            // TODO Add clear error message for each Shouldly call
+            updatedDataSamples[true].ShouldNotBeEmpty();
+            updatedDataSamples[key: false].ShouldNotBeEmpty();
+
             pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(leftLeafId, updatedDataSamples[true]);
             pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(rightLeafId, updatedDataSamples[false]);
 
