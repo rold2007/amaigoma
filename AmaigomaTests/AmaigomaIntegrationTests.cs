@@ -1069,10 +1069,6 @@ namespace AmaigomaTests
          AverageWindowFeature validationDataExtractor = new(validationPositions, [integralImage507484246]);
          AverageWindowFeature testDataExtractor = new(testPositions, [integralImage507484246]);
 
-         // UNDONE Add random features which will act as honeypot to identify overfitting
-         // UNDONE Invert the result of each node one after the other. This will help identify nodes that are no better than random.
-         // If inverting a node's decision does not significantly impact accuracy, it suggests that the node may not be contributing
-         // meaningful information and could be a candidate for removal or further scrutiny. This requires to have enough samples per leaf to be statistically relevant.
          trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
          validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
          testDataExtractor.AddAverageTransformer(averageTransformerSizes);
@@ -1117,9 +1113,8 @@ namespace AmaigomaTests
          //ti31149327_9330AccuracyResult = ComputeAccuracy(decisionTreeModel, ti31149327_9330Positions, trainTanukiETL);
          //trainOptimizedAccuracyResult = ComputeAccuracy(decisionTreeModel, trainOptimizedPositions, trainTanukiETL);
 
-         //// UNDONE Try to save ONLY the leaf with the most false positive samples first as first strategy. But also test by saving the one with the least false positive too.
-         //// UNDONE The validation set leaves should be used to identify which leaves to save and add in the train data
-         //// UNDONE Document the strategy used step-by-step, with the reason for each decision
+         //// TODO Try to save ONLY the leaf with the most false positive samples first as first strategy. But also test by saving the one with the least false positive too.
+         //// TODO The validation set leaves should be used to identify which leaves to save and add in the train data
          //SaveAllImages(trainAccuracyResult.falsePositives, trainPositions, $"TrainImage_{trainOptimizedPositions.Count}", new(0, 0, 255, 255));
          //SaveAllImages(validationAccuracyResult.falsePositives, validationPositions, $"ValidationImage_{trainOptimizedPositions.Count}", new(255, 0, 0, 255));
          //SaveAllImages(testAccuracyResult.falsePositives, testPositions, $"TestImage_{trainOptimizedPositions.Count}", new(255, 0, 0, 255));
@@ -1294,6 +1289,11 @@ namespace AmaigomaTests
 
          bestSplitLogic = new(idWeight);
 
+         // UNDONE Document the strategy used step-by-step, with the reason for each decision
+         // UNDONE Add random features which will act as honeypot to identify overfitting
+         // UNDONE Invert the result of each node one after the other. This will help identify nodes that are no better than random.
+         // If inverting a node's decision does not significantly impact accuracy, it suggests that the node may not be contributing
+         // meaningful information and could be a candidate for removal or further scrutiny. This requires to have enough samples per leaf to be statistically relevant.
          PakiraDecisionTreeGenerator pakiraGenerator2 = new(bestSplitLogic.GetBestSplitClustering2);
 
          pakiraDecisionTreeModelAllData = pakiraGenerator2.Generate(new(), trainPositions.Keys/*allDataSamples*/, trainTanukiETL);
@@ -1319,13 +1319,13 @@ namespace AmaigomaTests
          PrintLeaveResults(ti31149327_9330AccuracyResult);
          PrintEnd();
 
-         //trainAccuracyResult.leavesAfter.Count.ShouldBe(91);
-         //validationAccuracyResult.leavesAfter.Count.ShouldBe(71);
-         //validationAccuracyResult.leavesBefore.Count.ShouldBe(91);
-         //testAccuracyResult.leavesAfter.Count.ShouldBe(76);
-         //testAccuracyResult.leavesBefore.Count.ShouldBe(91);
-         //im164AccuracyResult.leavesAfter.Count.ShouldBe(91);
-         //im10AccuracyResult.leavesAfter.Count.ShouldBe(91);
+         trainAccuracyResult.leavesBefore.Count.ShouldBe(43);
+         trainAccuracyResult.leavesAfter.Count.ShouldBe(43);
+         validationAccuracyResult.leavesAfter.Count.ShouldBe(36);
+         testAccuracyResult.leavesAfter.Count.ShouldBe(36);
+         im164AccuracyResult.leavesAfter.Count.ShouldBe(43);
+         im10AccuracyResult.leavesAfter.Count.ShouldBe(43);
+         ti31149327_9330AccuracyResult.leavesAfter.Count.ShouldBe(39);
       }
 
       private static void SaveAllImages(ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> falsePositives, ImmutableDictionary<int, SampleData> positions, string imageName, Rgba32 color)
@@ -1371,7 +1371,7 @@ namespace AmaigomaTests
             {
                int truePositivesCount = accuracyResult.truePositives.GetValueOrDefault(leaf, []).Count;
 
-               //output.WriteLine("Leaf: Id: {3} Label:{0} - {1} true positives, {2} false positives", String.Join(" ", leaf.labelValue.ToString()), truePositivesCount, falsePositivesCount, leaf.id);
+               output.WriteLine("Leaf: Id: {3} Label:{0} - {1} true positives, {2} false positives", String.Join(" ", leaf.labelValue.ToString()), truePositivesCount, falsePositivesCount, leaf.id);
                totalFalsePositivesCount += falsePositivesCount;
             }
          }
