@@ -80,13 +80,25 @@ namespace Amaigoma
          ImmutableDictionary<int, BinaryTreeNodeInternal> updatedNodes = nodes;
          BinaryTreeNodeInternal newNode = (featureIndex, splitThreshold, NextId, NextId + 1);
 
-         updatedLeaves = updatedLeaves.Add(newNode.leftNodeIndex, new BinaryTreeLeafInternal { labelValue = leftLabel /*, parentNodeIndex = nodeId*/ });
-         updatedLeaves = updatedLeaves.Add(newNode.rightNodeIndex, new BinaryTreeLeafInternal { labelValue = rightLabel /*, parentNodeIndex = nodeId*/ });
+         updatedLeaves = updatedLeaves.Add(newNode.leftNodeIndex, new BinaryTreeLeafInternal { labelValue = leftLabel });
+         updatedLeaves = updatedLeaves.Add(newNode.rightNodeIndex, new BinaryTreeLeafInternal { labelValue = rightLabel });
          updatedLeaves = updatedLeaves.Remove(nodeId);
 
          updatedNodes = updatedNodes.Add(nodeId, newNode);
 
          return (new PakiraTree(updatedNodes, updatedLeaves), newNode.leftNodeIndex, newNode.rightNodeIndex);
+      }
+
+      public PakiraTree ReplaceLeafValues(ImmutableDictionary<int, int> leafIdETL)
+      {
+         ImmutableDictionary<int, BinaryTreeLeafInternal> updatedLeaves = leaves;
+
+         foreach(var kvp in leaves)
+         {
+            updatedLeaves = updatedLeaves.SetItem(kvp.Key, new BinaryTreeLeafInternal { labelValue = leafIdETL[kvp.Value.labelValue] });
+         }
+
+         return new PakiraTree(nodes, updatedLeaves);
       }
    }
 }
