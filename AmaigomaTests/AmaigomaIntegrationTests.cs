@@ -1,4 +1,5 @@
-﻿global using BinaryTreeLeaf = (int id, int labelValue);
+﻿global using BinaryTreeNode = (int id, int featureIndex, double splitThreshold, int leftNodeIndex, int rightNodeIndex);
+global using BinaryTreeLeaf = (int id, int labelValue);
 
 using Amaigoma;
 using Shouldly;
@@ -135,7 +136,7 @@ namespace AmaigomaTests
          // TODO No need to keep all entropies, only the best one
          ImmutableList<double> weigthedEntropies = [];
 
-         // UNDONE This Take(1000) should take 1000 of each class and make sure to spread the take over the whole dataset otherwise all samples will be similar
+         // TODO This Take(1000) should take 1000 of each class and make sure to spread the take over the whole dataset otherwise all samples will be similar
          ImmutableList<int> sampleIds = [.. ids.Take(1000)];
 
          for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
@@ -966,16 +967,16 @@ namespace AmaigomaTests
          return result;
       }
 
-      static private AccuracyResult ComputeAccuracy(PakiraDecisionTreeModel pakiraDecisionTreeModel, ImmutableDictionary<int, SampleData> positions, TanukiETL tanukiETL)
+      static private AccuracyResult ComputeAccuracy(PakiraTree tree, ImmutableDictionary<int, SampleData> positions, TanukiETL tanukiETL)
       {
          IEnumerable<int> ids = positions.Keys;
-         ImmutableHashSet<BinaryTreeLeaf> leaves = [.. pakiraDecisionTreeModel.Tree.Leaves()];
+         ImmutableHashSet<BinaryTreeLeaf> leaves = [.. tree.Leaves()];
          AccuracyResult accuracyResult = new()
          {
             leavesBefore = leaves
          };
 
-         PakiraTreeWalker pakiraTreeWalker = new(pakiraDecisionTreeModel.Tree, tanukiETL);
+         PakiraTreeWalker pakiraTreeWalker = new(tree, tanukiETL);
 
          foreach (int id in ids)
          {
@@ -1090,11 +1091,11 @@ namespace AmaigomaTests
 
          pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(initialPakiraDecisionTreeModel, allTrainIds, trainTanukiETL);
 
-         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, trainPositions, trainTanukiETL);
-         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, validationPositions, validationTanukiETL);
-         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
-         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
-         im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
+         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, trainPositions, trainTanukiETL);
+         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, validationPositions, validationTanukiETL);
+         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, testPositions, testTanukiETL);
+         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, im164Positions, trainTanukiETL);
+         im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, im10Positions, trainTanukiETL);
 
          PrintConfusionMatrix(trainAccuracyResult, "Train");
          PrintConfusionMatrix(validationAccuracyResult, "Validation");
@@ -1188,14 +1189,12 @@ namespace AmaigomaTests
          AccuracyResult im164AccuracyResult;
          AccuracyResult im10AccuracyResult;
          AccuracyResult ti31149327_9330AccuracyResult = new();
-         IEnumerable<int> allTrainIds;
-
-         allTrainIds = trainPositions.Keys.Take(108).Union(trainPositions.Keys.Skip(108).Shuffle().Take(1000));
 
          PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
 
          // Generate initial model for clustering
-         // UNDONE Find a better way to do the initial clustering so that it is not dependent on the data distribution. Maybe consider all samples to be of a different class and then merge the leaves which have the same original class?
+         // TODO Find a better way to do the initial clustering so that it is not dependent on the data distribution. Maybe consider all samples to be of a different class and then merge the leaves which have the same original class?
+         // TODO Try not to use ALL data for the initial clustering. This will require to assign a new class to train data which were not seen yet. For "false positives" leaves, make sure to assign a different class based on the original class.
          pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(new(), trainPositions.Keys, trainTanukiETL);
 
          ImmutableDictionary<int, ImmutableDictionary<int, int>> leafIdLabelDataId = [];
@@ -1264,16 +1263,17 @@ namespace AmaigomaTests
          //bestSplitLogic = new(idWeight);
 
          // UNDONE Document the strategy used step-by-step, with the reason for each decision
+         // 0- Add more features OR data to see if the accuracy can be improved furthermore
          // 1- Create initial tree with a partial training set. This will allow to use the rest of the training set to evaluate if the accuracy can be improved by adding data.
          // 2- To improve the accuracy, add more train data, add more features or prune weak tree nodes.
-         // UNDONE Add random features which will act as honeypot to identify overfitting
-         // UNDONE Invert the result of each node one after the other. This will help identify nodes that are no better than random.
+         // TODO Add random features which will act as honeypot to identify overfitting
+         // TODO Invert the result of each node one after the other. This will help identify nodes that are no better than random. Doesn't seem to work well.
          // If inverting a node's decision does not significantly impact accuracy, it suggests that the node may not be contributing
          // meaningful information and could be a candidate for removal or further scrutiny. This requires to have enough samples per leaf to be statistically relevant.
          //PakiraDecisionTreeGenerator pakiraGenerator2 = new(bestSplitLogic.GetBestSplitClustering2);
          PakiraDecisionTreeGenerator pakiraGenerator2 = new(bestSplitLogic.GetBestSplitClustering3);
 
-         // UNDONE Les sous-classes seront conserveees dans le pakira generator. Chaque training va assigner de nouvelles sous-classes en fonction de la leaf ou est tombe le sample. De cette facon, pas besoin de weigths en floating-point. On peut facilement ajouter de nouveaux samples a mesure et ils auront leur sous-classe automatiquement. Utiliser quand meme tout le data de train pour avoir toute la plage de distribution, mais ne calcuer lentropie que sur un sample de chaque cluster. Non, tout utiliser tout le temps sinon on depend trop de quel sample on a choisit. A la fin il faudra peut-être eliminer les nodes du haut en faisant des swap de condition.
+         // TODO Les sous-classes seront conserveees dans le pakira generator. Chaque training va assigner de nouvelles sous-classes en fonction de la leaf ou est tombe le sample. De cette facon, pas besoin de weigths en floating-point. On peut facilement ajouter de nouveaux samples a mesure et ils auront leur sous-classe automatiquement. Utiliser quand meme tout le data de train pour avoir toute la plage de distribution, mais ne calcuer lentropie que sur un sample de chaque cluster. Non, tout utiliser tout le temps sinon on depend trop de quel sample on a choisit. A la fin il faudra peut-être eliminer les nodes du haut en faisant des swap de condition.
 
          //56: 
          //48: 3, 194, 9x9
@@ -1295,25 +1295,48 @@ namespace AmaigomaTests
          pakiraDecisionTreeModelAllData = pakiraGenerator2.Generate(new(), trainPositions.Keys, clusteringTanukiETL);
          pakiraDecisionTreeModelAllData = pakiraDecisionTreeModelAllData.UpdateTree(pakiraDecisionTreeModelAllData.Tree.ReplaceLeafValues(leafIdETL));
 
-         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, trainPositions, trainTanukiETL);
-         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, validationPositions, validationTanukiETL);
-         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
-         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
-         im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
-         ti31149327_9330AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, ti31149327_9330Positions, trainTanukiETL);
+         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, trainPositions, trainTanukiETL);
+         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, validationPositions, validationTanukiETL);
+         //testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
+         //im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
+         //im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
+         //ti31149327_9330AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, ti31149327_9330Positions, trainTanukiETL);
 
          PrintConfusionMatrix(trainAccuracyResult, "Train");
          PrintConfusionMatrix(validationAccuracyResult, "Validation");
-         PrintConfusionMatrix(testAccuracyResult, "Test");
-         PrintConfusionMatrix(im164AccuracyResult, "im164");
-         PrintConfusionMatrix(im10AccuracyResult, "im10");
-         PrintConfusionMatrix(ti31149327_9330AccuracyResult, "ti31149327_9330");
+         //PrintConfusionMatrix(testAccuracyResult, "Test");
+         //PrintConfusionMatrix(im164AccuracyResult, "im164");
+         //PrintConfusionMatrix(im10AccuracyResult, "im10");
+         //PrintConfusionMatrix(ti31149327_9330AccuracyResult, "ti31149327_9330");
          PrintLeaveResults(trainAccuracyResult);
          PrintLeaveResults(validationAccuracyResult);
-         PrintLeaveResults(testAccuracyResult);
-         PrintLeaveResults(im164AccuracyResult);
-         PrintLeaveResults(im10AccuracyResult);
-         PrintLeaveResults(ti31149327_9330AccuracyResult);
+         //PrintLeaveResults(testAccuracyResult);
+         //PrintLeaveResults(im164AccuracyResult);
+         //PrintLeaveResults(im10AccuracyResult);
+         //PrintLeaveResults(ti31149327_9330AccuracyResult);
+
+         PrintEnd();
+
+         // TODO Use Spectre.Console to print tree structure if possible
+
+         ImmutableDictionary<int, int> nodesDepth = pakiraDecisionTreeModelAllData.Tree.NodesDepth();
+
+         foreach (BinaryTreeNode node in pakiraDecisionTreeModelAllData.Tree.Nodes())
+         {
+            PakiraTree tree = pakiraDecisionTreeModelAllData.Tree.SwapCondition(node.id);
+
+            output.WriteLine("Node: Id: {0} Depth:{1}", node.id, nodesDepth[node.id]);
+
+            //trainAccuracyResult = ComputeAccuracy(tree, trainPositions, trainTanukiETL);
+            validationAccuracyResult = ComputeAccuracy(tree, validationPositions, validationTanukiETL);
+
+            //PrintConfusionMatrix(trainAccuracyResult, "Train");
+            PrintConfusionMatrix(validationAccuracyResult, "Validation");
+
+            //PrintLeaveResults(trainAccuracyResult);
+            PrintLeaveResults(validationAccuracyResult);
+         }
+
          PrintEnd();
 
          //trainAccuracyResult.leavesBefore.Count.ShouldBe(43);

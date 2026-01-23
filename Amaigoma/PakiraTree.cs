@@ -1,10 +1,11 @@
-﻿global using BinaryTreeNode = (int id, int featureIndex, double splitThreshold, int leftNodeIndex, int rightNodeIndex);
-global using BinaryTreeLeaf = (int id, int labelValue);
-
+﻿global using BinaryTreeLeaf = (int id, int labelValue);
+global using BinaryTreeNode = (int id, int featureIndex, double splitThreshold, int leftNodeIndex, int rightNodeIndex);
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-
+using System.Xml.Linq;
 using BinaryTreeNodeInternal = (int featureIndex, double splitThreshold, int leftNodeIndex, int rightNodeIndex);
 
 // TODO Add support for Microsoft Orleans (https://learn.microsoft.com/en-us/dotnet/orleans/) to the project
@@ -93,12 +94,53 @@ namespace Amaigoma
       {
          ImmutableDictionary<int, BinaryTreeLeafInternal> updatedLeaves = leaves;
 
-         foreach(var kvp in leaves)
+         foreach ((int id, BinaryTreeLeafInternal leaf) in leaves)
          {
-            updatedLeaves = updatedLeaves.SetItem(kvp.Key, new BinaryTreeLeafInternal { labelValue = leafIdETL[kvp.Value.labelValue] });
+            updatedLeaves = updatedLeaves.SetItem(id, new BinaryTreeLeafInternal { labelValue = leafIdETL[leaf.labelValue] });
          }
 
          return new PakiraTree(nodes, updatedLeaves);
+      }
+
+      public PakiraTree SwapCondition(int id)
+      {
+         BinaryTreeNodeInternal node = nodes[id];
+
+         return new PakiraTree(nodes.SetItem(id, (node.featureIndex, node.splitThreshold, node.rightNodeIndex, node.leftNodeIndex)), leaves);
+      }
+
+      public ImmutableDictionary<int, int> NodesDepth()
+      {
+         ImmutableDictionary<int, int> depths = ImmutableDictionary<int, int>.Empty;
+
+         ImmutableStack<(int, BinaryTreeNodeInternal)> nodesStack = ImmutableStack<(int, BinaryTreeNodeInternal)>.Empty;
+
+         depths = depths.SetItem(0, 0);
+         nodesStack = nodesStack.Push((0, nodes[0]));
+
+         while (!nodesStack.IsEmpty)
+         {
+            (int id, BinaryTreeNodeInternal node) = nodesStack.Peek();
+
+            nodesStack = nodesStack.Pop();
+
+            //if (temp != NULL)
+            {
+               if (nodes.ContainsKey(node.leftNodeIndex))
+               {
+                  depths = depths.SetItem(node.leftNodeIndex, depths[id] + 1);
+                  nodesStack = nodesStack.Push((node.leftNodeIndex, nodes[node.leftNodeIndex]));
+               }
+
+               if (nodes.ContainsKey(node.rightNodeIndex))
+               {
+                  depths = depths.SetItem(node.rightNodeIndex, depths[id] + 1);
+                  nodesStack = nodesStack.Push((node.rightNodeIndex, nodes[node.rightNodeIndex]));
+               }
+            }
+         }
+
+         return depths;
       }
    }
 }
