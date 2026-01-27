@@ -683,8 +683,49 @@ namespace AmaigomaTests
       }
    }
 
+   public class ImageFixture : IDisposable
+   {
+      ImmutableList<string> imagePaths = [
+         @"assets/text-extraction-for-ocr/507484246.tif",
+         @"assets/mirflickr08/im164.jpg",
+         @"assets/mirflickr08/im10.jpg",
+         @"assets/text-extraction-for-ocr/ti31149327_9330.tif"];
+
+      public ImmutableDictionary<string, Image<L8>> sourceImages = [];
+      public ImmutableDictionary<string, Buffer2D<ulong>> integralImages = [];
+
+      public ImageFixture()
+      {
+         sourceImages = imagePaths.AsParallel().Select(image =>
+         {
+            string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), image);
+            Image<L8> sourceImage = Image.Load<L8>(fullImagePath);
+            return (image, sourceImage);
+         }).ToImmutableDictionary(t => t.image, t => t.sourceImage);
+
+         integralImages = sourceImages.AsParallel().Select(kv =>
+         {
+            Buffer2D<ulong> integralImage = kv.Value.CalculateIntegralImage();
+            return (kv.Key, integralImage);
+         }).ToImmutableDictionary(t => t.Key, t => t.integralImage);
+      }
+
+      public void Dispose()
+      {
+         foreach (var image in sourceImages.Values)
+         {
+            image.Dispose();
+         }
+
+         foreach (var integralImage in integralImages.Values)
+         {
+            integralImage.Dispose();
+         }
+      }
+   }
+
    // TODO The integration test could output interesting positions to be validated and added to the test
-   public record AmaigomaIntegrationTests // ncrunch: no coveraget
+   public record AmaigomaIntegrationTests : IClassFixture<ImageFixture> // ncrunch: no coverage
    {
       // TODO Add more classes
       static readonly int uppercaseA = 1; // ncrunch: no coverage
@@ -943,9 +984,12 @@ namespace AmaigomaTests
 
       private readonly ITestOutputHelper output;
 
-      public AmaigomaIntegrationTests(ITestOutputHelper output)
+      private readonly ImageFixture fixture;
+
+      public AmaigomaIntegrationTests(ITestOutputHelper output, ImageFixture fixture)
       {
          this.output = output;
+         this.fixture = fixture;
       }
 
       static private ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex, int integralImageIndex)
@@ -1018,8 +1062,6 @@ namespace AmaigomaTests
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       public void UppercaseA_507484246_Baseline(DataSet dataSet)
       {
-         ImmutableDictionary<string, Image<L8>> sourceImages = [];
-         ImmutableDictionary<string, Buffer2D<ulong>> integralImages = [];
          ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
          ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
          ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
@@ -1027,18 +1069,6 @@ namespace AmaigomaTests
          ImmutableList<RegionLabel> im10Rectangles = dataSet.im10[0].regionLabels;
          ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.ti31149327_9330[0].regionLabels;
          ImmutableList<IntegrationTestDataSet> allDataSets = [.. dataSet.train, .. dataSet.validation, .. dataSet.test, .. dataSet.im164, .. dataSet.im10, .. dataSet.ti31149327_9330];
-
-         foreach (IntegrationTestDataSet integrationTestDataSet in allDataSets)
-         {
-            if (!sourceImages.ContainsKey(integrationTestDataSet.filename))
-            {
-               string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), integrationTestDataSet.filename);
-               Image<L8> sourceImage = Image.Load<L8>(fullImagePath);
-
-               sourceImages = sourceImages.Add(integrationTestDataSet.filename, sourceImage);
-               integralImages = integralImages.Add(integrationTestDataSet.filename, sourceImage.CalculateIntegralImage());
-            }
-         }
 
          TreeNodeSplit bestSplitLogic = new();
 
@@ -1050,7 +1080,7 @@ namespace AmaigomaTests
          ImmutableDictionary<int, SampleData> im10Positions;
          ImmutableDictionary<int, SampleData> ti31149327_9330Positions;
 
-         // TODO Need to simplify the logic to add more data samples
+         // UNDONE Need to simplify the logic to add more data samples
          trainPositions = LoadDataSamples(trainRectangles, 0, 0);
          validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count, 0);
          testPositions = LoadDataSamples(testRectangles, trainPositions.Count + validationPositions.Count, 0);
@@ -1058,10 +1088,10 @@ namespace AmaigomaTests
          im10Positions = LoadDataSamples(im10Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count, 2);
          ti31149327_9330Positions = LoadDataSamples(ti31149327_9330Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count + im10Positions.Count, 3);
 
-         Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
-         Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
-         Buffer2D<ulong> integralImageim10 = integralImages[dataSet.im10[0].filename];
-         Buffer2D<ulong> integralImageti31149327_9330 = integralImages[dataSet.ti31149327_9330[0].filename];
+         Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.train[0].filename];
+         Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.im164[0].filename];
+         Buffer2D<ulong> integralImageim10 = fixture.integralImages[dataSet.im10[0].filename];
+         Buffer2D<ulong> integralImageti31149327_9330 = fixture.integralImages[dataSet.ti31149327_9330[0].filename];
 
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
@@ -1122,8 +1152,6 @@ namespace AmaigomaTests
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       public void UppercaseA_507484246_Clustering(DataSet dataSet)
       {
-         ImmutableDictionary<string, Image<L8>> sourceImages = [];
-         ImmutableDictionary<string, Buffer2D<ulong>> integralImages = [];
          ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
          ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
          ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
@@ -1131,18 +1159,6 @@ namespace AmaigomaTests
          ImmutableList<RegionLabel> im10Rectangles = dataSet.im10[0].regionLabels;
          ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.ti31149327_9330[0].regionLabels;
          ImmutableList<IntegrationTestDataSet> allDataSets = [.. dataSet.train, .. dataSet.validation, .. dataSet.test, .. dataSet.im164, .. dataSet.im10, .. dataSet.ti31149327_9330];
-
-         foreach (IntegrationTestDataSet integrationTestDataSet in allDataSets)
-         {
-            if (!sourceImages.ContainsKey(integrationTestDataSet.filename))
-            {
-               string fullImagePath = Path.Combine(Path.GetDirectoryName(Uri.UnescapeDataString(new Uri(Assembly.GetExecutingAssembly().Location).AbsolutePath)), integrationTestDataSet.filename);
-               Image<L8> sourceImage = Image.Load<L8>(fullImagePath);
-
-               sourceImages = sourceImages.Add(integrationTestDataSet.filename, sourceImage);
-               integralImages = integralImages.Add(integrationTestDataSet.filename, sourceImage.CalculateIntegralImage());
-            }
-         }
 
          TreeNodeSplit bestSplitLogic = new();
 
@@ -1154,7 +1170,7 @@ namespace AmaigomaTests
          ImmutableDictionary<int, SampleData> im10Positions;
          ImmutableDictionary<int, SampleData> ti31149327_9330Positions;
 
-         // TODO Need to simplify the logic to add more data samples
+         // UNDONE Need to simplify the logic to add more data samples
          trainPositions = LoadDataSamples(trainRectangles, 0, 0);
          validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count, 0);
          testPositions = LoadDataSamples(testRectangles, trainPositions.Count + validationPositions.Count, 0);
@@ -1162,10 +1178,10 @@ namespace AmaigomaTests
          im10Positions = LoadDataSamples(im10Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count, 2);
          ti31149327_9330Positions = LoadDataSamples(ti31149327_9330Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count + im10Positions.Count, 3);
 
-         Buffer2D<ulong> integralImage507484246 = integralImages[dataSet.train[0].filename];
-         Buffer2D<ulong> integralImageim164 = integralImages[dataSet.im164[0].filename];
-         Buffer2D<ulong> integralImageim10 = integralImages[dataSet.im10[0].filename];
-         Buffer2D<ulong> integralImageti31149327_9330 = integralImages[dataSet.ti31149327_9330[0].filename];
+         Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.train[0].filename];
+         Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.im164[0].filename];
+         Buffer2D<ulong> integralImageim10 = fixture.integralImages[dataSet.im10[0].filename];
+         Buffer2D<ulong> integralImageti31149327_9330 = fixture.integralImages[dataSet.ti31149327_9330[0].filename];
 
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
@@ -1185,10 +1201,10 @@ namespace AmaigomaTests
 
          AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
-         AccuracyResult testAccuracyResult;
-         AccuracyResult im164AccuracyResult;
-         AccuracyResult im10AccuracyResult;
-         AccuracyResult ti31149327_9330AccuracyResult = new();
+         // AccuracyResult testAccuracyResult;
+         // AccuracyResult im164AccuracyResult;
+         // AccuracyResult im10AccuracyResult;
+         // AccuracyResult ti31149327_9330AccuracyResult = new();
 
          PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
 
@@ -1339,13 +1355,13 @@ namespace AmaigomaTests
 
          PrintEnd();
 
-         //trainAccuracyResult.leavesBefore.Count.ShouldBe(43);
-         //trainAccuracyResult.leavesAfter.Count.ShouldBe(43);
-         //validationAccuracyResult.leavesAfter.Count.ShouldBe(36);
-         //testAccuracyResult.leavesAfter.Count.ShouldBe(36);
-         //im164AccuracyResult.leavesAfter.Count.ShouldBe(43);
-         //im10AccuracyResult.leavesAfter.Count.ShouldBe(43);
-         //ti31149327_9330AccuracyResult.leavesAfter.Count.ShouldBe(39);
+         trainAccuracyResult.leavesBefore.Count.ShouldBe(38);
+         trainAccuracyResult.leavesAfter.Count.ShouldBe(38);
+         validationAccuracyResult.leavesAfter.Count.ShouldBe(30);
+         // testAccuracyResult.leavesAfter.Count.ShouldBe(36);
+         // im164AccuracyResult.leavesAfter.Count.ShouldBe(43);
+         // im10AccuracyResult.leavesAfter.Count.ShouldBe(43);
+         // ti31149327_9330AccuracyResult.leavesAfter.Count.ShouldBe(38);
       }
 
       private static void SaveAllImages(ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> falsePositives, ImmutableDictionary<int, SampleData> positions, string imageName, Rgba32 color)
