@@ -43,16 +43,27 @@ namespace AmaigomaTests
 
    public struct DataSet
    {
-      public List<IntegrationTestDataSet> train = [];
-      public List<IntegrationTestDataSet> validation = [];
-      public List<IntegrationTestDataSet> test = [];
-      public List<IntegrationTestDataSet> im164 = [];
-      public List<IntegrationTestDataSet> im10 = [];
-      public List<IntegrationTestDataSet> ti31149327_9330 = [];
-      public List<IntegrationTestDataSet> trainOptimized = [];
+      private ImmutableDictionary<string, IntegrationTestDataSet> regions = [];
 
       public DataSet()
       {
+      }
+
+      private DataSet(ImmutableDictionary<string, IntegrationTestDataSet> regions)
+      {
+         this.regions = regions;
+      }
+
+      public DataSet AddRegion(string regionName, IntegrationTestDataSet dataSet)
+      {
+         regions = regions.Add(regionName, dataSet);
+
+         return new DataSet(regions);
+      }
+
+      public IntegrationTestDataSet Region(string regionName)
+      {
+         return regions[regionName];
       }
    }
 
@@ -77,11 +88,6 @@ namespace AmaigomaTests
       public TreeNodeSplit()
       {
       }
-
-      //public TreeNodeSplit(ImmutableDictionary<int, double> idWeight)
-      //{
-      //   this.idWeight = idWeight;
-      //}
 
       private static double CalculateEntropy(IEnumerable<int> counts)
       {
@@ -455,118 +461,6 @@ namespace AmaigomaTests
          return (bestFeature, bestFeatureSplit);
       }
 
-      //public (int featureIndex, double splitThreshold) GetBestSplitClustering2(IReadOnlyList<int> ids, TanukiETL tanukiETL)
-      //{
-      //   int bestFeature = -1;
-      //   double bestFeatureSplit = double.MaxValue;
-
-      //   // TODO No need to keep all entropies, only the best one
-      //   ImmutableList<double> weigthedEntropies = [];
-      //   ImmutableList<int> sampleIds = [.. ids];
-
-      //   for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
-      //   {
-      //      ImmutableList<int> transformedData = [.. sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex))];
-
-      //      // TODO Shouldn't this if be outside of the for loop?
-      //      if (!transformedData.IsEmpty)
-      //      {
-      //         int bestSplitValue = -1;
-      //         double bestWeightedEntropy = double.MaxValue;
-      //         int bestSplitCount = 0;
-      //         ImmutableDictionary<int, double> leftLabelTotalCount = [];
-      //         ImmutableDictionary<int, double> rightLabelTotalCount = [];
-      //         double leftTotalCount = 0;
-      //         double rightTotalCount = 0;
-      //         ImmutableDictionary<int, ImmutableList<double>> histograms = ImmutableDictionary<int, ImmutableList<double>>.Empty;
-
-      //         for (int i = 0; i < sampleIds.Count; i++)
-      //         {
-      //            int id = sampleIds[i];
-      //            int label = tanukiETL.TanukiLabelExtractor(id);
-
-      //            if (histograms.TryGetValue(label, out ImmutableList<double> histogram))
-      //            {
-      //               histogram = histogram.SetItem(transformedData[i], histogram[transformedData[i]] + idWeight[id]);
-      //            }
-      //            else
-      //            {
-      //               histogram = Enumerable.Repeat<double>(0.0, 256).ToImmutableList().SetItem(transformedData[i], idWeight[id]);
-      //            }
-
-      //            histograms = histograms.SetItem(label, histogram);
-
-      //            if (rightLabelTotalCount.TryGetValue(label, out double value))
-      //            {
-      //               rightLabelTotalCount = rightLabelTotalCount.SetItem(label, value + idWeight[id]);
-      //            }
-      //            else
-      //            {
-      //               rightLabelTotalCount = rightLabelTotalCount.Add(label, idWeight[id]);
-      //               leftLabelTotalCount = leftLabelTotalCount.Add(label, 0);
-      //            }
-
-      //            rightTotalCount += idWeight[id];
-      //         }
-
-      //         for (int splitValue = 0; splitValue < 255; splitValue++)
-      //         {
-      //            foreach ((int label, ImmutableList<double> histogram) in histograms)
-      //            {
-      //               double binCount = histogram[splitValue];
-
-      //               leftLabelTotalCount = leftLabelTotalCount.SetItem(label, leftLabelTotalCount[label] + binCount);
-      //               rightLabelTotalCount = rightLabelTotalCount.SetItem(label, Math.Max(0.0, rightLabelTotalCount[label] - binCount));
-      //               leftTotalCount += binCount;
-      //               rightTotalCount -= binCount;
-      //            }
-
-      //            if (leftTotalCount > 0 && rightTotalCount > 0)
-      //            {
-      //               leftTotalCount.ShouldBeGreaterThanOrEqualTo(0);
-      //               rightTotalCount.ShouldBeGreaterThanOrEqualTo(0);
-
-      //               double leftEntropy = CalculateEntropy(leftLabelTotalCount.Select(c => c.Value));
-      //               double rightEntropy = CalculateEntropy(rightLabelTotalCount.Select(c => c.Value));
-      //               double weightedEntropy = (leftTotalCount * leftEntropy + rightTotalCount * rightEntropy);
-
-      //               if (weightedEntropy < bestWeightedEntropy)
-      //               {
-      //                  bestWeightedEntropy = weightedEntropy;
-      //                  bestSplitValue = splitValue;
-      //                  bestSplitCount = 0;
-      //               }
-      //               else if (weightedEntropy == bestWeightedEntropy)
-      //               {
-      //                  bestSplitValue.ShouldBeGreaterThanOrEqualTo(0);
-      //                  bestSplitCount++;
-      //               }
-      //            }
-      //         }
-
-      //         weigthedEntropies = weigthedEntropies.Add(bestWeightedEntropy);
-
-      //         if (bestFeature == -1 || weigthedEntropies[featureIndex] < weigthedEntropies[bestFeature])
-      //         {
-      //            if (bestSplitCount > 1)
-      //            {
-      //               bestSplitValue += (bestSplitCount / 2);
-      //            }
-
-      //            bestFeature = featureIndex;
-      //            bestFeatureSplit = bestSplitValue;
-      //         }
-      //      }
-      //   }
-
-      //   bestFeature.ShouldBeGreaterThanOrEqualTo(0);
-
-      //   // TODO This is not even returned, but maybe it could be returned and then used as tree quality criteria
-      //   weigthedEntropies = weigthedEntropies.SetItem(bestFeature, weigthedEntropies[bestFeature] / sampleIds.Count);
-
-      //   return (bestFeature, bestFeatureSplit);
-      //}
-
       public (int featureIndex, double splitThreshold) GetBestSplitClustering3(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
@@ -683,7 +577,7 @@ namespace AmaigomaTests
       }
    }
 
-   public class ImageFixture : IDisposable
+   public record ImageFixture : IDisposable
    {
       ImmutableList<string> imagePaths = [
          @"assets/text-extraction-for-ocr/507484246.tif",
@@ -962,7 +856,8 @@ namespace AmaigomaTests
       static public IEnumerable<object[]> GetUppercaseA_507484246_Data()
       {
          DataSet dataSet = new();
-         // UNDONE Regroup all images and prepare the integral images in parallel and a as pre-step for the test
+
+         // UNDONE Regroup all images and prepare the integral images in parallel and add as pre-step for the test
          IntegrationTestDataSet trainIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", train_507484246_Rectangles, train_507484246_Labels);
          IntegrationTestDataSet validationIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", validation_507484246_Rectangles, validation_507484246_Labels);
          IntegrationTestDataSet testIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", test_507484246_Rectangles, test_507484246_Labels);
@@ -971,13 +866,13 @@ namespace AmaigomaTests
          IntegrationTestDataSet ti31149327_9330IntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/ti31149327_9330.tif", train_ti31149327_9330_Rectangles, train_ti31149327_9330_Labels);
          IntegrationTestDataSet trainOptimizedIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", trainOptimized_507484246_Rectangles, trainOptimized_507484246_Labels);
 
-         dataSet.train.Add(trainIntegrationTestDataSet);
-         dataSet.validation.Add(validationIntegrationTestDataSet);
-         dataSet.test.Add(testIntegrationTestDataSet);
-         dataSet.im164.Add(im164IntegrationTestDataSet);
-         dataSet.im10.Add(im10IntegrationTestDataSet);
-         dataSet.ti31149327_9330.Add(ti31149327_9330IntegrationTestDataSet);
-         dataSet.trainOptimized.Add(trainOptimizedIntegrationTestDataSet);
+         dataSet = dataSet.AddRegion("Train", new(@"assets/text-extraction-for-ocr/507484246.tif", train_507484246_Rectangles, train_507484246_Labels));
+         dataSet = dataSet.AddRegion("Validation", new(@"assets/text-extraction-for-ocr/507484246.tif", validation_507484246_Rectangles, validation_507484246_Labels));
+         dataSet = dataSet.AddRegion("Test", new(@"assets/text-extraction-for-ocr/507484246.tif", test_507484246_Rectangles, test_507484246_Labels));
+         dataSet = dataSet.AddRegion("im164", new(@"assets/mirflickr08/im164.jpg", im164Rectangles, im164Labels));
+         dataSet = dataSet.AddRegion("im10", new(@"assets/mirflickr08/im10.jpg", im10Rectangles, im10Labels));
+         dataSet = dataSet.AddRegion("ti31149327_9330", new(@"assets/text-extraction-for-ocr/ti31149327_9330.tif", train_ti31149327_9330_Rectangles, train_ti31149327_9330_Labels));
+         dataSet = dataSet.AddRegion("TrainOptimized", new(@"assets/text-extraction-for-ocr/507484246.tif", trainOptimized_507484246_Rectangles, trainOptimized_507484246_Labels));
 
          yield return new object[] { dataSet };
       }
@@ -1062,15 +957,12 @@ namespace AmaigomaTests
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       public void UppercaseA_507484246_Baseline(DataSet dataSet)
       {
-         ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
-         ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
-         ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
-         ImmutableList<RegionLabel> im164Rectangles = dataSet.im164[0].regionLabels;
-         ImmutableList<RegionLabel> im10Rectangles = dataSet.im10[0].regionLabels;
-         ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.ti31149327_9330[0].regionLabels;
-         ImmutableList<IntegrationTestDataSet> allDataSets = [.. dataSet.train, .. dataSet.validation, .. dataSet.test, .. dataSet.im164, .. dataSet.im10, .. dataSet.ti31149327_9330];
-
-         TreeNodeSplit bestSplitLogic = new();
+         ImmutableList<RegionLabel> trainRectangles = dataSet.Region("Train").regionLabels;
+         ImmutableList<RegionLabel> validationRectangles = dataSet.Region("Validation").regionLabels;
+         ImmutableList<RegionLabel> testRectangles = dataSet.Region("Test").regionLabels;
+         ImmutableList<RegionLabel> im164Rectangles = dataSet.Region("im164").regionLabels;
+         ImmutableList<RegionLabel> im10Rectangles = dataSet.Region("im10").regionLabels;
+         ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.Region("ti31149327_9330").regionLabels;
 
          PakiraDecisionTreeGenerator pakiraGenerator = new(TreeNodeSplit.GetBestSplitBaseline);
          ImmutableDictionary<int, SampleData> trainPositions;
@@ -1088,10 +980,10 @@ namespace AmaigomaTests
          im10Positions = LoadDataSamples(im10Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count, 2);
          ti31149327_9330Positions = LoadDataSamples(ti31149327_9330Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count + im10Positions.Count, 3);
 
-         Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.train[0].filename];
-         Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.im164[0].filename];
-         Buffer2D<ulong> integralImageim10 = fixture.integralImages[dataSet.im10[0].filename];
-         Buffer2D<ulong> integralImageti31149327_9330 = fixture.integralImages[dataSet.ti31149327_9330[0].filename];
+         Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.Region("Train").filename];
+         Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.Region("im164").filename];
+         Buffer2D<ulong> integralImageim10 = fixture.integralImages[dataSet.Region("im10").filename];
+         Buffer2D<ulong> integralImageti31149327_9330 = fixture.integralImages[dataSet.Region("ti31149327_9330").filename];
 
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
@@ -1115,7 +1007,7 @@ namespace AmaigomaTests
          AccuracyResult testAccuracyResult;
          AccuracyResult im164AccuracyResult;
          AccuracyResult im10AccuracyResult;
-         IEnumerable<int> allTrainIds = trainPositions.Keys.Union(im164Positions.Keys).Union(im10Positions.Keys);//.Union(ti31149327_9330Positions.Keys);
+         IEnumerable<int> allTrainIds = trainPositions.Keys.Union(im164Positions.Keys).Union(im10Positions.Keys);
 
          PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
 
@@ -1152,14 +1044,12 @@ namespace AmaigomaTests
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       public void UppercaseA_507484246_Clustering(DataSet dataSet)
       {
-         ImmutableList<RegionLabel> trainRectangles = dataSet.train[0].regionLabels;
-         ImmutableList<RegionLabel> validationRectangles = dataSet.validation[0].regionLabels;
-         ImmutableList<RegionLabel> testRectangles = dataSet.test[0].regionLabels;
-         ImmutableList<RegionLabel> im164Rectangles = dataSet.im164[0].regionLabels;
-         ImmutableList<RegionLabel> im10Rectangles = dataSet.im10[0].regionLabels;
-         ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.ti31149327_9330[0].regionLabels;
-         ImmutableList<IntegrationTestDataSet> allDataSets = [.. dataSet.train, .. dataSet.validation, .. dataSet.test, .. dataSet.im164, .. dataSet.im10, .. dataSet.ti31149327_9330];
-
+         ImmutableList<RegionLabel> trainRectangles = dataSet.Region("Train").regionLabels;
+         ImmutableList<RegionLabel> validationRectangles = dataSet.Region("Validation").regionLabels;
+         ImmutableList<RegionLabel> testRectangles = dataSet.Region("Test").regionLabels;
+         ImmutableList<RegionLabel> im164Rectangles = dataSet.Region("im164").regionLabels;
+         ImmutableList<RegionLabel> im10Rectangles = dataSet.Region("im10").regionLabels;
+         ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.Region("ti31149327_9330").regionLabels;
          TreeNodeSplit bestSplitLogic = new();
 
          PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplitClustering);
@@ -1178,10 +1068,10 @@ namespace AmaigomaTests
          im10Positions = LoadDataSamples(im10Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count, 2);
          ti31149327_9330Positions = LoadDataSamples(ti31149327_9330Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count + im10Positions.Count, 3);
 
-         Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.train[0].filename];
-         Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.im164[0].filename];
-         Buffer2D<ulong> integralImageim10 = fixture.integralImages[dataSet.im10[0].filename];
-         Buffer2D<ulong> integralImageti31149327_9330 = fixture.integralImages[dataSet.ti31149327_9330[0].filename];
+         Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.Region("Train").filename];
+         Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.Region("im164").filename];
+         Buffer2D<ulong> integralImageim10 = fixture.integralImages[dataSet.Region("im10").filename];
+         Buffer2D<ulong> integralImageti31149327_9330 = fixture.integralImages[dataSet.Region("ti31149327_9330").filename];
 
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
