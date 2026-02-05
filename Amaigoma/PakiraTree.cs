@@ -1,11 +1,8 @@
 ﻿global using BinaryTreeLeaf = (int id, int labelValue);
 global using BinaryTreeNode = (int id, int featureIndex, double splitThreshold, int leftNodeIndex, int rightNodeIndex);
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Xml.Linq;
 using BinaryTreeNodeInternal = (int featureIndex, double splitThreshold, int leftNodeIndex, int rightNodeIndex);
 
 // TODO Add support for Microsoft Orleans (https://learn.microsoft.com/en-us/dotnet/orleans/) to the project
@@ -16,6 +13,7 @@ namespace Amaigoma
       public int labelValue;
    }
 
+   // TODO Apply init-only properties where possible. Available since C# 9.0 to make immutable types using less boilerplate code
    // TODO Rename Pakira to something more significative like BinaryTree or DecisionTree
    public sealed record PakiraTree // ncrunch: no coverage
    {

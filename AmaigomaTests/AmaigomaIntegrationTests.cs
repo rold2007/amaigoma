@@ -44,26 +44,66 @@ namespace AmaigomaTests
    public struct DataSet
    {
       private ImmutableDictionary<string, IntegrationTestDataSet> regions = [];
+      private ImmutableDictionary<string, ImmutableDictionary<int, SampleData>> positions = [];
+      private ImmutableDictionary<string, int> integralImagesIndex = [];
+      private int sampleId = 0;
 
       public DataSet()
       {
       }
 
-      private DataSet(ImmutableDictionary<string, IntegrationTestDataSet> regions)
+      private DataSet(ImmutableDictionary<string, IntegrationTestDataSet> regions, ImmutableDictionary<string, ImmutableDictionary<int, SampleData>> positions, ImmutableDictionary<string, int> integralImagesIndex, int sampleId)
       {
          this.regions = regions;
+         this.positions = positions;
+         this.integralImagesIndex = integralImagesIndex;
+         this.sampleId = sampleId;
+      }
+
+      static private ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex, int integralImageIndex)
+      {
+         ImmutableDictionary<int, SampleData> result = [];
+
+         foreach (RegionLabel regionLabel in rectangles)
+         {
+            for (int y = regionLabel.rectangle.Top; y < regionLabel.rectangle.Bottom; y++)
+            {
+               for (int x = regionLabel.rectangle.Left; x < regionLabel.rectangle.Right; x++)
+               {
+                  result = result.Add(startingIndex, new SampleData { IntegralImageIndex = integralImageIndex, Position = new Point(x, y), Label = regionLabel.label });
+                  startingIndex++;
+               }
+            }
+         }
+
+         return result;
       }
 
       public DataSet AddRegion(string regionName, IntegrationTestDataSet dataSet)
       {
-         regions = regions.Add(regionName, dataSet);
+         ImmutableDictionary<string, IntegrationTestDataSet> nextRegions = regions.Add(regionName, dataSet);
+         ImmutableDictionary<string, ImmutableDictionary<int, SampleData>> nextPositions = positions;
+         ImmutableDictionary<string, int> nextIntegralImagesIndex;
+         int nextSampleId = sampleId;
 
-         return new DataSet(regions);
+         nextIntegralImagesIndex = integralImagesIndex.ContainsKey(dataSet.filename) ? integralImagesIndex : integralImagesIndex.Add(dataSet.filename, integralImagesIndex.Count);
+
+         ImmutableDictionary<int, SampleData> samplePositions = LoadDataSamples(dataSet.regionLabels, nextSampleId, nextIntegralImagesIndex[dataSet.filename]);
+
+         nextPositions = nextPositions.Add(regionName, samplePositions);
+         nextSampleId += samplePositions.Count;
+
+         return new DataSet(nextRegions, nextPositions, nextIntegralImagesIndex, nextSampleId);
       }
 
       public IntegrationTestDataSet Region(string regionName)
       {
          return regions[regionName];
+      }
+
+      public ImmutableDictionary<int, SampleData> Position(string regionName)
+      {
+         return positions[regionName];
       }
    }
 
@@ -82,8 +122,6 @@ namespace AmaigomaTests
    public record TreeNodeSplit
    {
       private static readonly ImmutableList<int> emptyHistogram = [.. Enumerable.Repeat(0, 256)];
-
-      //private ImmutableDictionary<int, double> idWeight;
 
       public TreeNodeSplit()
       {
@@ -887,25 +925,6 @@ namespace AmaigomaTests
          this.fixture = fixture;
       }
 
-      static private ImmutableDictionary<int, SampleData> LoadDataSamples(ImmutableList<RegionLabel> rectangles, int startingIndex, int integralImageIndex)
-      {
-         ImmutableDictionary<int, SampleData> result = [];
-
-         foreach (RegionLabel regionLabel in rectangles)
-         {
-            for (int y = regionLabel.rectangle.Top; y < regionLabel.rectangle.Bottom; y++)
-            {
-               for (int x = regionLabel.rectangle.Left; x < regionLabel.rectangle.Right; x++)
-               {
-                  result = result.Add(startingIndex, new SampleData { IntegralImageIndex = integralImageIndex, Position = new Point(x, y), Label = regionLabel.label });
-                  startingIndex++;
-               }
-            }
-         }
-
-         return result;
-      }
-
       static private AccuracyResult ComputeAccuracy(PakiraTree tree, ImmutableDictionary<int, SampleData> positions, TanukiETL tanukiETL)
       {
          IEnumerable<int> ids = positions.Keys;
@@ -957,28 +976,15 @@ namespace AmaigomaTests
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       public void UppercaseA_507484246_Baseline(DataSet dataSet)
       {
-         ImmutableList<RegionLabel> trainRectangles = dataSet.Region("Train").regionLabels;
-         ImmutableList<RegionLabel> validationRectangles = dataSet.Region("Validation").regionLabels;
-         ImmutableList<RegionLabel> testRectangles = dataSet.Region("Test").regionLabels;
-         ImmutableList<RegionLabel> im164Rectangles = dataSet.Region("im164").regionLabels;
-         ImmutableList<RegionLabel> im10Rectangles = dataSet.Region("im10").regionLabels;
-         ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.Region("ti31149327_9330").regionLabels;
-
          PakiraDecisionTreeGenerator pakiraGenerator = new(TreeNodeSplit.GetBestSplitBaseline);
-         ImmutableDictionary<int, SampleData> trainPositions;
-         ImmutableDictionary<int, SampleData> validationPositions;
-         ImmutableDictionary<int, SampleData> testPositions;
-         ImmutableDictionary<int, SampleData> im164Positions;
-         ImmutableDictionary<int, SampleData> im10Positions;
-         ImmutableDictionary<int, SampleData> ti31149327_9330Positions;
+         ImmutableDictionary<int, SampleData> trainPositions = dataSet.Position("Train");
+         ImmutableDictionary<int, SampleData> validationPositions = dataSet.Position("Validation");
+         ImmutableDictionary<int, SampleData> testPositions = dataSet.Position("Test");
+         ImmutableDictionary<int, SampleData> im164Positions = dataSet.Position("im164");
+         ImmutableDictionary<int, SampleData> im10Positions = dataSet.Position("im10");
+         ImmutableDictionary<int, SampleData> ti31149327_9330Positions = dataSet.Position("ti31149327_9330");
 
          // UNDONE Need to simplify the logic to add more data samples
-         trainPositions = LoadDataSamples(trainRectangles, 0, 0);
-         validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count, 0);
-         testPositions = LoadDataSamples(testRectangles, trainPositions.Count + validationPositions.Count, 0);
-         im164Positions = LoadDataSamples(im164Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count, 1);
-         im10Positions = LoadDataSamples(im10Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count, 2);
-         ti31149327_9330Positions = LoadDataSamples(ti31149327_9330Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count + im10Positions.Count, 3);
 
          Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.Region("Train").filename];
          Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.Region("im164").filename];
@@ -1044,29 +1050,18 @@ namespace AmaigomaTests
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       public void UppercaseA_507484246_Clustering(DataSet dataSet)
       {
-         ImmutableList<RegionLabel> trainRectangles = dataSet.Region("Train").regionLabels;
-         ImmutableList<RegionLabel> validationRectangles = dataSet.Region("Validation").regionLabels;
-         ImmutableList<RegionLabel> testRectangles = dataSet.Region("Test").regionLabels;
-         ImmutableList<RegionLabel> im164Rectangles = dataSet.Region("im164").regionLabels;
-         ImmutableList<RegionLabel> im10Rectangles = dataSet.Region("im10").regionLabels;
-         ImmutableList<RegionLabel> ti31149327_9330Rectangles = dataSet.Region("ti31149327_9330").regionLabels;
+         // UNDONE Add some permanent benchmarks to identify the slow parts of the test
          TreeNodeSplit bestSplitLogic = new();
 
          PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplitClustering);
-         ImmutableDictionary<int, SampleData> trainPositions;
-         ImmutableDictionary<int, SampleData> validationPositions;
-         ImmutableDictionary<int, SampleData> testPositions;
-         ImmutableDictionary<int, SampleData> im164Positions;
-         ImmutableDictionary<int, SampleData> im10Positions;
-         ImmutableDictionary<int, SampleData> ti31149327_9330Positions;
+         ImmutableDictionary<int, SampleData> trainPositions = dataSet.Position("Train");
+         ImmutableDictionary<int, SampleData> validationPositions = dataSet.Position("Validation");
+         ImmutableDictionary<int, SampleData> testPositions = dataSet.Position("Test");
+         ImmutableDictionary<int, SampleData> im164Positions = dataSet.Position("im164");
+         ImmutableDictionary<int, SampleData> im10Positions = dataSet.Position("im10");
+         ImmutableDictionary<int, SampleData> ti31149327_9330Positions = dataSet.Position("ti31149327_9330");
 
          // UNDONE Need to simplify the logic to add more data samples
-         trainPositions = LoadDataSamples(trainRectangles, 0, 0);
-         validationPositions = LoadDataSamples(validationRectangles, trainPositions.Count, 0);
-         testPositions = LoadDataSamples(testRectangles, trainPositions.Count + validationPositions.Count, 0);
-         im164Positions = LoadDataSamples(im164Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count, 1);
-         im10Positions = LoadDataSamples(im10Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count, 2);
-         ti31149327_9330Positions = LoadDataSamples(ti31149327_9330Rectangles, trainPositions.Count + validationPositions.Count + testPositions.Count + im164Positions.Count + im10Positions.Count, 3);
 
          Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.Region("Train").filename];
          Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.Region("im164").filename];
