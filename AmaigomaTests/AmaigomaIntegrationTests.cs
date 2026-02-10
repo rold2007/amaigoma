@@ -105,6 +105,11 @@ namespace AmaigomaTests
       {
          return positions[regionName];
       }
+
+      public int IntegralImageIndex(string regionName)
+      {
+         return integralImagesIndex[regionName];
+      }
    }
 
    public struct AccuracyResult
@@ -895,15 +900,6 @@ namespace AmaigomaTests
       {
          DataSet dataSet = new();
 
-         // UNDONE Regroup all images and prepare the integral images in parallel and add as pre-step for the test
-         IntegrationTestDataSet trainIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", train_507484246_Rectangles, train_507484246_Labels);
-         IntegrationTestDataSet validationIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", validation_507484246_Rectangles, validation_507484246_Labels);
-         IntegrationTestDataSet testIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", test_507484246_Rectangles, test_507484246_Labels);
-         IntegrationTestDataSet im164IntegrationTestDataSet = new(@"assets/mirflickr08/im164.jpg", im164Rectangles, im164Labels);
-         IntegrationTestDataSet im10IntegrationTestDataSet = new(@"assets/mirflickr08/im10.jpg", im10Rectangles, im10Labels);
-         IntegrationTestDataSet ti31149327_9330IntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/ti31149327_9330.tif", train_ti31149327_9330_Rectangles, train_ti31149327_9330_Labels);
-         IntegrationTestDataSet trainOptimizedIntegrationTestDataSet = new(@"assets/text-extraction-for-ocr/507484246.tif", trainOptimized_507484246_Rectangles, trainOptimized_507484246_Labels);
-
          dataSet = dataSet.AddRegion("Train", new(@"assets/text-extraction-for-ocr/507484246.tif", train_507484246_Rectangles, train_507484246_Labels));
          dataSet = dataSet.AddRegion("Validation", new(@"assets/text-extraction-for-ocr/507484246.tif", validation_507484246_Rectangles, validation_507484246_Labels));
          dataSet = dataSet.AddRegion("Test", new(@"assets/text-extraction-for-ocr/507484246.tif", test_507484246_Rectangles, test_507484246_Labels));
@@ -972,42 +968,51 @@ namespace AmaigomaTests
          return accuracyResult;
       }
 
+      static ImmutableList<Buffer2D<ulong>> PrepareIntegralImages(ImmutableList<string> dataSetNames, DataSet dataSet, ImageFixture fixture)
+      {
+         ImmutableSortedDictionary<int, Buffer2D<ulong>> integralImages = ImmutableSortedDictionary<int, Buffer2D<ulong>>.Empty;
+
+         foreach (string regionName in dataSetNames)
+         {
+            string filename = dataSet.Region(regionName).filename;
+
+            integralImages = integralImages.Add(dataSet.IntegralImageIndex(filename), fixture.integralImages[filename]);
+         }
+
+         return integralImages.Values.ToImmutableList();
+      }
+
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
       public void UppercaseA_507484246_Baseline(DataSet dataSet)
       {
+         // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
+         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+         ImmutableList<string> dataSetNames = ["Train", "Validation", "Test", "im164", "im10", "ti31149327_9330"];
          PakiraDecisionTreeGenerator pakiraGenerator = new(TreeNodeSplit.GetBestSplitBaseline);
          ImmutableDictionary<int, SampleData> trainPositions = dataSet.Position("Train");
          ImmutableDictionary<int, SampleData> validationPositions = dataSet.Position("Validation");
          ImmutableDictionary<int, SampleData> testPositions = dataSet.Position("Test");
          ImmutableDictionary<int, SampleData> im164Positions = dataSet.Position("im164");
          ImmutableDictionary<int, SampleData> im10Positions = dataSet.Position("im10");
-         ImmutableDictionary<int, SampleData> ti31149327_9330Positions = dataSet.Position("ti31149327_9330");
+
+         ImmutableList<Buffer2D<ulong>> integralImages = PrepareIntegralImages(dataSetNames, dataSet, fixture);
 
          // UNDONE Need to simplify the logic to add more data samples
+         ImmutableDictionary<int, SampleData> allPositions = ImmutableDictionary<int, SampleData>.Empty;
 
-         Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.Region("Train").filename];
-         Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.Region("im164").filename];
-         Buffer2D<ulong> integralImageim10 = fixture.integralImages[dataSet.Region("im10").filename];
-         Buffer2D<ulong> integralImageti31149327_9330 = fixture.integralImages[dataSet.Region("ti31149327_9330").filename];
-
-         // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
-         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+         foreach (string dataSetName in dataSetNames)
+         {
+            allPositions = allPositions.AddRange(dataSet.Position(dataSetName));
+         }
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
-         AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions).AddRange(im10Positions).AddRange(ti31149327_9330Positions), [integralImage507484246, integralImageim164, integralImageim10, integralImageti31149327_9330]);
-         AverageWindowFeature validationDataExtractor = new(validationPositions, [integralImage507484246]);
-         AverageWindowFeature testDataExtractor = new(testPositions, [integralImage507484246]);
+         AverageWindowFeature dataExtractor = new(allPositions, integralImages);
 
-         trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
-         validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
-         testDataExtractor.AddAverageTransformer(averageTransformerSizes);
+         dataExtractor.AddAverageTransformer(averageTransformerSizes);
 
-         TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, trainDataExtractor.ExtractLabel, trainDataExtractor.FeaturesCount());
-         TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
-         TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
+         TanukiETL tanukiETL = new(dataExtractor.ConvertAll, dataExtractor.ExtractLabel, dataExtractor.FeaturesCount());
 
-         PakiraDecisionTreeModel initialPakiraDecisionTreeModel = new();
          AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
          AccuracyResult testAccuracyResult;
@@ -1017,13 +1022,13 @@ namespace AmaigomaTests
 
          PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
 
-         pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(initialPakiraDecisionTreeModel, allTrainIds, trainTanukiETL);
+         pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(new(), allTrainIds, tanukiETL);
 
-         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, trainPositions, trainTanukiETL);
-         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, validationPositions, validationTanukiETL);
-         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, testPositions, testTanukiETL);
-         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, im164Positions, trainTanukiETL);
-         im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, im10Positions, trainTanukiETL);
+         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, trainPositions, tanukiETL);
+         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, validationPositions, tanukiETL);
+         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, testPositions, tanukiETL);
+         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, im164Positions, tanukiETL);
+         im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, im10Positions, tanukiETL);
 
          PrintConfusionMatrix(trainAccuracyResult, "Train");
          PrintConfusionMatrix(validationAccuracyResult, "Validation");
@@ -1052,7 +1057,9 @@ namespace AmaigomaTests
       {
          // UNDONE Add some permanent benchmarks to identify the slow parts of the test
          TreeNodeSplit bestSplitLogic = new();
-
+         // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
+         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+         ImmutableList<string> dataSetNames = ["Train", "Validation", "Test", "im164", "im10", "ti31149327_9330"];
          PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplitClustering);
          ImmutableDictionary<int, SampleData> trainPositions = dataSet.Position("Train");
          ImmutableDictionary<int, SampleData> validationPositions = dataSet.Position("Validation");
@@ -1062,19 +1069,12 @@ namespace AmaigomaTests
          ImmutableDictionary<int, SampleData> ti31149327_9330Positions = dataSet.Position("ti31149327_9330");
 
          // UNDONE Need to simplify the logic to add more data samples
-
-         Buffer2D<ulong> integralImage507484246 = fixture.integralImages[dataSet.Region("Train").filename];
-         Buffer2D<ulong> integralImageim164 = fixture.integralImages[dataSet.Region("im164").filename];
-         Buffer2D<ulong> integralImageim10 = fixture.integralImages[dataSet.Region("im10").filename];
-         Buffer2D<ulong> integralImageti31149327_9330 = fixture.integralImages[dataSet.Region("ti31149327_9330").filename];
-
-         // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
-         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+         ImmutableList<Buffer2D<ulong>> integralImages = PrepareIntegralImages(dataSetNames, dataSet, fixture);
 
          // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
-         AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions).AddRange(im10Positions).AddRange(ti31149327_9330Positions), [integralImage507484246, integralImageim164, integralImageim10, integralImageti31149327_9330]);
-         AverageWindowFeature validationDataExtractor = new(validationPositions, [integralImage507484246]);
-         AverageWindowFeature testDataExtractor = new(testPositions, [integralImage507484246]);
+         AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions).AddRange(im10Positions).AddRange(ti31149327_9330Positions), integralImages);
+         AverageWindowFeature validationDataExtractor = new(validationPositions, integralImages);
+         AverageWindowFeature testDataExtractor = new(testPositions, integralImages);
 
          trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
          validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
@@ -1086,10 +1086,6 @@ namespace AmaigomaTests
 
          AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
-         // AccuracyResult testAccuracyResult;
-         // AccuracyResult im164AccuracyResult;
-         // AccuracyResult im10AccuracyResult;
-         // AccuracyResult ti31149327_9330AccuracyResult = new();
 
          PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
 
