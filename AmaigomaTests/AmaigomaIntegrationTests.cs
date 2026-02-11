@@ -1001,12 +1001,8 @@ namespace AmaigomaTests
          // UNDONE Need to simplify the logic to add more data samples
          ImmutableDictionary<int, SampleData> allPositions = ImmutableDictionary<int, SampleData>.Empty;
 
-         foreach (string dataSetName in dataSetNames)
-         {
-            allPositions = allPositions.AddRange(dataSet.Position(dataSetName));
-         }
+         dataSetNames.ForEach(dataSetName => allPositions = allPositions.AddRange(dataSet.Position(dataSetName)));
 
-         // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
          AverageWindowFeature dataExtractor = new(allPositions, integralImages);
 
          dataExtractor.AddAverageTransformer(averageTransformerSizes);
@@ -1071,18 +1067,15 @@ namespace AmaigomaTests
          // UNDONE Need to simplify the logic to add more data samples
          ImmutableList<Buffer2D<ulong>> integralImages = PrepareIntegralImages(dataSetNames, dataSet, fixture);
 
-         // TODO Maybe AverageWindowFeature could be used to create a new instance with the same internal values but by only changing the positions/intergralImage ?
-         AverageWindowFeature trainDataExtractor = new(trainPositions.AddRange(im164Positions).AddRange(im10Positions).AddRange(ti31149327_9330Positions), integralImages);
-         AverageWindowFeature validationDataExtractor = new(validationPositions, integralImages);
-         AverageWindowFeature testDataExtractor = new(testPositions, integralImages);
+         ImmutableDictionary<int, SampleData> allPositions = ImmutableDictionary<int, SampleData>.Empty;
 
-         trainDataExtractor.AddAverageTransformer(averageTransformerSizes);
-         validationDataExtractor.AddAverageTransformer(averageTransformerSizes);
-         testDataExtractor.AddAverageTransformer(averageTransformerSizes);
+         dataSetNames.ForEach(dataSetName => allPositions = allPositions.AddRange(dataSet.Position(dataSetName)));
 
-         TanukiETL trainTanukiETL = new(trainDataExtractor.ConvertAll, trainDataExtractor.ExtractLabel, trainDataExtractor.FeaturesCount());
-         TanukiETL validationTanukiETL = new(validationDataExtractor.ConvertAll, validationDataExtractor.ExtractLabel, validationDataExtractor.FeaturesCount());
-         TanukiETL testTanukiETL = new(testDataExtractor.ConvertAll, testDataExtractor.ExtractLabel, testDataExtractor.FeaturesCount());
+         AverageWindowFeature dataExtractor = new(allPositions, integralImages);
+
+         dataExtractor.AddAverageTransformer(averageTransformerSizes);
+
+         TanukiETL tanukiETL = new(dataExtractor.ConvertAll, dataExtractor.ExtractLabel, dataExtractor.FeaturesCount());
 
          AccuracyResult trainAccuracyResult;
          AccuracyResult validationAccuracyResult;
@@ -1092,7 +1085,7 @@ namespace AmaigomaTests
          // Generate initial model for clustering
          // TODO Find a better way to do the initial clustering so that it is not dependent on the data distribution. Maybe consider all samples to be of a different class and then merge the leaves which have the same original class?
          // TODO Try not to use ALL data for the initial clustering. This will require to assign a new class to train data which were not seen yet. For "false positives" leaves, make sure to assign a different class based on the original class.
-         pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(new(), trainPositions.Keys, trainTanukiETL);
+         pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(new(), trainPositions.Keys, tanukiETL);
 
          ImmutableDictionary<int, ImmutableDictionary<int, int>> leafIdLabelDataId = [];
          ImmutableList<int> allDataSamples = [];
@@ -1124,7 +1117,7 @@ namespace AmaigomaTests
                   leafIdLabelDataId = leafIdLabelDataId.Add(leaf.id, []);
                }
 
-               int label = trainTanukiETL.TanukiLabelExtractor(dataSample);
+               int label = tanukiETL.TanukiLabelExtractor(dataSample);
 
                if (!leafIdLabelDataId[leaf.id].ContainsKey(label))
                {
@@ -1187,13 +1180,13 @@ namespace AmaigomaTests
          //0: 1, 195, 7x7
          // Need to apply the no-weight logic and THEN analyze one false positive leaf
 
-         TanukiETL clusteringTanukiETL = new(trainTanukiETL.TanukiDataTransformer, id => idLeafId[id], trainTanukiETL.TanukiFeatureCount);
+         TanukiETL clusteringTanukiETL = new(tanukiETL.TanukiDataTransformer, id => idLeafId[id], tanukiETL.TanukiFeatureCount);
 
          pakiraDecisionTreeModelAllData = pakiraGenerator2.Generate(new(), trainPositions.Keys, clusteringTanukiETL);
          pakiraDecisionTreeModelAllData = pakiraDecisionTreeModelAllData.UpdateTree(pakiraDecisionTreeModelAllData.Tree.ReplaceLeafValues(leafIdETL));
 
-         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, trainPositions, trainTanukiETL);
-         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, validationPositions, validationTanukiETL);
+         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, trainPositions, tanukiETL);
+         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, validationPositions, tanukiETL);
          //testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
          //im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
          //im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
@@ -1225,7 +1218,7 @@ namespace AmaigomaTests
             output.WriteLine("Node: Id: {0} Depth:{1}", node.id, nodesDepth[node.id]);
 
             //trainAccuracyResult = ComputeAccuracy(tree, trainPositions, trainTanukiETL);
-            validationAccuracyResult = ComputeAccuracy(tree, validationPositions, validationTanukiETL);
+            validationAccuracyResult = ComputeAccuracy(tree, validationPositions, tanukiETL);
 
             //PrintConfusionMatrix(trainAccuracyResult, "Train");
             PrintConfusionMatrix(validationAccuracyResult, "Validation");
