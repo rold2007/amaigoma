@@ -1,5 +1,4 @@
-﻿global using BinaryTreeNode = (int id, int featureIndex, double splitThreshold, int leftNodeIndex, int rightNodeIndex);
-global using BinaryTreeLeaf = (int id, int labelValue);
+﻿global using BinaryTreeLeaf = (int id, int labelValue);
 
 using Amaigoma;
 using Shouldly;
@@ -988,17 +987,21 @@ namespace AmaigomaTests
       {
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
-         ImmutableList<string> dataSetNames = ["Train", "Validation", "Test", "im164", "im10", "ti31149327_9330"];
+         ImmutableDictionary<string, int> dataSetAccuracy = ImmutableDictionary.CreateRange(new Dictionary<string, int> {
+          {"Train", 38},
+          {"Validation", 28},
+          {"Test", 32},
+          {"im164", 38},
+          {"im10", 38},
+          {"ti31149327_9330", 30}
+         });
+         ImmutableList<string> dataSetNames = dataSetAccuracy.Keys.ToImmutableList();
+
          PakiraDecisionTreeGenerator pakiraGenerator = new(TreeNodeSplit.GetBestSplitBaseline);
          ImmutableDictionary<int, SampleData> trainPositions = dataSet.Position("Train");
-         ImmutableDictionary<int, SampleData> validationPositions = dataSet.Position("Validation");
-         ImmutableDictionary<int, SampleData> testPositions = dataSet.Position("Test");
          ImmutableDictionary<int, SampleData> im164Positions = dataSet.Position("im164");
          ImmutableDictionary<int, SampleData> im10Positions = dataSet.Position("im10");
-
          ImmutableList<Buffer2D<ulong>> integralImages = PrepareIntegralImages(dataSetNames, dataSet, fixture);
-
-         // UNDONE Need to simplify the logic to add more data samples
          ImmutableDictionary<int, SampleData> allPositions = ImmutableDictionary<int, SampleData>.Empty;
 
          dataSetNames.ForEach(dataSetName => allPositions = allPositions.AddRange(dataSet.Position(dataSetName)));
@@ -1009,42 +1012,20 @@ namespace AmaigomaTests
 
          TanukiETL tanukiETL = new(dataExtractor.ConvertAll, dataExtractor.ExtractLabel, dataExtractor.FeaturesCount());
 
-         AccuracyResult trainAccuracyResult;
-         AccuracyResult validationAccuracyResult;
-         AccuracyResult testAccuracyResult;
-         AccuracyResult im164AccuracyResult;
-         AccuracyResult im10AccuracyResult;
          IEnumerable<int> allTrainIds = trainPositions.Keys.Union(im164Positions.Keys).Union(im10Positions.Keys);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = pakiraGenerator.Generate(new(), allTrainIds, tanukiETL);
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
+         dataSetNames.ForEach(dataSetName =>
+         {
+            AccuracyResult accuracyResult = ComputeAccuracy(pakiraDecisionTreeModel.Tree, dataSet.Position(dataSetName), tanukiETL);
 
-         pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(new(), allTrainIds, tanukiETL);
+            PrintConfusionMatrix(accuracyResult, dataSetName);
+            PrintLeaveResults(accuracyResult);
 
-         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, trainPositions, tanukiETL);
-         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, validationPositions, tanukiETL);
-         testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, testPositions, tanukiETL);
-         im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, im164Positions, tanukiETL);
-         im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, im10Positions, tanukiETL);
+            accuracyResult.leavesAfter.Count.ShouldBe(dataSetAccuracy[dataSetName]);
+         });
 
-         PrintConfusionMatrix(trainAccuracyResult, "Train");
-         PrintConfusionMatrix(validationAccuracyResult, "Validation");
-         PrintConfusionMatrix(testAccuracyResult, "Test");
-         PrintConfusionMatrix(im164AccuracyResult, "im164");
-         PrintConfusionMatrix(im10AccuracyResult, "im10");
-         PrintLeaveResults(trainAccuracyResult);
-         PrintLeaveResults(validationAccuracyResult);
-         PrintLeaveResults(testAccuracyResult);
-         PrintLeaveResults(im164AccuracyResult);
-         PrintLeaveResults(im10AccuracyResult);
          PrintEnd();
-
-         trainAccuracyResult.leavesAfter.Count.ShouldBe(38);
-         validationAccuracyResult.leavesAfter.Count.ShouldBe(28);
-         validationAccuracyResult.leavesBefore.Count.ShouldBe(38);
-         testAccuracyResult.leavesAfter.Count.ShouldBe(32);
-         testAccuracyResult.leavesBefore.Count.ShouldBe(38);
-         im164AccuracyResult.leavesAfter.Count.ShouldBe(38);
-         im10AccuracyResult.leavesAfter.Count.ShouldBe(38);
       }
 
       [Theory]
@@ -1055,7 +1036,15 @@ namespace AmaigomaTests
          TreeNodeSplit bestSplitLogic = new();
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
-         ImmutableList<string> dataSetNames = ["Train", "Validation", "Test", "im164", "im10", "ti31149327_9330"];
+         ImmutableDictionary<string, int> dataSetAccuracy = ImmutableDictionary.CreateRange(new Dictionary<string, int> {
+          {"Train", 38},
+          {"Validation", 30},
+          {"Test", 33},
+          {"im164", 36},
+          {"im10", 38},
+          {"ti31149327_9330", 30}
+         });
+         ImmutableList<string> dataSetNames = dataSetAccuracy.Keys.ToImmutableList();
          PakiraDecisionTreeGenerator pakiraGenerator = new(bestSplitLogic.GetBestSplitClustering);
          ImmutableDictionary<int, SampleData> trainPositions = dataSet.Position("Train");
          ImmutableDictionary<int, SampleData> validationPositions = dataSet.Position("Validation");
@@ -1063,8 +1052,6 @@ namespace AmaigomaTests
          ImmutableDictionary<int, SampleData> im164Positions = dataSet.Position("im164");
          ImmutableDictionary<int, SampleData> im10Positions = dataSet.Position("im10");
          ImmutableDictionary<int, SampleData> ti31149327_9330Positions = dataSet.Position("ti31149327_9330");
-
-         // UNDONE Need to simplify the logic to add more data samples
          ImmutableList<Buffer2D<ulong>> integralImages = PrepareIntegralImages(dataSetNames, dataSet, fixture);
 
          ImmutableDictionary<int, SampleData> allPositions = ImmutableDictionary<int, SampleData>.Empty;
@@ -1077,15 +1064,10 @@ namespace AmaigomaTests
 
          TanukiETL tanukiETL = new(dataExtractor.ConvertAll, dataExtractor.ExtractLabel, dataExtractor.FeaturesCount());
 
-         AccuracyResult trainAccuracyResult;
-         AccuracyResult validationAccuracyResult;
-
-         PakiraDecisionTreeModel pakiraDecisionTreeModelAllData;
-
          // Generate initial model for clustering
          // TODO Find a better way to do the initial clustering so that it is not dependent on the data distribution. Maybe consider all samples to be of a different class and then merge the leaves which have the same original class?
          // TODO Try not to use ALL data for the initial clustering. This will require to assign a new class to train data which were not seen yet. For "false positives" leaves, make sure to assign a different class based on the original class.
-         pakiraDecisionTreeModelAllData = pakiraGenerator.Generate(new(), trainPositions.Keys, tanukiETL);
+         PakiraDecisionTreeModel pakiraDecisionTreeModel = pakiraGenerator.Generate(new(), trainPositions.Keys, tanukiETL);
 
          ImmutableDictionary<int, ImmutableDictionary<int, int>> leafIdLabelDataId = [];
          ImmutableList<int> allDataSamples = [];
@@ -1094,9 +1076,9 @@ namespace AmaigomaTests
          ImmutableDictionary<int, int> idLeafId = [];
          ImmutableDictionary<int, int> leafIdETL = [];
 
-         foreach (BinaryTreeLeaf leaf in pakiraDecisionTreeModelAllData.Tree.Leaves())
+         foreach (BinaryTreeLeaf leaf in pakiraDecisionTreeModel.Tree.Leaves())
          {
-            ImmutableList<int> dataSamples = pakiraDecisionTreeModelAllData.DataSamples(leaf.id);
+            ImmutableList<int> dataSamples = pakiraDecisionTreeModel.DataSamples(leaf.id);
 
             if (labelCount.ContainsKey(leaf.labelValue))
             {
@@ -1182,60 +1164,32 @@ namespace AmaigomaTests
 
          TanukiETL clusteringTanukiETL = new(tanukiETL.TanukiDataTransformer, id => idLeafId[id], tanukiETL.TanukiFeatureCount);
 
-         pakiraDecisionTreeModelAllData = pakiraGenerator2.Generate(new(), trainPositions.Keys, clusteringTanukiETL);
-         pakiraDecisionTreeModelAllData = pakiraDecisionTreeModelAllData.UpdateTree(pakiraDecisionTreeModelAllData.Tree.ReplaceLeafValues(leafIdETL));
+         pakiraDecisionTreeModel = pakiraGenerator2.Generate(new(), trainPositions.Keys, clusteringTanukiETL);
+         pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(pakiraDecisionTreeModel.Tree.ReplaceLeafValues(leafIdETL));
 
-         trainAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, trainPositions, tanukiETL);
-         validationAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData.Tree, validationPositions, tanukiETL);
-         //testAccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, testPositions, testTanukiETL);
-         //im164AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im164Positions, trainTanukiETL);
-         //im10AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, im10Positions, trainTanukiETL);
-         //ti31149327_9330AccuracyResult = ComputeAccuracy(pakiraDecisionTreeModelAllData, ti31149327_9330Positions, trainTanukiETL);
+         dataSetNames.ForEach(dataSetName =>
+         {
+            AccuracyResult accuracyResult = ComputeAccuracy(pakiraDecisionTreeModel.Tree, dataSet.Position(dataSetName), tanukiETL);
 
-         PrintConfusionMatrix(trainAccuracyResult, "Train");
-         PrintConfusionMatrix(validationAccuracyResult, "Validation");
-         //PrintConfusionMatrix(testAccuracyResult, "Test");
-         //PrintConfusionMatrix(im164AccuracyResult, "im164");
-         //PrintConfusionMatrix(im10AccuracyResult, "im10");
-         //PrintConfusionMatrix(ti31149327_9330AccuracyResult, "ti31149327_9330");
-         PrintLeaveResults(trainAccuracyResult);
-         PrintLeaveResults(validationAccuracyResult);
-         //PrintLeaveResults(testAccuracyResult);
-         //PrintLeaveResults(im164AccuracyResult);
-         //PrintLeaveResults(im10AccuracyResult);
-         //PrintLeaveResults(ti31149327_9330AccuracyResult);
+            PrintConfusionMatrix(accuracyResult, dataSetName);
+            PrintLeaveResults(accuracyResult);
+         });
 
          PrintEnd();
 
          // TODO Use Spectre.Console to print tree structure if possible
 
-         ImmutableDictionary<int, int> nodesDepth = pakiraDecisionTreeModelAllData.Tree.NodesDepth();
-
-         foreach (BinaryTreeNode node in pakiraDecisionTreeModelAllData.Tree.Nodes())
+         dataSetNames.ForEach(dataSetName =>
          {
-            PakiraTree tree = pakiraDecisionTreeModelAllData.Tree.SwapCondition(node.id);
+            AccuracyResult accuracyResult = ComputeAccuracy(pakiraDecisionTreeModel.Tree, dataSet.Position(dataSetName), tanukiETL);
 
-            output.WriteLine("Node: Id: {0} Depth:{1}", node.id, nodesDepth[node.id]);
+            PrintConfusionMatrix(accuracyResult, dataSetName);
+            PrintLeaveResults(accuracyResult);
 
-            //trainAccuracyResult = ComputeAccuracy(tree, trainPositions, trainTanukiETL);
-            validationAccuracyResult = ComputeAccuracy(tree, validationPositions, tanukiETL);
-
-            //PrintConfusionMatrix(trainAccuracyResult, "Train");
-            PrintConfusionMatrix(validationAccuracyResult, "Validation");
-
-            //PrintLeaveResults(trainAccuracyResult);
-            PrintLeaveResults(validationAccuracyResult);
-         }
+            accuracyResult.leavesAfter.Count.ShouldBe(dataSetAccuracy[dataSetName], dataSetName);
+         });
 
          PrintEnd();
-
-         trainAccuracyResult.leavesBefore.Count.ShouldBe(38);
-         trainAccuracyResult.leavesAfter.Count.ShouldBe(38);
-         validationAccuracyResult.leavesAfter.Count.ShouldBe(30);
-         // testAccuracyResult.leavesAfter.Count.ShouldBe(36);
-         // im164AccuracyResult.leavesAfter.Count.ShouldBe(43);
-         // im10AccuracyResult.leavesAfter.Count.ShouldBe(43);
-         // ti31149327_9330AccuracyResult.leavesAfter.Count.ShouldBe(38);
       }
 
       private static void SaveAllImages(ImmutableDictionary<BinaryTreeLeaf, ImmutableList<int>> falsePositives, ImmutableDictionary<int, SampleData> positions, string imageName, Rgba32 color)
