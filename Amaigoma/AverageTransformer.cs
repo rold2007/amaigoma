@@ -54,7 +54,7 @@ namespace Amaigoma
          SlidingWindowSizeSquaredInverted = 1.0 / (slidingWindowSize * slidingWindowSize);
          PositionOffsets = [];
 
-         int offsetAdjustment = Math.Max(0, ((fullWindowHalfSize - SlidingWindowHalfSize) / slidingWindowSize));
+         int offsetAdjustment = Math.Max(0, (fullWindowHalfSize - SlidingWindowHalfSize) / slidingWindowSize);
          Point startingOffset = new(fullWindowHalfSize - (offsetAdjustment * slidingWindowSize), fullWindowHalfSize - (offsetAdjustment * slidingWindowSize));
 
          for (int y = startingOffset.Y - SlidingWindowHalfSize; y <= (fullWindowsSize - SlidingWindowSize); y += SlidingWindowSize)
