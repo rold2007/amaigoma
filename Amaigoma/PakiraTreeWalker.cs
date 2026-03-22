@@ -1,6 +1,6 @@
 ﻿namespace Amaigoma
 {
-   public sealed record PakiraTreeWalker // ncrunch: no coverage
+   public sealed record PakiraTreeWalker
    {
       private PakiraTree Tree { get; }
       private TanukiETL TanukiETL { get; }

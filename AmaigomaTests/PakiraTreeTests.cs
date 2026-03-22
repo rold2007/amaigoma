@@ -5,7 +5,7 @@ using Xunit;
 
 namespace AmaigomaTests
 {
-   public record PakiraTreeTests // ncrunch: no coverage
+   public record PakiraTreeTests
    {
       [Fact]
       public void Constructor()

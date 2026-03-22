@@ -4,7 +4,7 @@ using System.Collections.Immutable;
 
 namespace Amaigoma
 {
-   public sealed record PakiraDecisionTreeModel // ncrunch: no coverage
+   public sealed record PakiraDecisionTreeModel
    {
       public PakiraTree Tree { get; } = new();
 

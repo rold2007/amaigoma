@@ -15,7 +15,7 @@ namespace Amaigoma
 
    // TODO Apply init-only properties where possible. Available since C# 9.0 to make immutable types using less boilerplate code
    // TODO Rename Pakira to something more significative like BinaryTree or DecisionTree
-   public sealed record PakiraTree // ncrunch: no coverage
+   public sealed record PakiraTree
    {
       private readonly ImmutableDictionary<int, BinaryTreeNodeInternal> nodes;
       private readonly ImmutableDictionary<int, BinaryTreeLeafInternal> leaves;
