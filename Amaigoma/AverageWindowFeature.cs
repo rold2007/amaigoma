@@ -33,7 +33,7 @@ namespace Amaigoma
       }
    }
 
-   public record AverageWindowFeature // ncrunch: no coverage
+   public record AverageWindowFeature
    {
       private readonly ImmutableDictionary<int, SampleData> Samples;
       private ImmutableList<AverageTransformer> AverageTransformers = [];
@@ -107,11 +107,6 @@ namespace Amaigoma
             DataTransformersRanges = DataTransformersRanges.Add(new Range(startRange, endRange));
             startRange = endRange;
          }
-      }
-
-      public int ExtractLabel(int id)
-      {
-         return Samples[id].Label;
       }
 
       public int FeaturesCount()

@@ -7,7 +7,7 @@ using Xunit;
 
 namespace AmaigomaTests
 {
-   public record PakiraGeneratorTests // ncrunch: no coverage
+   public record PakiraGeneratorTests
    {
       private readonly PakiraDecisionTreeGenerator pakiraDecisionTreeGenerator;
 

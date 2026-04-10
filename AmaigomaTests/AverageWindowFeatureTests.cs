@@ -33,7 +33,7 @@ namespace AmaigomaTests
 
    [MemoryDiagnoser]
    [SimpleJob(RunStrategy.Monitoring)]
-   public class AverageWindowFeatureTests // ncrunch: no coverage
+   public class AverageWindowFeatureTests
    {
       [Fact]
       public void Constructor()

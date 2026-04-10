@@ -26,10 +26,10 @@ namespace Amaigoma
       }
    }
 
-   public sealed record PakiraDecisionTreeGenerator // ncrunch: no coverage
+   public sealed record PakiraDecisionTreeGenerator
    {
-      public static readonly int UNKNOWN_CLASS_INDEX = -1; // ncrunch: no coverage
-      public readonly int randomSeed = new Random().Next(); // ncrunch: no coverage
+      public static readonly int UNKNOWN_CLASS_INDEX = -1;
+      public readonly int randomSeed = new Random().Next();
       private readonly Random RandomSource;
       private readonly Func<IReadOnlyList<int>, TanukiETL, (int featureIndex, double splitThreshold)> BestSplit;
 
