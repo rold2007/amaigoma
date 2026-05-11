@@ -110,7 +110,6 @@ namespace Amaigoma
       public ImmutableDictionary<int, int> NodesDepth()
       {
          ImmutableDictionary<int, int> depths = ImmutableDictionary<int, int>.Empty;
-
          ImmutableStack<(int, BinaryTreeNodeInternal)> nodesStack = ImmutableStack<(int, BinaryTreeNodeInternal)>.Empty;
 
          depths = depths.SetItem(0, 0);
@@ -122,19 +121,16 @@ namespace Amaigoma
 
             nodesStack = nodesStack.Pop();
 
-            //if (temp != NULL)
+            if (nodes.ContainsKey(node.leftNodeIndex))
             {
-               if (nodes.ContainsKey(node.leftNodeIndex))
-               {
-                  depths = depths.SetItem(node.leftNodeIndex, depths[id] + 1);
-                  nodesStack = nodesStack.Push((node.leftNodeIndex, nodes[node.leftNodeIndex]));
-               }
+               depths = depths.SetItem(node.leftNodeIndex, depths[id] + 1);
+               nodesStack = nodesStack.Push((node.leftNodeIndex, nodes[node.leftNodeIndex]));
+            }
 
-               if (nodes.ContainsKey(node.rightNodeIndex))
-               {
-                  depths = depths.SetItem(node.rightNodeIndex, depths[id] + 1);
-                  nodesStack = nodesStack.Push((node.rightNodeIndex, nodes[node.rightNodeIndex]));
-               }
+            if (nodes.ContainsKey(node.rightNodeIndex))
+            {
+               depths = depths.SetItem(node.rightNodeIndex, depths[id] + 1);
+               nodesStack = nodesStack.Push((node.rightNodeIndex, nodes[node.rightNodeIndex]));
             }
          }
 

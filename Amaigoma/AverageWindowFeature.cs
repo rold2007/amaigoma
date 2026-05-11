@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
+// TODO Try to use Perlin noise to generate "random" convolution kernels to be used for "infinite" features.
 namespace Amaigoma
 {
    public struct SampleData
@@ -91,9 +92,15 @@ namespace Amaigoma
       // TODO Change this method to make the class immutable
       public void AddAverageTransformer(IEnumerable<int> slidingWindowSizes)
       {
+         int maxFeatureWindowSize = slidingWindowSizes.Max();
+
+         AddAverageTransformer(slidingWindowSizes, maxFeatureWindowSize);
+      }
+
+      public void AddAverageTransformer(IEnumerable<int> slidingWindowSizes, int maxFeatureWindowSize)
+      {
          int startRange = 0;
          int endRange;
-         int maxFeatureWindowSize = slidingWindowSizes.Max();
 
          foreach (int slidingWindowSize in slidingWindowSizes)
          {

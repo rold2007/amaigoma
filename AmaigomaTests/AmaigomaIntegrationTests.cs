@@ -13,7 +13,9 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Xunit;
+using Xunit.Internal;
 
 namespace AmaigomaTests
 {
@@ -127,6 +129,7 @@ namespace AmaigomaTests
    public record TreeNodeSplit
    {
       private static readonly ImmutableList<int> emptyHistogram = [.. Enumerable.Repeat(0, 256)];
+      private static readonly ImmutableList<int> emptyHistogram254 = [.. Enumerable.Repeat(0, 255)];
 
       public TreeNodeSplit()
       {
@@ -648,7 +651,7 @@ namespace AmaigomaTests
                js += 0.5 * q * Math.Log2(q / m);
          }
 
-         return js;
+         return Math.Min(js, 1.0);
       }
 
       private static double GiniImpurity(IReadOnlyList<int> counts)
@@ -679,9 +682,13 @@ namespace AmaigomaTests
          {
             // TODO No need to keep all entropies, only the best one
             ImmutableList<double> weigthedEntropies = [];
-            ImmutableList<int> sampleIds = [.. ids];
+            // TODO Parametrize the Take count
+            ImmutableList<int> sampleIds = [.. ids.Take(1000)];
             ImmutableHashSet<int> allLabels = [.. ids.Select(id => tanukiETL.TanukiLabelExtractor(id))];
             ImmutableDictionary<int, ImmutableList<int>> allHistograms = ImmutableDictionary<int, ImmutableList<int>>.Empty;
+
+            // UNDONE Debugging purpose.
+            ImmutableList<double> shannonEntropies = [];
 
             // UNDONE DO NOT COMMIT
             ImmutableList<string> tempDebugData = [];
@@ -691,18 +698,19 @@ namespace AmaigomaTests
                allHistograms = allHistograms.SetItem(label, emptyHistogram);
             }
 
+            // UNDONE Use ShannonEntropy to decide if the feature is worth splitting. Usually lower than 0.85 starts to be good, but a range of 0.4-0.7 is safer.
+            // Anything under 0.4 should be great. NOTE that the current ShannonEntropy is not normalized. Since the histogram used has 256 bins, the max value is 8.
             for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
             {
                ImmutableList<int> transformedData = [.. sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex))];
 
                int bestSplitValue = -1;
-               double bestWeightedEntropy = double.MaxValue;
+               double bestWeightedEntropy = 0;
                int bestSplitCount = 0;
-               ImmutableDictionary<int, int> leftLabelTotalCount = [];
-               ImmutableDictionary<int, int> rightLabelTotalCount = [];
                int leftTotalCount = 0;
                int rightTotalCount = sampleIds.Count;
                ImmutableDictionary<int, ImmutableList<int>> histograms = allHistograms;
+               ImmutableList<int> mergedHistogram = emptyHistogram;
 
                for (int i = 0; i < sampleIds.Count; i++)
                {
@@ -713,28 +721,41 @@ namespace AmaigomaTests
 
                   histograms = histograms.SetItem(label, histogram.SetItem(currentData, histogram[currentData] + 1));
 
-                  if (rightLabelTotalCount.TryGetValue(label, out int value))
+                  mergedHistogram = mergedHistogram.SetItem(currentData, mergedHistogram[currentData] + 1);
+               }
+
+               shannonEntropies = shannonEntropies.Add(ShannonEntropy(mergedHistogram));
+
+               int minimumSampleCount = Convert.ToInt32(0.33 * sampleIds.Count);
+               int maximumSampleCount = Convert.ToInt32(0.66 * sampleIds.Count);
+               int lowSplitValue = 0;
+               int highSplitValue = 0;
+               int sampleCountSum = 0;
+
+               for (int splitValue = 0; splitValue < 256; splitValue++)
+               {
+                  sampleCountSum += mergedHistogram[splitValue];
+
+                  if (sampleCountSum <= minimumSampleCount)
                   {
-                     rightLabelTotalCount = rightLabelTotalCount.SetItem(label, value + 1);
+                     lowSplitValue = splitValue;
                   }
-                  else
+
+                  if (sampleCountSum < maximumSampleCount)
                   {
-                     rightLabelTotalCount = rightLabelTotalCount.Add(label, 1);
-                     leftLabelTotalCount = leftLabelTotalCount.Add(label, 0);
+                     highSplitValue = splitValue;
                   }
                }
 
                // UNDONE DO NOT COMMIT
                ImmutableList<double> splitValuesWeigthedEntropies = [];
 
-               for (int splitValue = 0; splitValue < 256; splitValue++)
+               for (int splitValue = lowSplitValue; splitValue <= highSplitValue; splitValue++)
                {
                   foreach ((int label, ImmutableList<int> histogram) in histograms)
                   {
                      int binCount = histogram[splitValue];
 
-                     leftLabelTotalCount = leftLabelTotalCount.SetItem(label, leftLabelTotalCount[label] + binCount);
-                     rightLabelTotalCount = rightLabelTotalCount.SetItem(label, rightLabelTotalCount[label] - binCount);
                      leftTotalCount += binCount;
                      rightTotalCount -= binCount;
                   }
@@ -744,36 +765,43 @@ namespace AmaigomaTests
                      leftTotalCount.ShouldBeGreaterThanOrEqualTo(0);
                      rightTotalCount.ShouldBeGreaterThanOrEqualTo(0);
 
-                     int leftTotalCountForEntropy = leftLabelTotalCount.Count(x => x.Value > 0);
-                     int rightTotalCountForEntropy = rightLabelTotalCount.Count(x => x.Value > 0);
+                     ImmutableList<int> leftHistogram = emptyHistogram254;
+                     ImmutableList<int> rightHistogram = emptyHistogram254;
 
-                     double js = JensenShannonDivergence(
-                         leftLabelTotalCount.Values.ToList(),
-                         rightLabelTotalCount.Values.ToList()
-                     );
-
-                     tempDebugData = tempDebugData.Add($"Feature {featureIndex}, split {splitValue}, left count {leftTotalCountForEntropy}, right count {rightTotalCountForEntropy}, js {js}");
-
-                     if (js < bestWeightedEntropy)
+                     for (int i = 0; i <= splitValue; i++)
                      {
-                        bestWeightedEntropy = js;
+                        leftHistogram = leftHistogram.SetItem(i, mergedHistogram[i]);
+                     }
+
+                     for (int i = splitValue + 1; i < 256; i++)
+                     {
+                        rightHistogram = rightHistogram.SetItem(i - splitValue - 1, mergedHistogram[i]);
+                     }
+
+                     double weightedEntropy = JensenShannonDivergence(leftHistogram, rightHistogram);
+
+                     tempDebugData = tempDebugData.Add($"Feature {featureIndex}, split {splitValue}, weightedEntropy {weightedEntropy}");
+
+                     if (weightedEntropy > bestWeightedEntropy)
+                     {
+                        bestWeightedEntropy = weightedEntropy;
                         bestSplitValue = splitValue;
                         bestSplitCount = 0;
                      }
-                     else if (js == bestWeightedEntropy)
+                     else if (weightedEntropy == bestWeightedEntropy)
                      {
                         bestSplitValue.ShouldBeGreaterThanOrEqualTo(0);
                         bestSplitCount++;
                      }
 
-                     splitValuesWeigthedEntropies = splitValuesWeigthedEntropies.Add(js);
+                     splitValuesWeigthedEntropies = splitValuesWeigthedEntropies.Add(weightedEntropy);
                   }
                }
 
                weigthedEntropies = weigthedEntropies.Add(bestWeightedEntropy);
 
                if (bestFeature == -1 ||
-                  weigthedEntropies[featureIndex] < weigthedEntropies[bestFeature] ||
+                  weigthedEntropies[featureIndex] > weigthedEntropies[bestFeature] ||
                   (weigthedEntropies[featureIndex] == weigthedEntropies[bestFeature] && bestFeatureSplitCount < bestSplitCount))
                {
                   if (bestSplitCount > 1)
@@ -786,6 +814,9 @@ namespace AmaigomaTests
                   bestFeatureSplitCount = bestSplitCount;
                }
             }
+
+            double minShannonEntropies = shannonEntropies.Min();
+            double bestShannonEntropies = shannonEntropies[bestFeature];
 
             bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
@@ -1062,14 +1093,27 @@ namespace AmaigomaTests
 
                      //tempDebugData = tempDebugData.Add($"Feature {featureIndex}, split {splitValue}, left count {leftTotalCountForEntropy}, right count {rightTotalCountForEntropy}, left entropy {leftEntropy}, right entropy {rightEntropy}, weighted entropy {weightedEntropy}");
 
-                     var labels = allLabels.OrderBy(x => x).ToList();
+                     List<int> labels = allLabels.OrderBy(x => x).ToList();
 
-                     var leftCounts = labels.Select(l => leftLabelTotalCount[l]).ToList();
-                     var rightCounts = labels.Select(l => rightLabelTotalCount[l]).ToList();
+                     List<int> leftCounts = labels.Select(l => leftLabelTotalCount[l]).ToList();
+                     List<int> rightCounts = labels.Select(l => rightLabelTotalCount[l]).ToList();
 
                      if (useJSD)
                      {
-                        weightedEntropy = -JensenShannonDivergence(leftCounts, rightCounts);
+                        List<int> leftHistogram = [.. Enumerable.Repeat(0, 256)];
+                        List<int> rightHistogram = [.. Enumerable.Repeat(0, 256)];
+
+                        for (int i = 0; i <= splitValue; i++)
+                        {
+                           leftHistogram[i] = histograms[2][i];
+                        }
+
+                        for (int i = splitValue + 1; i < 256; i++)
+                        {
+                           rightHistogram[i - splitValue + 1] = histograms[2][i];
+                        }
+
+                        weightedEntropy = -JensenShannonDivergence(leftHistogram, rightHistogram);
                      }
                      else
                      {
@@ -1369,6 +1413,7 @@ namespace AmaigomaTests
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
+      [Trait("Category", "Integration")]
       public void UppercaseA_507484246_Baseline(DataSet dataSet)
       {
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
@@ -1416,12 +1461,15 @@ namespace AmaigomaTests
 
       [Theory]
       [MemberData(nameof(GetUppercaseA_507484246_Data))]
+      [Trait("Category", "Integration")]
       public void UppercaseA_507484246_Clustering(DataSet dataSet)
       {
          // UNDONE Add some permanent benchmarks to identify the slow parts of the test
          TreeNodeSplit bestSplitLogic = new();
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
-         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
+         //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+         //ImmutableList<int> averageTransformerSizes = [7, 5, 3];
+         ImmutableList<int> averageTransformerSizes = [5, 3];
          ImmutableDictionary<string, int> dataSetAccuracy = ImmutableDictionary.CreateRange(new Dictionary<string, int> {
           {"Train", 37},
           {"Validation", 30},
@@ -1456,10 +1504,10 @@ namespace AmaigomaTests
          //image.SaveAsPng("Robinson.png");
 
          //image = fixture.sourceImages["assets/text-extraction-for-ocr/507484246.tif"].Clone(context => context.DetectEdges(SixLabors.ImageSharp.Processing.Processors.Convolution.EdgeDetector2DKernel.KayyaliKernel));
-         //image.SaveAsPng("Robinson.png");
+         //image.SaveAsPng("KayyaliKernel.png");
 
          //image = fixture.sourceImages["assets/text-extraction-for-ocr/507484246.tif"].Clone(context => context.DetectEdges(SixLabors.ImageSharp.Processing.Processors.Convolution.EdgeDetector2DKernel.PrewittKernel));
-         //image.SaveAsPng("KayyaliKernel.png");
+         //image.SaveAsPng("PrewittKernel.png");
 
          //image = fixture.sourceImages["assets/text-extraction-for-ocr/507484246.tif"].Clone(context => context.DetectEdges(SixLabors.ImageSharp.Processing.Processors.Convolution.EdgeDetector2DKernel.RobertsCrossKernel));
          //image.SaveAsPng("RobertsCrossKernel.png");
@@ -1483,16 +1531,54 @@ namespace AmaigomaTests
          AverageWindowFeature dataExtractor = new(allPositions, integralImages);
          AverageWindowFeature edgeDataExtractor = new(allPositions, edgeIntegralImages);
 
-         dataExtractor.AddAverageTransformer(averageTransformerSizes);
-         edgeDataExtractor.AddAverageTransformer(averageTransformerSizes);
+         dataExtractor.AddAverageTransformer(averageTransformerSizes, 17);
+         edgeDataExtractor.AddAverageTransformer(averageTransformerSizes, 17);
 
          TanukiETL tanukiETL = new(dataExtractor.ConvertAll, (id => allPositions[id].Label), dataExtractor.FeaturesCount());
 
          //tanukiETL = tanukiETL.AddDataTransformer(edgeDataExtractor.ConvertAll, edgeDataExtractor.FeaturesCount());
 
 
-         PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringHybrid);
-         PakiraDecisionTreeModel pakiraDecisionTreeModelClusteringHybrid = pakiraGeneratorClusteringHybrid.Generate(new(), trainPositions.Keys, tanukiETL);
+         PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringJensenShannon);
+
+         ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 10).AsParallel().Select(i =>
+         {
+            return pakiraGeneratorClusteringHybrid.Generate(new(), im164Positions.Keys.Shuffle(new Random(42 + i)), tanukiETL);
+         }).ToImmutableList();
+
+         ImmutableList<string> testNames = ["Train", "Test", "Validation"];
+         ImmutableList<string> results = ImmutableList<string>.Empty;
+
+
+         testNames.ForEach(dataSetName =>
+         {
+            IEnumerable<int> ids = dataSet.Position(dataSetName).Keys;
+            File.AppendAllText("results.txt", dataSetName + Environment.NewLine);
+
+            foreach (int id in ids)
+            {
+               string result = id.ToString() + "," + dataSet.Position(dataSetName)[id].Label + ",";
+
+               foreach (PakiraDecisionTreeModel model in models)
+               {
+                  PakiraTreeWalker pakiraTreeWalker = new(model.Tree, tanukiETL);
+                  BinaryTreeLeaf binaryTreeLeafResult = pakiraTreeWalker.PredictLeaf(id);
+
+                  result += binaryTreeLeafResult.id.ToString() + ",";
+               }
+
+               File.AppendAllText("results.txt", result + Environment.NewLine);
+            }
+         });
+
+         // TODO Use a random seed
+         IEnumerable<int> shuffledTrainData = im164Positions.Keys.Shuffle(new Random(42));
+
+         PakiraDecisionTreeModel pakiraDecisionTreeModelClusteringHybrid = pakiraGeneratorClusteringHybrid.Generate(new(), shuffledTrainData, tanukiETL);
+         //PakiraDecisionTreeModel pakiraDecisionTreeModelClusteringHybrid = pakiraGeneratorClusteringHybrid.Generate(new(), trainPositions.Keys, tanukiETL);
+
+         AccuracyResult accuracyResult1 = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position("Train"), tanukiETL);
+         AccuracyResult accuracyResult2 = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position("Test"), tanukiETL);
 
          dataSetNames.ForEach(dataSetName =>
          {
@@ -1501,6 +1587,8 @@ namespace AmaigomaTests
             PrintConfusionMatrix(accuracyResult, dataSetName);
             PrintLeaveResults(accuracyResult);
          });
+
+         // UNDONE Next task: Create a random forest of about 200 clustering trees and evaluate the accuracy based on majority vote.
 
          PrintEnd();
          return;

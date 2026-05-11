@@ -131,13 +131,23 @@ namespace Amaigoma
             pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(leftLeafId, updatedDataSamples[true]);
             pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(rightLeafId, updatedDataSamples[false]);
 
-            if (leftLabel == UnknownLabelValue)
+            // UNDONE Add a callback so that each logic can decide when to stop splitting
+            //if (leftLabel == UnknownLabelValue)
+            //{
+            //   retrainLeaves = retrainLeaves.Add(leftLeafId);
+            //}
+
+            //if (rightLabel == UnknownLabelValue)
+            //{
+            //   retrainLeaves = retrainLeaves.Add(rightLeafId);
+            //}
+
+            int nodeDepth = pakiraDecisionTreeModel.Tree.NodesDepth()[leafId];
+
+            // TODO Parametrize the depth
+            if (nodeDepth < 4)
             {
                retrainLeaves = retrainLeaves.Add(leftLeafId);
-            }
-
-            if (rightLabel == UnknownLabelValue)
-            {
                retrainLeaves = retrainLeaves.Add(rightLeafId);
             }
          }
