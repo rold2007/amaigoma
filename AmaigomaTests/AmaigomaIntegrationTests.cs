@@ -688,7 +688,7 @@ namespace AmaigomaTests
             ImmutableDictionary<int, ImmutableList<int>> allHistograms = ImmutableDictionary<int, ImmutableList<int>>.Empty;
 
             // UNDONE Debugging purpose.
-            ImmutableList<double> shannonEntropies = [];
+            // ImmutableList<double> shannonEntropies = [];
 
             // UNDONE DO NOT COMMIT
             ImmutableList<string> tempDebugData = [];
@@ -724,7 +724,7 @@ namespace AmaigomaTests
                   mergedHistogram = mergedHistogram.SetItem(currentData, mergedHistogram[currentData] + 1);
                }
 
-               shannonEntropies = shannonEntropies.Add(ShannonEntropy(mergedHistogram));
+               // shannonEntropies = shannonEntropies.Add(ShannonEntropy(mergedHistogram));
 
                int minimumSampleCount = Convert.ToInt32(0.33 * sampleIds.Count);
                int maximumSampleCount = Convert.ToInt32(0.66 * sampleIds.Count);
@@ -780,7 +780,7 @@ namespace AmaigomaTests
 
                      double weightedEntropy = JensenShannonDivergence(leftHistogram, rightHistogram);
 
-                     tempDebugData = tempDebugData.Add($"Feature {featureIndex}, split {splitValue}, weightedEntropy {weightedEntropy}");
+                     // tempDebugData = tempDebugData.Add($"Feature {featureIndex}, split {splitValue}, weightedEntropy {weightedEntropy}");
 
                      if (weightedEntropy > bestWeightedEntropy)
                      {
@@ -815,8 +815,8 @@ namespace AmaigomaTests
                }
             }
 
-            double minShannonEntropies = shannonEntropies.Min();
-            double bestShannonEntropies = shannonEntropies[bestFeature];
+            // double minShannonEntropies = shannonEntropies.Min();
+            // double bestShannonEntropies = shannonEntropies[bestFeature];
 
             bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
@@ -1278,14 +1278,14 @@ namespace AmaigomaTests
          new Rectangle(153, 409, 1, 1),
          new Rectangle(217, 519, 1, 1),
          new Rectangle(155, 549, 1, 1),
-         new Rectangle(190, 540, 280, 20),
-         new Rectangle(20, 555, 480, 215),
+         // new Rectangle(190, 540, 280, 20),
+         // new Rectangle(20, 555, 480, 215),
       ];
 
       static private readonly ImmutableList<int> validation_507484246_Labels =
          [
          uppercaseA, uppercaseA, uppercaseA, uppercaseA, uppercaseA,
-         other, other
+         // other, other
          ];
 
       static private readonly ImmutableList<Rectangle> test_507484246_Rectangles =
@@ -1295,16 +1295,16 @@ namespace AmaigomaTests
          new Rectangle(137, 851, 1, 1),
          new Rectangle(257, 851, 1, 1),
          new Rectangle(605, 851, 1, 1),
-         new Rectangle(520, 550, 230, 216),
-         new Rectangle(95, 810, 500, 20),
-         new Rectangle(20, 900, 740, 70),
-         new Rectangle(180, 960, 310, 23),
+         // new Rectangle(520, 550, 230, 216),
+         // new Rectangle(95, 810, 500, 20),
+         // new Rectangle(20, 900, 740, 70),
+         // new Rectangle(180, 960, 310, 23),
       ];
 
       static private readonly ImmutableList<int> test_507484246_Labels =
       [
          uppercaseA, uppercaseA, uppercaseA, uppercaseA, uppercaseA,
-         other, other, other, other
+         // other, other, other, other
       ];
 
       static private readonly ImmutableList<Rectangle> im164Rectangles = [new Rectangle(8, 8, 483, 358)];
@@ -1467,8 +1467,8 @@ namespace AmaigomaTests
          // UNDONE Add some permanent benchmarks to identify the slow parts of the test
          TreeNodeSplit bestSplitLogic = new();
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
-         //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
-         //ImmutableList<int> averageTransformerSizes = [7, 5, 3];
+         // ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+         // ImmutableList<int> averageTransformerSizes = [7, 5, 3];
          ImmutableList<int> averageTransformerSizes = [5, 3];
          ImmutableDictionary<string, int> dataSetAccuracy = ImmutableDictionary.CreateRange(new Dictionary<string, int> {
           {"Train", 37},
@@ -1541,41 +1541,175 @@ namespace AmaigomaTests
 
          PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringJensenShannon);
 
-         ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 10).AsParallel().Select(i =>
+         ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 25).AsParallel().Select(i =>
          {
             return pakiraGeneratorClusteringHybrid.Generate(new(), im164Positions.Keys.Shuffle(new Random(42 + i)), tanukiETL);
          }).ToImmutableList();
 
          ImmutableList<string> testNames = ["Train", "Test", "Validation"];
-         ImmutableList<string> results = ImmutableList<string>.Empty;
+         // ImmutableList<string> results = ImmutableList<string>.Empty;
 
+         // testNames.ForEach(dataSetName =>
+         // {
+         //    IEnumerable<int> ids = dataSet.Position(dataSetName).Keys;
+         //    File.AppendAllText("results.txt", dataSetName + Environment.NewLine);
+         //    results = results.Add(dataSetName);
 
-         testNames.ForEach(dataSetName =>
-         {
-            IEnumerable<int> ids = dataSet.Position(dataSetName).Keys;
-            File.AppendAllText("results.txt", dataSetName + Environment.NewLine);
+         //    foreach (int id in ids)
+         //    {
+         //       string result = id.ToString() + "," + dataSet.Position(dataSetName)[id].Label + ",";
 
-            foreach (int id in ids)
-            {
-               string result = id.ToString() + "," + dataSet.Position(dataSetName)[id].Label + ",";
+         //       foreach (PakiraDecisionTreeModel model in models)
+         //       {
+         //          PakiraTreeWalker pakiraTreeWalker = new(model.Tree, tanukiETL);
+         //          BinaryTreeLeaf binaryTreeLeafResult = pakiraTreeWalker.PredictLeaf(id);
 
-               foreach (PakiraDecisionTreeModel model in models)
-               {
-                  PakiraTreeWalker pakiraTreeWalker = new(model.Tree, tanukiETL);
-                  BinaryTreeLeaf binaryTreeLeafResult = pakiraTreeWalker.PredictLeaf(id);
+         //          result += binaryTreeLeafResult.id.ToString() + ",";
+         //       }
 
-                  result += binaryTreeLeafResult.id.ToString() + ",";
-               }
-
-               File.AppendAllText("results.txt", result + Environment.NewLine);
-            }
-         });
+         //       File.AppendAllText("results.txt", result + Environment.NewLine);
+         //       results = results.Add(result);
+         //    }
+         // });
 
          // TODO Use a random seed
          IEnumerable<int> shuffledTrainData = im164Positions.Keys.Shuffle(new Random(42));
 
          PakiraDecisionTreeModel pakiraDecisionTreeModelClusteringHybrid = pakiraGeneratorClusteringHybrid.Generate(new(), shuffledTrainData, tanukiETL);
          //PakiraDecisionTreeModel pakiraDecisionTreeModelClusteringHybrid = pakiraGeneratorClusteringHybrid.Generate(new(), trainPositions.Keys, tanukiETL);
+
+         // Compute leaf ID of each tree for all Train positions and build mapping
+         ImmutableList<ImmutableDictionary<int, ImmutableList<int>>> modelsTrainLeafMaps = Enumerable.Range(0, models.Count)
+            .Select(i =>
+            {
+               PakiraDecisionTreeModel model = models[i];
+               PakiraTreeWalker walker = new(model.Tree, tanukiETL);
+
+               ImmutableDictionary<int, ImmutableList<int>> leafToTrainIds = ImmutableDictionary<int, ImmutableList<int>>.Empty;
+
+               foreach (int trainId in trainPositions.Keys)
+               {
+                  BinaryTreeLeaf leaf = walker.PredictLeaf(trainId);
+
+                  if (!leafToTrainIds.ContainsKey(leaf.id))
+                  {
+                     leafToTrainIds = leafToTrainIds.Add(leaf.id, ImmutableList<int>.Empty);
+                  }
+
+                  leafToTrainIds = leafToTrainIds.SetItem(leaf.id, leafToTrainIds[leaf.id].Add(trainId));
+               }
+
+               return leafToTrainIds;
+            }).ToImmutableList();
+
+// UNDONE Add logic to select the best model trees used for majority vote evaluation.
+
+         // For each Test position, collect votes from each model about which Train samples fall in the same leaf
+         File.AppendAllText("results.txt", "MajorityVoteSimilarity\n");
+
+         Dictionary<int, int> overallHighestVoteCountByLabel = new();
+
+         foreach (int testId in validationPositions.Keys)
+         {
+            Dictionary<int, int> voteCounts = new(); // trainId -> votes
+
+            for (int m = 0; m < models.Count; m++)
+            {
+               PakiraDecisionTreeModel model = models[m];
+               PakiraTreeWalker walker = new(model.Tree, tanukiETL);
+               BinaryTreeLeaf testLeaf = walker.PredictLeaf(testId);
+
+               if (modelsTrainLeafMaps[m].ContainsKey(testLeaf.id))
+               {
+                  foreach (int trainId in modelsTrainLeafMaps[m][testLeaf.id])
+                  {
+                     if (voteCounts.ContainsKey(trainId)) voteCounts[trainId]++; else voteCounts[trainId] = 1;
+                  }
+               }
+            }
+
+            // pick train samples with maximum votes (majority)
+            int maxVotes = voteCounts.Values.DefaultIfEmpty(0).Max();
+            var allHighestVoteCounts = voteCounts
+               .Where(kv => kv.Value == maxVotes)
+               .Select(kv => kv.Key)
+               .ToImmutableList();
+            var winners = allHighestVoteCounts
+               .GroupBy(id => trainPositions[id].Label)
+               .Select(grouping => grouping.First())
+               .ToImmutableList();
+            var winnerLabels = winners.Select(winnerId => trainPositions[winnerId].Label).ToImmutableList();
+
+            var highestVoteCountByLabel = voteCounts
+               .GroupBy(kv => trainPositions[kv.Key].Label)
+               .ToImmutableDictionary(
+                  grouping => grouping.Key,
+                  grouping => grouping.Max(kv => kv.Value));
+
+            foreach (var labelVote in highestVoteCountByLabel)
+            {
+               if (!overallHighestVoteCountByLabel.ContainsKey(labelVote.Key) || overallHighestVoteCountByLabel[labelVote.Key] < labelVote.Value)
+               {
+                  overallHighestVoteCountByLabel[labelVote.Key] = labelVote.Value;
+               }
+            }
+
+            string labelMaxVotes = string.Join(';', highestVoteCountByLabel.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value}"));
+            string line = testId.ToString() + "," + validationPositions[testId].Label + ",Votes=" + maxVotes + ",Winners=" + string.Join(';', winners) + ",WinnerLabels=" + string.Join(';', winnerLabels) + ",LabelMaxVotes=" + labelMaxVotes;
+            File.AppendAllText("results.txt", line + Environment.NewLine);
+         }
+
+         foreach (int testId in testPositions.Keys)
+         {
+            Dictionary<int, int> voteCounts = new(); // trainId -> votes
+
+            for (int m = 0; m < models.Count; m++)
+            {
+               PakiraDecisionTreeModel model = models[m];
+               PakiraTreeWalker walker = new(model.Tree, tanukiETL);
+               BinaryTreeLeaf testLeaf = walker.PredictLeaf(testId);
+
+               if (modelsTrainLeafMaps[m].ContainsKey(testLeaf.id))
+               {
+                  foreach (int trainId in modelsTrainLeafMaps[m][testLeaf.id])
+                  {
+                     if (voteCounts.ContainsKey(trainId)) voteCounts[trainId]++; else voteCounts[trainId] = 1;
+                  }
+               }
+            }
+
+            // pick train samples with maximum votes (majority)
+            int maxVotes = voteCounts.Values.DefaultIfEmpty(0).Max();
+            var allHighestVoteCounts = voteCounts
+               .Where(kv => kv.Value == maxVotes)
+               .Select(kv => kv.Key)
+               .ToImmutableList();
+            var winners = allHighestVoteCounts
+               .GroupBy(id => trainPositions[id].Label)
+               .Select(grouping => grouping.First())
+               .ToImmutableList();
+            var winnerLabels = winners.Select(winnerId => trainPositions[winnerId].Label).ToImmutableList();
+
+            var highestVoteCountByLabel = voteCounts
+               .GroupBy(kv => trainPositions[kv.Key].Label)
+               .ToImmutableDictionary(
+                  grouping => grouping.Key,
+                  grouping => grouping.Max(kv => kv.Value));
+
+            foreach (var labelVote in highestVoteCountByLabel)
+            {
+               if (!overallHighestVoteCountByLabel.ContainsKey(labelVote.Key) || overallHighestVoteCountByLabel[labelVote.Key] < labelVote.Value)
+               {
+                  overallHighestVoteCountByLabel[labelVote.Key] = labelVote.Value;
+               }
+            }
+
+            string labelMaxVotes = string.Join(';', highestVoteCountByLabel.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value}"));
+            string line = testId.ToString() + "," + testPositions[testId].Label + ",Votes=" + maxVotes + ",Winners=" + string.Join(';', winners) + ",WinnerLabels=" + string.Join(';', winnerLabels) + ",LabelMaxVotes=" + labelMaxVotes;
+            File.AppendAllText("results.txt", line + Environment.NewLine);
+         }
+
+         File.AppendAllText("results.txt", "OverallLabelMaxVotes=" + string.Join(';', overallHighestVoteCountByLabel.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value}")) + Environment.NewLine);
 
          AccuracyResult accuracyResult1 = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position("Train"), tanukiETL);
          AccuracyResult accuracyResult2 = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position("Test"), tanukiETL);
