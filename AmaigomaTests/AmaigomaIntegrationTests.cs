@@ -827,6 +827,139 @@ namespace AmaigomaTests
          return (bestFeature, bestFeatureSplit);
       }
 
+      public (int featureIndex, double splitThreshold) GetBestSplitClusteringMean(IReadOnlyList<int> ids, TanukiETL tanukiETL)
+      {
+         int bestFeature = -1;
+         double bestFeatureSplit = double.MaxValue;
+         double bestFeatureSplitCount = double.MaxValue;
+
+         if (ids.Count > 0)
+         {
+            ImmutableList<double> weigthedEntropies = [];
+            ImmutableList<int> sampleIds = [.. ids.Take(1000)];
+            ImmutableHashSet<int> allLabels = [.. ids.Select(id => tanukiETL.TanukiLabelExtractor(id))];
+            ImmutableDictionary<int, ImmutableList<int>> allHistograms = ImmutableDictionary<int, ImmutableList<int>>.Empty;
+
+            foreach (int label in allLabels)
+            {
+               allHistograms = allHistograms.SetItem(label, emptyHistogram);
+            }
+
+            for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
+            {
+               ImmutableList<int> transformedData = [.. sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex))];
+
+               int bestSplitValue = -1;
+               double bestWeightedEntropy = 0;
+               int bestSplitCount = 0;
+               int leftTotalCount = 0;
+               int rightTotalCount = sampleIds.Count;
+               ImmutableDictionary<int, ImmutableList<int>> histograms = allHistograms;
+               ImmutableList<int> mergedHistogram = emptyHistogram;
+
+               for (int i = 0; i < sampleIds.Count; i++)
+               {
+                  int label = tanukiETL.TanukiLabelExtractor(sampleIds[i]);
+
+                  ImmutableList<int> histogram = histograms[label];
+                  int currentData = transformedData[i];
+
+                  histograms = histograms.SetItem(label, histogram.SetItem(currentData, histogram[currentData] + 1));
+
+                  mergedHistogram = mergedHistogram.SetItem(currentData, mergedHistogram[currentData] + 1);
+               }
+
+               int minimumSampleCount = Convert.ToInt32(0.33 * sampleIds.Count);
+               int maximumSampleCount = Convert.ToInt32(0.66 * sampleIds.Count);
+               int lowSplitValue = 0;
+               int highSplitValue = 0;
+               int sampleCountSum = 0;
+
+               for (int splitValue = 0; splitValue < 256; splitValue++)
+               {
+                  sampleCountSum += mergedHistogram[splitValue];
+
+                  if (sampleCountSum <= minimumSampleCount)
+                  {
+                     lowSplitValue = splitValue;
+                  }
+
+                  if (sampleCountSum < maximumSampleCount)
+                  {
+                     highSplitValue = splitValue;
+                  }
+               }
+
+               for (int splitValue = lowSplitValue; splitValue <= highSplitValue; splitValue++)
+               {
+                  foreach ((int label, ImmutableList<int> histogram) in histograms)
+                  {
+                     int binCount = histogram[splitValue];
+
+                     leftTotalCount += binCount;
+                     rightTotalCount -= binCount;
+                  }
+
+                  if (leftTotalCount > 0 && rightTotalCount > 0)
+                  {
+                     leftTotalCount.ShouldBeGreaterThanOrEqualTo(0);
+                     rightTotalCount.ShouldBeGreaterThanOrEqualTo(0);
+
+                     ImmutableList<int> leftHistogram = emptyHistogram254;
+                     ImmutableList<int> rightHistogram = emptyHistogram254;
+
+                     for (int i = 0; i <= splitValue; i++)
+                     {
+                        leftHistogram = leftHistogram.SetItem(i, mergedHistogram[i]);
+                     }
+
+                     for (int i = splitValue + 1; i < 256; i++)
+                     {
+                        rightHistogram = rightHistogram.SetItem(i - splitValue - 1, mergedHistogram[i]);
+                     }
+
+                     double fullHistogramMean = mergedHistogram.Sum() / (double)mergedHistogram.Count;
+                     double leftHistogramMean = leftHistogram.Sum() / (double)leftHistogram.Count;
+                     double rightHistogramMean = rightHistogram.Sum() / (double)rightHistogram.Count;
+                     double weightedEntropy = Math.Pow(fullHistogramMean - leftHistogramMean, 2) + Math.Pow(fullHistogramMean - rightHistogramMean, 2);
+
+                     if (weightedEntropy > bestWeightedEntropy)
+                     {
+                        bestWeightedEntropy = weightedEntropy;
+                        bestSplitValue = splitValue;
+                        bestSplitCount = 0;
+                     }
+                     else if (weightedEntropy == bestWeightedEntropy)
+                     {
+                        bestSplitValue.ShouldBeGreaterThanOrEqualTo(0);
+                        bestSplitCount++;
+                     }
+                  }
+               }
+
+               weigthedEntropies = weigthedEntropies.Add(bestWeightedEntropy);
+
+               if (bestFeature == -1 ||
+                  weigthedEntropies[featureIndex] > weigthedEntropies[bestFeature] ||
+                  (weigthedEntropies[featureIndex] == weigthedEntropies[bestFeature] && bestFeatureSplitCount < bestSplitCount))
+               {
+                  if (bestSplitCount > 1)
+                  {
+                     bestSplitValue += bestSplitCount / 2;
+                  }
+
+                  bestFeature = featureIndex;
+                  bestFeatureSplit = bestSplitValue;
+                  bestFeatureSplitCount = bestSplitCount;
+               }
+            }
+
+            bestFeature.ShouldBeGreaterThanOrEqualTo(0);
+         }
+
+         return (bestFeature, bestFeatureSplit);
+      }
+
       private static double ShannonEntropy(IEnumerable<int> counts)
       {
          double total = counts.Sum();
@@ -1539,7 +1672,7 @@ namespace AmaigomaTests
          //tanukiETL = tanukiETL.AddDataTransformer(edgeDataExtractor.ConvertAll, edgeDataExtractor.FeaturesCount());
 
 
-         PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringJensenShannon);
+         PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringMean);
 
          ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 25).AsParallel().Select(i =>
          {
@@ -1575,7 +1708,7 @@ namespace AmaigomaTests
          // TODO Use a random seed
          IEnumerable<int> shuffledTrainData = im164Positions.Keys.Shuffle(new Random(42));
 
-         PakiraDecisionTreeModel pakiraDecisionTreeModelClusteringHybrid = pakiraGeneratorClusteringHybrid.Generate(new(), shuffledTrainData, tanukiETL);
+         // PakiraDecisionTreeModel pakiraDecisionTreeModelClusteringHybrid = pakiraGeneratorClusteringHybrid.Generate(new(), shuffledTrainData, tanukiETL);
          //PakiraDecisionTreeModel pakiraDecisionTreeModelClusteringHybrid = pakiraGeneratorClusteringHybrid.Generate(new(), trainPositions.Keys, tanukiETL);
 
          // Compute leaf ID of each tree for all Train positions and build mapping
@@ -1628,15 +1761,11 @@ namespace AmaigomaTests
                }
             }
 
-            // pick train samples with maximum votes (majority)
+            // pick the strongest train sample for each label
             int maxVotes = voteCounts.Values.DefaultIfEmpty(0).Max();
-            var allHighestVoteCounts = voteCounts
-               .Where(kv => kv.Value == maxVotes)
-               .Select(kv => kv.Key)
-               .ToImmutableList();
-            var winners = allHighestVoteCounts
-               .GroupBy(id => trainPositions[id].Label)
-               .Select(grouping => grouping.First())
+            var winners = voteCounts
+               .GroupBy(kv => trainPositions[kv.Key].Label)
+               .Select(grouping => grouping.OrderByDescending(kv => kv.Value).First().Key)
                .ToImmutableList();
             var winnerLabels = winners.Select(winnerId => trainPositions[winnerId].Label).ToImmutableList();
 
@@ -1678,15 +1807,11 @@ namespace AmaigomaTests
                }
             }
 
-            // pick train samples with maximum votes (majority)
+            // pick the strongest train sample for each label
             int maxVotes = voteCounts.Values.DefaultIfEmpty(0).Max();
-            var allHighestVoteCounts = voteCounts
-               .Where(kv => kv.Value == maxVotes)
-               .Select(kv => kv.Key)
-               .ToImmutableList();
-            var winners = allHighestVoteCounts
-               .GroupBy(id => trainPositions[id].Label)
-               .Select(grouping => grouping.First())
+            var winners = voteCounts
+               .GroupBy(kv => trainPositions[kv.Key].Label)
+               .Select(grouping => grouping.OrderByDescending(kv => kv.Value).First().Key)
                .ToImmutableList();
             var winnerLabels = winners.Select(winnerId => trainPositions[winnerId].Label).ToImmutableList();
 
@@ -1711,16 +1836,16 @@ namespace AmaigomaTests
 
          File.AppendAllText("results.txt", "OverallLabelMaxVotes=" + string.Join(';', overallHighestVoteCountByLabel.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value}")) + Environment.NewLine);
 
-         AccuracyResult accuracyResult1 = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position("Train"), tanukiETL);
-         AccuracyResult accuracyResult2 = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position("Test"), tanukiETL);
+         // AccuracyResult accuracyResult1 = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position("Train"), tanukiETL);
+         // AccuracyResult accuracyResult2 = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position("Test"), tanukiETL);
 
-         dataSetNames.ForEach(dataSetName =>
-         {
-            AccuracyResult accuracyResult = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position(dataSetName), tanukiETL);
+         // dataSetNames.ForEach(dataSetName =>
+         // {
+         //    AccuracyResult accuracyResult = ComputeAccuracy(pakiraDecisionTreeModelClusteringHybrid.Tree, dataSet.Position(dataSetName), tanukiETL);
 
-            PrintConfusionMatrix(accuracyResult, dataSetName);
-            PrintLeaveResults(accuracyResult);
-         });
+         //    PrintConfusionMatrix(accuracyResult, dataSetName);
+         //    PrintLeaveResults(accuracyResult);
+         // });
 
          // UNDONE Next task: Create a random forest of about 200 clustering trees and evaluate the accuracy based on majority vote.
 
