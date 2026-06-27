@@ -10,14 +10,13 @@
 
   <ItemGroup>
     <None Remove="507484246.tif" />
-    <None Remove="AmaigomaTests.v3.ncrunchproject" />
     <None Remove="assets\ti31149327_9330.tif" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
-    <PackageReference Include="NCrunch.Framework" Version="5.11.0" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
     <PackageReference Include="Shouldly" Version="4.3.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">

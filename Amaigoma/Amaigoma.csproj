@@ -6,13 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="_NCrunch_Amaigoma\**" />
-    <EmbeddedResource Remove="_NCrunch_Amaigoma\**" />
-    <None Remove="_NCrunch_Amaigoma\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Amaigoma.v3.ncrunchsolution" />
     <None Remove="PakiraDecisionTreeGenerator.cs.bak" />
   </ItemGroup>
 

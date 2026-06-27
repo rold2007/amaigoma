@@ -114,41 +114,60 @@ namespace Amaigoma
             ImmutableList<int> ids = pakiraDecisionTreeModel.DataSamples(leafId);
 
             (int featureIndex, double splitThreshold) = BestSplit(ids, tanukiETL);
-            ILookup<bool, int> updatedDataSamples = pakiraDecisionTreeModel.DataSamples(leafId).ToLookup(id => ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, featureIndex), splitThreshold));
-            int leftLabel = PrepareTreeLeavelabel(updatedDataSamples[true], tanukiETL);
-            int rightLabel = PrepareTreeLeavelabel(updatedDataSamples[false], tanukiETL);
 
-            (PakiraTree tree, int leftLeafId, int rightLeafId) = pakiraDecisionTreeModel.Tree.ReplaceLeaf(leafId, featureIndex, splitThreshold, leftLabel, rightLabel);
-
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(tree);
-
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(leafId);
-
-            // TODO Add clear error message for each Shouldly call
-            updatedDataSamples[true].ShouldNotBeEmpty();
-            updatedDataSamples[key: false].ShouldNotBeEmpty();
-
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(leftLeafId, updatedDataSamples[true]);
-            pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(rightLeafId, updatedDataSamples[false]);
-
-            // UNDONE Add a callback so that each logic can decide when to stop splitting
-            //if (leftLabel == UnknownLabelValue)
-            //{
-            //   retrainLeaves = retrainLeaves.Add(leftLeafId);
-            //}
-
-            //if (rightLabel == UnknownLabelValue)
-            //{
-            //   retrainLeaves = retrainLeaves.Add(rightLeafId);
-            //}
-
-            int nodeDepth = pakiraDecisionTreeModel.Tree.NodesDepth()[leafId];
-
-            // TODO Parametrize the depth
-            if (nodeDepth < 4)
+            if (featureIndex != -1)
             {
-               retrainLeaves = retrainLeaves.Add(leftLeafId);
-               retrainLeaves = retrainLeaves.Add(rightLeafId);
+               ILookup<bool, int> updatedDataSamples = pakiraDecisionTreeModel.DataSamples(leafId).ToLookup(id => ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, featureIndex), splitThreshold));
+
+               // UNDONE Replace 9999 by datadistribution
+               if (updatedDataSamples[true].Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Count() >= 500 && updatedDataSamples[false].Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Count() >= 500)
+               {
+                  int leftLabel = PrepareTreeLeavelabel(updatedDataSamples[true].Where(id => tanukiETL.TanukiLabelExtractor(id) != 9999), tanukiETL);
+                  int rightLabel = PrepareTreeLeavelabel(updatedDataSamples[false].Where(id => tanukiETL.TanukiLabelExtractor(id) != 9999), tanukiETL);
+
+                  (PakiraTree tree, int leftLeafId, int rightLeafId) = pakiraDecisionTreeModel.Tree.ReplaceLeaf(leafId, featureIndex, splitThreshold, leftLabel, rightLabel);
+
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.UpdateTree(tree);
+
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.RemoveDataSample(leafId);
+
+                  // TODO Add clear error message for each Shouldly call
+                  updatedDataSamples[true].ShouldNotBeEmpty();
+                  updatedDataSamples[key: false].ShouldNotBeEmpty();
+
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(leftLeafId, updatedDataSamples[true]);
+                  pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(rightLeafId, updatedDataSamples[false]);
+
+                  // UNDONE Add a callback so that each logic can decide when to stop splitting
+                  //if (leftLabel == UnknownLabelValue)
+                  //{
+                  //   retrainLeaves = retrainLeaves.Add(leftLeafId);
+                  //}
+
+                  //if (rightLabel == UnknownLabelValue)
+                  //{
+                  //   retrainLeaves = retrainLeaves.Add(rightLeafId);
+                  //}
+
+                  if (leftLabel == -1)
+                  {
+                     retrainLeaves = retrainLeaves.Add(leftLeafId);
+                  }
+
+                  if (rightLabel == -1)
+                  {
+                     retrainLeaves = retrainLeaves.Add(rightLeafId);
+                  }
+               }
+
+               //int nodeDepth = pakiraDecisionTreeModel.Tree.NodesDepth()[leafId];
+
+               // TODO Parametrize the depth
+               //if (nodeDepth < 4)
+               //{
+               //   retrainLeaves = retrainLeaves.Add(leftLeafId);
+               //   retrainLeaves = retrainLeaves.Add(rightLeafId);
+               //}
             }
          }
 

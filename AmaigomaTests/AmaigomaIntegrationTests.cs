@@ -1,6 +1,7 @@
 ﻿global using BinaryTreeLeaf = (int id, int labelValue);
 
 using Amaigoma;
+using MathNet.Numerics.Statistics;
 using Shouldly;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Memory;
@@ -13,12 +14,210 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using Xunit;
-using Xunit.Internal;
 
 namespace AmaigomaTests
 {
+   using System;
+   using System.Collections.Generic;
+
+   public static class DipApprox
+   {
+
+      public struct DipResult
+      {
+         public double Dip;      // dip value
+         public int SplitIndex;  // best split bin index
+      }
+
+      // Hartigan’s dip
+      public static DipResult ApproxDipAndSplit(double[] counts)
+      {
+         int nBins = counts.Length;
+         if (nBins < 3)
+            return new DipResult { Dip = 0.0, SplitIndex = -1 };
+
+         // 1) Build normalized CDF
+         double total = 0.0;
+         for (int i = 0; i < nBins; i++) total += counts[i];
+         if (total <= 0.0)
+            return new DipResult { Dip = 0.0, SplitIndex = -1 };
+
+         double[] cdf = new double[nBins];
+         double cum = 0.0;
+         for (int i = 0; i < nBins; i++)
+         {
+            cum += counts[i];
+            cdf[i] = cum / total;
+         }
+
+         // 2) GCM and LCM
+         double[] gcm = BuildGCM(cdf);
+         double[] lcm = BuildLCM(cdf);
+
+         // 3) Find dip and split index
+         double dip = 0.0;
+         int splitIndex = -1;
+
+         for (int i = 0; i < nBins; i++)
+         {
+            double d1 = cdf[i] - gcm[i];
+            double d2 = lcm[i] - cdf[i];
+            double d = Math.Max(d1, d2);
+
+            if (d > dip)
+            {
+               dip = d;
+               splitIndex = i;   // NEW: record where dip occurs
+            }
+         }
+
+         return new DipResult { Dip = dip, SplitIndex = splitIndex };
+      }
+
+      // Main entry: counts = histogram bin counts (non-negative)
+      //public static double ApproxDipFromHistogram(double[] counts)
+      //{
+      //   int nBins = counts.Length;
+      //   if (nBins < 3) return 0.0;
+
+      //   // 1) Build normalized CDF over bin centers
+      //   double total = 0.0;
+      //   for (int i = 0; i < nBins; i++) total += counts[i];
+      //   if (total <= 0.0) return 0.0;
+
+      //   double[] cdf = new double[nBins];
+      //   double cum = 0.0;
+      //   for (int i = 0; i < nBins; i++)
+      //   {
+      //      cum += counts[i];
+      //      cdf[i] = cum / total;
+      //   }
+
+      //   // 2) Build greatest convex minorant (GCM) of CDF
+      //   double[] gcm = BuildGCM(cdf);
+
+      //   // 3) Build least concave majorant (LCM) of CDF
+      //   double[] lcm = BuildLCM(cdf);
+
+      //   // 4) Dip ≈ max vertical distance between CDF and [GCM, LCM]
+      //   double dip = 0.0;
+      //   for (int i = 0; i < nBins; i++)
+      //   {
+      //      double d1 = cdf[i] - gcm[i];
+      //      double d2 = lcm[i] - cdf[i];
+      //      double d = Math.Max(d1, d2);
+      //      if (d > dip) dip = d;
+      //   }
+
+      //   return dip;
+      //}
+
+      // Greatest Convex Minorant (from below) of discrete CDF
+      private static double[] BuildGCM(double[] cdf)
+      {
+         int n = cdf.Length;
+         double[] x = new double[n];
+         for (int i = 0; i < n; i++) x[i] = i; // bin indices as x
+
+         // Pool-adjacent-violators style for convexity on slopes
+         List<int> idx = new List<int>();
+         idx.Add(0);
+
+         for (int i = 1; i < n; i++)
+         {
+            idx.Add(i);
+            while (idx.Count >= 3)
+            {
+               int k = idx.Count;
+               int i1 = idx[k - 3];
+               int i2 = idx[k - 2];
+               int i3 = idx[k - 1];
+
+               double s12 = (cdf[i2] - cdf[i1]) / (x[i2] - x[i1]);
+               double s23 = (cdf[i3] - cdf[i2]) / (x[i3] - x[i2]);
+
+               // For convex minorant, slopes must be non-decreasing
+               if (s23 < s12)
+               {
+                  idx.RemoveAt(k - 2); // merge middle point
+               }
+               else break;
+            }
+         }
+
+         // Now interpolate linearly between knots in idx
+         double[] gcm = new double[n];
+         for (int k = 0; k < idx.Count - 1; k++)
+         {
+            int i1 = idx[k];
+            int i2 = idx[k + 1];
+            double x1 = x[i1], x2 = x[i2];
+            double y1 = cdf[i1], y2 = cdf[i2];
+            double slope = (y2 - y1) / (x2 - x1);
+
+            for (int i = i1; i <= i2; i++)
+            {
+               gcm[i] = y1 + slope * (x[i] - x1);
+            }
+         }
+
+         return gcm;
+      }
+
+      // Least Concave Majorant (from above) of discrete CDF
+      private static double[] BuildLCM(double[] cdf)
+      {
+         int n = cdf.Length;
+         double[] x = new double[n];
+         for (int i = 0; i < n; i++) x[i] = i;
+
+         List<int> idx = new List<int>();
+         idx.Add(n - 1);
+
+         for (int i = n - 2; i >= 0; i--)
+         {
+            idx.Add(i);
+            while (idx.Count >= 3)
+            {
+               int k = idx.Count;
+               int i1 = idx[k - 1];
+               int i2 = idx[k - 2];
+               int i3 = idx[k - 3];
+
+               double s12 = (cdf[i2] - cdf[i1]) / (x[i2] - x[i1]);
+               double s23 = (cdf[i3] - cdf[i2]) / (x[i3] - x[i2]);
+
+               // For concave majorant, slopes must be non-increasing
+               if (s23 > s12)
+               {
+                  idx.RemoveAt(k - 2); // merge middle point
+               }
+               else break;
+            }
+         }
+
+         idx.Sort();
+
+         double[] lcm = new double[n];
+         for (int k = 0; k < idx.Count - 1; k++)
+         {
+            int i1 = idx[k];
+            int i2 = idx[k + 1];
+            double x1 = x[i1], x2 = x[i2];
+            double y1 = cdf[i1], y2 = cdf[i2];
+            double slope = (y2 - y1) / (x2 - x1);
+
+            for (int i = i1; i <= i2; i++)
+            {
+               lcm[i] = y1 + slope * (x[i] - x1);
+            }
+         }
+
+         return lcm;
+      }
+   }
+
    public struct RegionLabel
    {
       public Rectangle rectangle;
@@ -129,6 +328,8 @@ namespace AmaigomaTests
    public record TreeNodeSplit
    {
       private static readonly ImmutableList<int> emptyHistogram = [.. Enumerable.Repeat(0, 256)];
+      //private static readonly ImmutableList<double> emptyHistogramDouble = [.. Enumerable.Repeat(0.0, 256)];
+      private static readonly ImmutableList<int> emptyHistogram8 = [.. Enumerable.Repeat(0, 8)];
       private static readonly ImmutableList<int> emptyHistogram254 = [.. Enumerable.Repeat(0, 255)];
 
       public TreeNodeSplit()
@@ -627,6 +828,20 @@ namespace AmaigomaTests
          return (bestFeature, bestFeatureSplit);
       }
 
+      private static ImmutableList<int> BinHistogramInto8(IReadOnlyList<int> histogram, int startInclusive, int endExclusive)
+      {
+         ImmutableList<int> binnedHistogram = emptyHistogram8;
+         int binSize = 256 / 8;
+
+         for (int i = startInclusive; i < endExclusive; i++)
+         {
+            int binIndex = i / binSize;
+            binnedHistogram = binnedHistogram.SetItem(binIndex, binnedHistogram[binIndex] + histogram[i]);
+         }
+
+         return binnedHistogram;
+      }
+
       private static double JensenShannonDivergence(IReadOnlyList<int> leftCounts, IReadOnlyList<int> rightCounts)
       {
          double leftTotal = leftCounts.Sum();
@@ -765,20 +980,12 @@ namespace AmaigomaTests
                      leftTotalCount.ShouldBeGreaterThanOrEqualTo(0);
                      rightTotalCount.ShouldBeGreaterThanOrEqualTo(0);
 
-                     ImmutableList<int> leftHistogram = emptyHistogram254;
-                     ImmutableList<int> rightHistogram = emptyHistogram254;
-
-                     for (int i = 0; i <= splitValue; i++)
-                     {
-                        leftHistogram = leftHistogram.SetItem(i, mergedHistogram[i]);
-                     }
-
-                     for (int i = splitValue + 1; i < 256; i++)
-                     {
-                        rightHistogram = rightHistogram.SetItem(i - splitValue - 1, mergedHistogram[i]);
-                     }
+                     ImmutableList<int> leftHistogram = BinHistogramInto8(mergedHistogram, 0, splitValue + 1 + 10);
+                     ImmutableList<int> rightHistogram = BinHistogramInto8(mergedHistogram, splitValue + 1 - 10, 256);
 
                      double weightedEntropy = JensenShannonDivergence(leftHistogram, rightHistogram);
+
+                     weightedEntropy.ShouldBeLessThan(1.0);
 
                      // tempDebugData = tempDebugData.Add($"Feature {featureIndex}, split {splitValue}, weightedEntropy {weightedEntropy}");
 
@@ -831,53 +1038,69 @@ namespace AmaigomaTests
       {
          int bestFeature = -1;
          double bestFeatureSplit = double.MaxValue;
-         double bestFeatureSplitCount = double.MaxValue;
 
-         if (ids.Count > 0)
+         // UNDONE Replace 9999 by datadistribution
+         ImmutableList<int> dataDistributionIds = [.. ids.Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Take(1000)];
+
+         if (dataDistributionIds.Count == 1000)
          {
+            double bestFeatureSplitCount = double.MaxValue;
             ImmutableList<double> weigthedEntropies = [];
-            ImmutableList<int> sampleIds = [.. ids.Take(1000)];
-            ImmutableHashSet<int> allLabels = [.. ids.Select(id => tanukiETL.TanukiLabelExtractor(id))];
-            ImmutableDictionary<int, ImmutableList<int>> allHistograms = ImmutableDictionary<int, ImmutableList<int>>.Empty;
 
-            foreach (int label in allLabels)
-            {
-               allHistograms = allHistograms.SetItem(label, emptyHistogram);
-            }
+            ImmutableList<int> trainDataIds = [.. ids.Where(id => tanukiETL.TanukiLabelExtractor(id) != 9999)];
+
+            //ImmutableList<int> sampleIds = [.. ids.Take(1000)];
+            //ImmutableHashSet<int> allLabels = [.. ids.Select(id => tanukiETL.TanukiLabelExtractor(id))];
+            //ImmutableDictionary<int, ImmutableList<int>> allHistograms = ImmutableDictionary<int, ImmutableList<int>>.Empty;
+
+            //foreach (int label in allLabels)
+            //{
+            //   allHistograms = allHistograms.SetItem(label, emptyHistogram);
+            //}
 
             for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
             {
-               ImmutableList<int> transformedData = [.. sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex))];
+               ImmutableList<int> transformedData = [.. dataDistributionIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex))];
 
                int bestSplitValue = -1;
                double bestWeightedEntropy = 0;
                int bestSplitCount = 0;
                int leftTotalCount = 0;
-               int rightTotalCount = sampleIds.Count;
-               ImmutableDictionary<int, ImmutableList<int>> histograms = allHistograms;
-               ImmutableList<int> mergedHistogram = emptyHistogram;
+               int rightTotalCount = dataDistributionIds.Count;
+               int leftTotalWeightedCount = 0;
+               int rightTotalWeightedCount = 0;
+               //ImmutableDictionary<int, ImmutableList<int>> histograms = allHistograms;
+               //ImmutableList<int> mergedHistogram = emptyHistogram;
+               //ImmutableList<double> mergedHistogramDouble = emptyHistogramDouble;
+               ImmutableList<int> histogram = emptyHistogram;
 
-               for (int i = 0; i < sampleIds.Count; i++)
+               double standardDeviation = ArrayStatistics.StandardDeviation(transformedData.ToArray());
+
+               for (int i = 0; i < dataDistributionIds.Count; i++)
                {
-                  int label = tanukiETL.TanukiLabelExtractor(sampleIds[i]);
+                  //int label = tanukiETL.TanukiLabelExtractor(sampleIds[i]);
 
-                  ImmutableList<int> histogram = histograms[label];
+                  //ImmutableList<int> histogram = histograms[label];
                   int currentData = transformedData[i];
 
-                  histograms = histograms.SetItem(label, histogram.SetItem(currentData, histogram[currentData] + 1));
+                  histogram = histogram.SetItem(currentData, histogram[currentData] + 1);
 
-                  mergedHistogram = mergedHistogram.SetItem(currentData, mergedHistogram[currentData] + 1);
+                  //mergedHistogram = mergedHistogram.SetItem(currentData, mergedHistogram[currentData] + 1);
+                  //mergedHistogramDouble = mergedHistogramDouble.SetItem(currentData, mergedHistogram[currentData] + 1);
+
+                  rightTotalWeightedCount += currentData;
                }
 
-               int minimumSampleCount = Convert.ToInt32(0.33 * sampleIds.Count);
-               int maximumSampleCount = Convert.ToInt32(0.66 * sampleIds.Count);
+               double fullHistogramMean = (double)rightTotalWeightedCount / rightTotalCount;
+               int minimumSampleCount = Convert.ToInt32(0.33 * dataDistributionIds.Count);
+               int maximumSampleCount = Convert.ToInt32(0.66 * dataDistributionIds.Count);
                int lowSplitValue = 0;
                int highSplitValue = 0;
                int sampleCountSum = 0;
 
                for (int splitValue = 0; splitValue < 256; splitValue++)
                {
-                  sampleCountSum += mergedHistogram[splitValue];
+                  sampleCountSum += histogram[splitValue];
 
                   if (sampleCountSum <= minimumSampleCount)
                   {
@@ -890,14 +1113,31 @@ namespace AmaigomaTests
                   }
                }
 
+               //ImmutableList<int> leftHistogram = emptyHistogram254;
+               //ImmutableList<int> rightHistogram = mergedHistogram;
+
+               for (int splitValue = 0; splitValue < lowSplitValue; splitValue++)
+               {
+                  leftTotalCount += histogram[splitValue];
+                  rightTotalCount -= histogram[splitValue];
+                  leftTotalWeightedCount += splitValue * histogram[splitValue];
+                  rightTotalWeightedCount -= splitValue * histogram[splitValue];
+                  //leftHistogram = leftHistogram.SetItem(splitValue, mergedHistogram[splitValue]);
+                  //rightHistogram = rightHistogram.SetItem(splitValue, 0);
+               }
+
                for (int splitValue = lowSplitValue; splitValue <= highSplitValue; splitValue++)
                {
-                  foreach ((int label, ImmutableList<int> histogram) in histograms)
+                  //foreach ((int label, ImmutableList<int> histogram) in histograms)
                   {
                      int binCount = histogram[splitValue];
 
                      leftTotalCount += binCount;
                      rightTotalCount -= binCount;
+                     leftTotalWeightedCount += splitValue * histogram[splitValue];
+                     rightTotalWeightedCount -= splitValue * histogram[splitValue];
+                     //leftHistogram = leftHistogram.SetItem(splitValue, mergedHistogram[splitValue]);
+                     //rightHistogram = rightHistogram.SetItem(splitValue, 0);
                   }
 
                   if (leftTotalCount > 0 && rightTotalCount > 0)
@@ -905,23 +1145,37 @@ namespace AmaigomaTests
                      leftTotalCount.ShouldBeGreaterThanOrEqualTo(0);
                      rightTotalCount.ShouldBeGreaterThanOrEqualTo(0);
 
-                     ImmutableList<int> leftHistogram = emptyHistogram254;
-                     ImmutableList<int> rightHistogram = emptyHistogram254;
+                     //for (int i = 0; i <= splitValue; i++)
+                     //{
+                     //   leftHistogram = leftHistogram.SetItem(i, mergedHistogram[i]);
+                     //}
 
-                     for (int i = 0; i <= splitValue; i++)
-                     {
-                        leftHistogram = leftHistogram.SetItem(i, mergedHistogram[i]);
-                     }
+                     //for (int i = splitValue + 1; i < 256; i++)
+                     //{
+                     //   rightHistogram = rightHistogram.SetItem(i - splitValue - 1, mergedHistogram[i]);
+                     //}
 
-                     for (int i = splitValue + 1; i < 256; i++)
-                     {
-                        rightHistogram = rightHistogram.SetItem(i - splitValue - 1, mergedHistogram[i]);
-                     }
-
-                     double fullHistogramMean = mergedHistogram.Sum() / (double)mergedHistogram.Count;
-                     double leftHistogramMean = leftHistogram.Sum() / (double)leftHistogram.Count;
-                     double rightHistogramMean = rightHistogram.Sum() / (double)rightHistogram.Count;
+                     double leftHistogramMean = (double)leftTotalWeightedCount / leftTotalCount;
+                     double rightHistogramMean = (double)rightTotalWeightedCount / rightTotalCount;
                      double weightedEntropy = Math.Pow(fullHistogramMean - leftHistogramMean, 2) + Math.Pow(fullHistogramMean - rightHistogramMean, 2);
+
+                     weightedEntropy = Math.Abs(leftHistogramMean - rightHistogramMean) / (standardDeviation + double.Epsilon);
+
+                     //ImmutableList<double> normalizedHistogram = ImmutableList<double>.Empty;
+                     double k = 1.0 / 256;
+
+                     double uniformShapeWeight = 0;
+
+                     for (int i = 0; i < 256; i++)
+                     {
+                        double normalizedBin = (double)histogram[i] / transformedData.Count;
+                        //normalizedHistogram.Add(histogram[i] / transformedData.Count);
+                        double localWeight = normalizedBin - k;
+
+                        uniformShapeWeight += localWeight * localWeight;
+                     }
+
+                     weightedEntropy *= uniformShapeWeight;
 
                      if (weightedEntropy > bestWeightedEntropy)
                      {
@@ -1364,6 +1618,7 @@ namespace AmaigomaTests
       // TODO Add more classes
       static readonly int uppercaseA = 1;
       static readonly int other = 2;
+      static readonly int datadistribution = 9999;
 
       static private readonly ImmutableList<Rectangle> train_507484246_Rectangles =
       [
@@ -1411,7 +1666,7 @@ namespace AmaigomaTests
          new Rectangle(153, 409, 1, 1),
          new Rectangle(217, 519, 1, 1),
          new Rectangle(155, 549, 1, 1),
-         // new Rectangle(190, 540, 280, 20),
+          new Rectangle(190, 540, 280, 20),
          // new Rectangle(20, 555, 480, 215),
       ];
 
@@ -1419,6 +1674,7 @@ namespace AmaigomaTests
          [
          uppercaseA, uppercaseA, uppercaseA, uppercaseA, uppercaseA,
          // other, other
+         other
          ];
 
       static private readonly ImmutableList<Rectangle> test_507484246_Rectangles =
@@ -1429,7 +1685,7 @@ namespace AmaigomaTests
          new Rectangle(257, 851, 1, 1),
          new Rectangle(605, 851, 1, 1),
          // new Rectangle(520, 550, 230, 216),
-         // new Rectangle(95, 810, 500, 20),
+          new Rectangle(95, 810, 500, 20),
          // new Rectangle(20, 900, 740, 70),
          // new Rectangle(180, 960, 310, 23),
       ];
@@ -1438,10 +1694,11 @@ namespace AmaigomaTests
       [
          uppercaseA, uppercaseA, uppercaseA, uppercaseA, uppercaseA,
          // other, other, other, other
+         other
       ];
 
       static private readonly ImmutableList<Rectangle> im164Rectangles = [new Rectangle(8, 8, 483, 358)];
-      static private readonly ImmutableList<int> im164Labels = [other];
+      static private readonly ImmutableList<int> im164Labels = [datadistribution];
       static private readonly ImmutableList<Rectangle> im10Rectangles = [new Rectangle(8, 8, 483, 316)];
       static private readonly ImmutableList<int> im10Labels = [other];
 
@@ -1600,9 +1857,10 @@ namespace AmaigomaTests
          // UNDONE Add some permanent benchmarks to identify the slow parts of the test
          TreeNodeSplit bestSplitLogic = new();
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
-         // ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+         // ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
          // ImmutableList<int> averageTransformerSizes = [7, 5, 3];
          ImmutableList<int> averageTransformerSizes = [5, 3];
+         //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
          ImmutableDictionary<string, int> dataSetAccuracy = ImmutableDictionary.CreateRange(new Dictionary<string, int> {
           {"Train", 37},
           {"Validation", 30},
@@ -1674,7 +1932,11 @@ namespace AmaigomaTests
 
          PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringMean);
 
-         ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 25).AsParallel().Select(i =>
+         ImmutableList<int> abc = im164Positions.Keys.Union(trainPositions.Keys).ToImmutableList();
+
+         PakiraDecisionTreeModel modelabc = pakiraGeneratorClusteringHybrid.Generate(new(), abc.Shuffle(new Random(-42)), tanukiETL);
+
+         ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 100).AsParallel().Select(i =>
          {
             return pakiraGeneratorClusteringHybrid.Generate(new(), im164Positions.Keys.Shuffle(new Random(42 + i)), tanukiETL);
          }).ToImmutableList();
@@ -1735,7 +1997,7 @@ namespace AmaigomaTests
                return leafToTrainIds;
             }).ToImmutableList();
 
-// UNDONE Add logic to select the best model trees used for majority vote evaluation.
+         // UNDONE Add logic to select the best model trees used for majority vote evaluation.
 
          // For each Test position, collect votes from each model about which Train samples fall in the same leaf
          File.AppendAllText("results.txt", "MajorityVoteSimilarity\n");
