@@ -115,6 +115,7 @@ namespace Amaigoma
 
             (int featureIndex, double splitThreshold) = BestSplit(ids, tanukiETL);
 
+            // UNDONE Test what happens if the featureIndex is -1 at the first evaluated leaf. We'll get an empty tree? Is it a problem?
             if (featureIndex != -1)
             {
                ILookup<bool, int> updatedDataSamples = pakiraDecisionTreeModel.DataSamples(leafId).ToLookup(id => ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, featureIndex), splitThreshold));

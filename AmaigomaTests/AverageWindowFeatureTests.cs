@@ -14,7 +14,7 @@ using Xunit;
 
 namespace AmaigomaTests
 {
-   // TODO Move Benchmark to separate folder
+   // TODO Move Benchmark to separate project
    // TODO Add benchmark results to source control to compare the performances after each change
    // TODO Add more benchmarks on time-critical code
    // TODO Add more benchmarks on memory usage
@@ -23,13 +23,6 @@ namespace AmaigomaTests
    // TODO Add more benchmarks on different image sizes
    // TODO Add more benchmark diagnosers: https://benchmarkdotnet.org/articles/configs/diagnosers.html
    // TODO Add more benchmark for feature calculation classes
-   public class Program
-   {
-      public static void Main(string[] args)
-      {
-         var summary = BenchmarkRunner.Run<AverageWindowFeatureTests>();
-      }
-   }
 
    [MemoryDiagnoser]
    [SimpleJob(RunStrategy.Monitoring)]
