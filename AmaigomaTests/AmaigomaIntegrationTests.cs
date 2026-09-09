@@ -180,22 +180,6 @@ namespace AmaigomaTests
          return entropy / Math.Log2(histogram.Count());
       }
 
-      // TODO This can be optimzed as we're only dependent on the number of counts, not their values
-      private static double CalculateEntropySingle(IEnumerable<int> histogram)
-      {
-         int total = histogram.Count(x =>
-         {
-            x.ShouldBeGreaterThanOrEqualTo(0);
-            return x > 0;
-         });
-
-         total.ShouldNotBe(0);
-
-         double p = 1.0 / total;
-
-         return -total * p * Math.Log2(p);
-      }
-
       public static (int featureIndex, double splitThreshold) GetBestSplitBaseline(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
@@ -936,26 +920,14 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringMean);
 
          //ImmutableList<int> abc = im164Positions.Keys.Union(trainPositions.Keys).ToImmutableList();
-         ImmutableList<int> abc = imagePositions.Keys.Union(trainPositions.Keys).ToImmutableList();
-         PakiraDecisionTreeModel modelTest;
+         ImmutableList<int> trainingData = imagePositions.Keys.Union(trainPositions.Keys).ToImmutableList();
 
-         modelTest = pakiraGeneratorClusteringHybrid.Generate(new(), abc.Shuffle(new Random(-42)), tanukiETL);
-         //modelTest = pakiraGeneratorClusteringHybrid.Generate(new(), abc.Shuffle(new Random(42)), tanukiETL);
-         //modelTest = pakiraGeneratorClusteringHybrid.Generate(new(), abc.Shuffle(new Random(43)), tanukiETL);
-         //modelTest = pakiraGeneratorClusteringHybrid.Generate(new(), abc.Shuffle(new Random(44)), tanukiETL);
-         //modelTest = pakiraGeneratorClusteringHybrid.Generate(new(), abc.Shuffle(new Random(45)), tanukiETL);
-
-         //ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 100).AsParallel().Select(i =>
-         //{
-         //   return pakiraGeneratorClusteringHybrid.Generate(new(), im164Positions.Keys.Shuffle(new Random(42 + i)), tanukiETL);
-         //}).ToImmutableList();
-
-         ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 24).AsParallel().Select(i =>
+         ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 16).AsParallel().Select(i =>
          {
-            return pakiraGeneratorClusteringHybrid.Generate(new(), abc.Shuffle(new Random(54 + i)), tanukiETL);
+            return pakiraGeneratorClusteringHybrid.Generate(new(), trainingData.Shuffle(new Random(54 + i)), tanukiETL);
          }).ToImmutableList();
 
-         ImmutableList<string> testNames = ["Train", "Test", "Validation"];
+         //ImmutableList<string> testNames = ["Train", "Test", "Validation"];
          // ImmutableList<string> results = ImmutableList<string>.Empty;
 
          // testNames.ForEach(dataSetName =>
@@ -996,7 +968,7 @@ namespace AmaigomaTests
 
                ImmutableDictionary<int, ImmutableList<int>> leafToTrainIds = ImmutableDictionary<int, ImmutableList<int>>.Empty;
 
-               foreach (int trainId in trainPositions.Keys)
+               foreach (int trainId in trainPositions.Keys.Take(300))
                {
                   BinaryTreeLeaf leaf = walker.PredictLeaf(trainId);
 
