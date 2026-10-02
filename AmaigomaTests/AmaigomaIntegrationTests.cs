@@ -1,7 +1,7 @@
 ﻿global using BinaryTreeLeaf = (int id, int labelValue);
 
 using Amaigoma;
-using MathNet.Numerics.Distributions;
+using MathNet.Numerics;
 using MathNet.Numerics.Statistics;
 using Shouldly;
 using SixLabors.ImageSharp;
@@ -290,6 +290,50 @@ namespace AmaigomaTests
          return (bestFeature, bestFeatureSplit);
       }
 
+      private double ComputeInflexionPoint(ImmutableList<double> values)
+      {
+         ImmutableList<double> sortedValues = values.Sort();
+         ImmutableList<double> validValues = ImmutableList<double>.Empty.Add(sortedValues[0]);
+
+         for(int i = 1; i < sortedValues.Count; i++)
+         {
+            // UNDONE This 0.01 constant could be parametrized
+            if (sortedValues[i] > (sortedValues[i - 1] + 0.01))
+            {
+               validValues = validValues.Add(sortedValues[i]);
+            }
+            else
+            {
+               break;
+            }
+         }
+
+         (double a, double b) = Fit.Logarithm(Enumerable.Range(1, sortedValues.Count).Select((x) => (double)x).ToArray(), sortedValues.ToArray());
+
+         ImmutableList<double> localDerivative = ImmutableList<double>.Empty;
+
+         for (int i = 0; i < validValues.Count; i++)
+         {
+            double x = i;
+            double derivative = validValues.Count * b / (i + 1);
+
+            localDerivative = localDerivative.Add(derivative);
+         }
+
+         return 0;
+      }
+
+      private double ComputeInflexionPoint2(ImmutableList<double> values)
+      {
+         // UNDONE Remove the Sort, it is only for debugging purpose
+         ImmutableList<double> sortedValues = values.Sort();
+
+         double minimumValue = StreamingStatistics.Minimum(values);
+         double maximumValue = StreamingStatistics.Maximum(values);
+
+         return minimumValue + 0.8 * (maximumValue - minimumValue);
+      }
+
       public (int featureIndex, double splitThreshold) GetBestSplitClusteringMean(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
@@ -306,11 +350,30 @@ namespace AmaigomaTests
 
          // UNDONE Replace 9999 by datadistribution
          ImmutableList<int> dataDistributionIds = [.. ids.Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Take(sampleSize)];
+         ImmutableList<int> trainingIds = [.. ids.Where(id => tanukiETL.TanukiLabelExtractor(id) != 9999)];
 
          if (dataDistributionIds.Count == sampleSize)
          {
             ImmutableList<double> weigthedEntropies = [];
             ImmutableList<double> normalizedEntropies = [];
+            ImmutableList<double> splitValues = [];
+            ImmutableList<double> shannonEntropies = [];
+
+            ImmutableList<double> localShannonEntropies = [];
+            ImmutableList<double> localWeightedEntropies = [];
+            ImmutableList<int> localCumulativeSum = [];
+            ImmutableList<int> localFeatureIndex = [];
+            ImmutableList<int> localSplitValue = [];
+
+            // UNDONE Idea: take 10% best Shannon, then best cumulative sum percentage then take the best Shannon with at least 50% max of cumulative
+
+            ImmutableDictionary<int, int> trainingLabelCounts = [.. trainingIds
+               .GroupBy(id => tanukiETL.TanukiLabelExtractor(id))
+               .ToImmutableDictionary(group => group.Key, group => group.Count())];
+            ImmutableDictionary<int, double> classWeights = [.. trainingLabelCounts
+               .Select(labelCount => new KeyValuePair<int, double>(
+                  labelCount.Key,
+                  trainingIds.Count / (double)(trainingLabelCounts.Count * labelCount.Value)))];
 
             for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
             {
@@ -332,7 +395,7 @@ namespace AmaigomaTests
                normalizedEntropies = normalizedEntropies.Add(normalizedEntropy);
 
                // Skip uniform histograms
-               if (normalizedEntropy < 0.95)
+               //if (normalizedEntropy < 0.95)
                {
                   ImmutableList<double> localSum = ImmutableList<double>.Empty;
                   ImmutableList<double> localSplitPosition = ImmutableList<double>.Empty;
@@ -342,14 +405,22 @@ namespace AmaigomaTests
 
                   int cumulativeSum = histogram[0] + histogram[1];
 
-                  for (int i = 2; i < 254; i++)
+                  for (int i = 2; i < 253; i++)
                   {
                      cumulativeSum += histogram[i];
 
-                     if (cumulativeSum >= 0.25 * sampleSize && cumulativeSum < 0.75 * sampleSize)
+                     localCumulativeSum = localCumulativeSum.Add(Math.Min(cumulativeSum, sampleSize - cumulativeSum));
+                     localFeatureIndex = localFeatureIndex.Add(featureIndex);
+                     localSplitValue = localSplitValue.Add(i);
+
+                     // UNDONE A good value should be 0.25 and 0.75, but for this the algorithm needs better features to handle difficult cases.
+                     //if (cumulativeSum >= 0.05 * sampleSize && cumulativeSum < 0.95 * sampleSize)
+                     //if (cumulativeSum >= 0.25 * sampleSize && cumulativeSum < 0.75 * sampleSize)
                      {
                         int previousSum = histogram[i - 2] + histogram[i - 1];
                         int currentSum = histogram[i] + histogram[i + 1];
+
+                        localWeightedEntropies = localWeightedEntropies.Add(currentSum);
 
                         if (currentSum < previousSum)
                         {
@@ -368,9 +439,32 @@ namespace AmaigomaTests
                            }
                         }
                      }
+                     //else
+                     //{
+                     //   localWeightedEntropies = localWeightedEntropies.Add(500);
+                     //}
+
+                     {
+                        ImmutableDictionary<int, int>.Builder leftTrainingLabelCounts = ImmutableDictionary.CreateBuilder<int, int>();
+                        ImmutableDictionary<int, int>.Builder rightTrainingLabelCounts = ImmutableDictionary.CreateBuilder<int, int>();
+
+                        foreach (int id in trainingIds)
+                        {
+                           int label = tanukiETL.TanukiLabelExtractor(id);
+                           int transformedValue = tanukiETL.TanukiDataTransformer(id, featureIndex);
+                           ImmutableDictionary<int, int>.Builder labelCounts = transformedValue <= i
+                              ? leftTrainingLabelCounts
+                              : rightTrainingLabelCounts;
+
+                           labelCounts[label] = labelCounts.GetValueOrDefault(label) + 1;
+                        }
+
+                        localShannonEntropies = localShannonEntropies.Add(CalculateWeightedSplitEntropy(leftTrainingLabelCounts, rightTrainingLabelCounts, classWeights));
+                     }
                   }
 
                   weigthedEntropies = weigthedEntropies.Add(bestWeightedEntropy);
+                  splitValues = splitValues.Add(bestSplitValue);
 
                   // UNDONE Add a threshold at which we accept the feature directly when it is good enough
                   // UNDONE Add a threshold at which we're kind-of statisfied with the result, so we can search for X more features and then keep the best so far.
@@ -380,160 +474,145 @@ namespace AmaigomaTests
                      bestFeature = featureIndex;
                      bestFeatureSplit = bestSplitValue;
                   }
-               }
-               else
-               {
-                  weigthedEntropies = weigthedEntropies.Add(bestWeightedEntropy);
-               }
-            }
 
-            bestFeature.ShouldBeGreaterThanOrEqualTo(0);
-         }
-
-         return (bestFeature, bestFeatureSplit);
-      }
-
-      private static double ShannonEntropy(IEnumerable<int> counts)
-      {
-         double total = counts.Sum();
-         if (total == 0) return 0;
-
-         double sum = 0;
-         foreach (int c in counts)
-         {
-            if (c == 0) continue;
-            double p = c / total;
-            sum += -p * Math.Log2(p);
-         }
-         return sum;
-      }
-
-      public (int featureIndex, double splitThreshold) GetBestSplitClusteringShannon(IReadOnlyList<int> ids, TanukiETL tanukiETL)
-      {
-         int bestFeature = -1;
-         double bestFeatureSplit = double.MaxValue;
-         double bestFeatureSplitCount = double.MaxValue;
-
-         if (ids.Count > 0)
-         {
-            // TODO No need to keep all entropies, only the best one
-            ImmutableList<double> weigthedEntropies = [];
-            ImmutableList<int> sampleIds = [.. ids];
-            ImmutableHashSet<int> allLabels = [.. ids.Select(id => tanukiETL.TanukiLabelExtractor(id))];
-            ImmutableDictionary<int, ImmutableList<int>> allHistograms = ImmutableDictionary<int, ImmutableList<int>>.Empty;
-
-            // UNDONE DO NOT COMMIT
-            ImmutableList<string> tempDebugData = [];
-
-            foreach (int label in allLabels)
-            {
-               allHistograms = allHistograms.SetItem(label, emptyHistogram);
-            }
-
-            for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
-            {
-               ImmutableList<int> transformedData = [.. sampleIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex))];
-
-               int bestSplitValue = -1;
-               double bestWeightedEntropy = double.MaxValue;
-               int bestSplitCount = 0;
-               ImmutableDictionary<int, int> leftLabelTotalCount = [];
-               ImmutableDictionary<int, int> rightLabelTotalCount = [];
-               int leftTotalCount = 0;
-               int rightTotalCount = sampleIds.Count;
-               ImmutableDictionary<int, ImmutableList<int>> histograms = allHistograms;
-
-               for (int i = 0; i < sampleIds.Count; i++)
-               {
-                  int label = tanukiETL.TanukiLabelExtractor(sampleIds[i]);
-
-                  ImmutableList<int> histogram = histograms[label];
-                  int currentData = transformedData[i];
-
-                  histograms = histograms.SetItem(label, histogram.SetItem(currentData, histogram[currentData] + 1));
-
-                  if (rightLabelTotalCount.TryGetValue(label, out int value))
+                  if (bestSplitValue >= 0)
                   {
-                     rightLabelTotalCount = rightLabelTotalCount.SetItem(label, value + 1);
+                     ImmutableDictionary<int, int>.Builder leftTrainingLabelCounts = ImmutableDictionary.CreateBuilder<int, int>();
+                     ImmutableDictionary<int, int>.Builder rightTrainingLabelCounts = ImmutableDictionary.CreateBuilder<int, int>();
+
+                     foreach (int id in trainingIds)
+                     {
+                        int label = tanukiETL.TanukiLabelExtractor(id);
+                        int transformedValue = tanukiETL.TanukiDataTransformer(id, featureIndex);
+                        ImmutableDictionary<int, int>.Builder labelCounts = transformedValue <= bestSplitValue
+                           ? leftTrainingLabelCounts
+                           : rightTrainingLabelCounts;
+
+                        labelCounts[label] = labelCounts.GetValueOrDefault(label) + 1;
+                     }
+
+                     shannonEntropies = shannonEntropies.Add(CalculateWeightedSplitEntropy(leftTrainingLabelCounts, rightTrainingLabelCounts, classWeights));
                   }
                   else
                   {
-                     rightLabelTotalCount = rightLabelTotalCount.Add(label, 1);
-                     leftLabelTotalCount = leftLabelTotalCount.Add(label, 0);
+                     shannonEntropies = shannonEntropies.Add(double.MaxValue);
                   }
                }
+               //else
+               //{
+               //   weigthedEntropies = weigthedEntropies.Add(double.MaxValue);
+               //   shannonEntropies = shannonEntropies.Add(double.MaxValue);
+               //}
+            }
 
-               // UNDONE DO NOT COMMIT
-               ImmutableList<double> splitValuesWeigthedEntropies = [];
+            double bestWeight = weigthedEntropies.Min();
+            double bestShannonEntropy = double.MaxValue;
+            double weightTreshold = bestWeight * 1.33;
 
-               for (int splitValue = 0; splitValue < 256; splitValue++)
+            for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
+            {
+               if (weigthedEntropies[featureIndex] <= weightTreshold)
                {
-                  foreach ((int label, ImmutableList<int> histogram) in histograms)
+                  if (shannonEntropies[featureIndex] < bestShannonEntropy)
                   {
-                     int binCount = histogram[splitValue];
-
-                     leftLabelTotalCount = leftLabelTotalCount.SetItem(label, leftLabelTotalCount[label] + binCount);
-                     rightLabelTotalCount = rightLabelTotalCount.SetItem(label, rightLabelTotalCount[label] - binCount);
-                     leftTotalCount += binCount;
-                     rightTotalCount -= binCount;
+                     bestFeature = featureIndex;
+                     bestFeatureSplit = splitValues[featureIndex];
+                     bestShannonEntropy = shannonEntropies[featureIndex];
                   }
-
-                  if (leftTotalCount > 0 && rightTotalCount > 0)
-                  {
-                     leftTotalCount.ShouldBeGreaterThanOrEqualTo(0);
-                     rightTotalCount.ShouldBeGreaterThanOrEqualTo(0);
-
-                     int leftTotalCountForEntropy = leftLabelTotalCount.Count(x => x.Value > 0);
-                     int rightTotalCountForEntropy = rightLabelTotalCount.Count(x => x.Value > 0);
-
-                     double leftEntropy = ShannonEntropy(leftLabelTotalCount.Select(c => c.Value));
-                     double rightEntropy = ShannonEntropy(rightLabelTotalCount.Select(c => c.Value));
-                     double weightedEntropy =
-                         (leftTotalCount / (double)sampleIds.Count) * leftEntropy +
-                         (rightTotalCount / (double)sampleIds.Count) * rightEntropy;
-
-                     tempDebugData = tempDebugData.Add($"Feature {featureIndex}, split {splitValue}, left count {leftTotalCountForEntropy}, right count {rightTotalCountForEntropy}, left entropy {leftEntropy}, right entropy {rightEntropy}, weighted entropy {weightedEntropy}");
-
-                     if (weightedEntropy < bestWeightedEntropy)
-                     {
-                        bestWeightedEntropy = weightedEntropy;
-                        bestSplitValue = splitValue;
-                        bestSplitCount = 0;
-                     }
-                     else if (weightedEntropy == bestWeightedEntropy)
-                     {
-                        bestSplitValue.ShouldBeGreaterThanOrEqualTo(0);
-                        bestSplitCount++;
-                     }
-
-                     splitValuesWeigthedEntropies = splitValuesWeigthedEntropies.Add(weightedEntropy);
-                  }
-               }
-
-               weigthedEntropies = weigthedEntropies.Add(bestWeightedEntropy);
-
-               if (bestFeature == -1 ||
-                  weigthedEntropies[featureIndex] < weigthedEntropies[bestFeature] ||
-                  (weigthedEntropies[featureIndex] == weigthedEntropies[bestFeature] && bestFeatureSplitCount < bestSplitCount))
-               {
-                  if (bestSplitCount > 1)
-                  {
-                     bestSplitValue += bestSplitCount / 2;
-                  }
-
-                  bestFeature = featureIndex;
-                  bestFeatureSplit = bestSplitValue;
-                  bestFeatureSplitCount = bestSplitCount;
                }
             }
 
             bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
-            // TODO This is not even returned, but maybe it could be returned and then used as tree quality criteria
-            //weigthedEntropies = weigthedEntropies.SetItem(bestFeature, weigthedEntropies[bestFeature] / sampleIds.Count);
+            double inflexionPoint;
+
+            inflexionPoint = ComputeInflexionPoint(localShannonEntropies);
+            inflexionPoint = ComputeInflexionPoint(normalizedEntropies);
+
+            inflexionPoint = ComputeInflexionPoint2(localShannonEntropies);
+            inflexionPoint = ComputeInflexionPoint2(normalizedEntropies);
+
+            ImmutableList<double> localShannonEntropiesSorted = localShannonEntropies.Sort().ToImmutableList();
+            ImmutableList<double> temp = [];
+
+            for (int i = 100; i < 2500; i++)
+            {
+               temp = temp.Add(localShannonEntropiesSorted[i]);
+            }
+
+            //cubicSpline = CubicSpline.(Enumerable.Range(0, localShannonEntropies.Count).Select((x) => (double)x).ToArray(), localShannonEntropies.Sort().ToArray());
+            ImmutableList<double> localShannonEntropiesDerivatives = [];
+
+
+            (double a, double b) = Fit.Logarithm(Enumerable.Range(1, temp.Count).Select((x) => (double)x).ToArray(), temp.Sort().ToArray());
+
+            // Pour évaluer la dérivée analytique exacte au point X de ce polynôme :
+            // f'(x) = b + 2cx + 3dx²
+            for (int i = 0; i < temp.Count; i++)
+            {
+               double x = i;
+               double derivative = b / (i + 1);
+
+               localShannonEntropiesDerivatives = localShannonEntropiesDerivatives.Add(derivative);
+            }
+
+            temp = localShannonEntropiesSorted;
+            temp = normalizedEntropies;
+
+            //for (int i = 0; i < localShannonEntropies.Count; i++)
+            //{
+            //   localShannonEntropiesDerivatives = localShannonEntropiesDerivatives.Add(cubicSpline.Differentiate(i));
+            //}
+
+
+            //cubicSpline = CubicSpline.InterpolateNatural(Enumerable.Range(0, normalizedEntropies.Count).Select((x) => (double)x), normalizedEntropies);
+            //ImmutableList<double> normalizedEntropiesDerivatives = [];
+
+            //for (int i = 0; i < normalizedEntropies.Count; i++)
+            //{
+            //   normalizedEntropiesDerivatives = normalizedEntropiesDerivatives.Add(cubicSpline.Differentiate(i));
+            //}
          }
 
          return (bestFeature, bestFeatureSplit);
+      }
+
+      private static double CalculateWeightedSplitEntropy(
+         IReadOnlyDictionary<int, int> leftLabelCounts,
+         IReadOnlyDictionary<int, int> rightLabelCounts,
+         IReadOnlyDictionary<int, double> classWeights)
+      {
+         double leftTotal = leftLabelCounts.Sum(labelCount => labelCount.Value * classWeights[labelCount.Key]);
+         double rightTotal = rightLabelCounts.Sum(labelCount => labelCount.Value * classWeights[labelCount.Key]);
+         double total = leftTotal + rightTotal;
+
+         if (total == 0) return 0;
+
+         double leftEntropy = CalculateWeightedEntropy(leftLabelCounts, classWeights, leftTotal);
+         double rightEntropy = CalculateWeightedEntropy(rightLabelCounts, classWeights, rightTotal);
+
+         return (leftTotal / total) * leftEntropy + (rightTotal / total) * rightEntropy;
+      }
+
+      private static double CalculateWeightedEntropy(
+         IReadOnlyDictionary<int, int> labelCounts,
+         IReadOnlyDictionary<int, double> classWeights,
+         double total)
+      {
+         if (total == 0) return 0;
+
+         double entropy = 0;
+
+         foreach ((int label, int count) in labelCounts)
+         {
+            if (count == 0) continue;
+
+            double weightedCount = count * classWeights[label];
+            double probability = weightedCount / total;
+            entropy -= probability * Math.Log2(probability);
+         }
+
+         return entropy;
       }
    }
 
@@ -725,6 +804,34 @@ namespace AmaigomaTests
          this.fixture = fixture;
       }
 
+      static ImmutableList<ImmutableDictionary<int, ImmutableList<int>>> ComputeModelClustering(ImmutableList<PakiraDecisionTreeModel> models, IEnumerable<int> allTrainIds, TanukiETL tanukiETL)
+      {
+         ImmutableList<ImmutableDictionary<int, ImmutableList<int>>> modelsTrainLeafMaps = Enumerable.Range(0, models.Count)
+         .Select(i =>
+         {
+            PakiraDecisionTreeModel model = models[i];
+            PakiraTreeWalker walker = new(model.Tree, tanukiETL);
+
+            ImmutableDictionary<int, ImmutableList<int>> leafToTrainIds = ImmutableDictionary<int, ImmutableList<int>>.Empty;
+
+            foreach (int trainId in allTrainIds)
+            {
+               BinaryTreeLeaf leaf = walker.PredictLeaf(trainId);
+
+               if (!leafToTrainIds.ContainsKey(leaf.id))
+               {
+                  leafToTrainIds = leafToTrainIds.Add(leaf.id, ImmutableList<int>.Empty);
+               }
+
+               leafToTrainIds = leafToTrainIds.SetItem(leaf.id, leafToTrainIds[leaf.id].Add(trainId));
+            }
+
+            return leafToTrainIds;
+         }).ToImmutableList();
+
+         return modelsTrainLeafMaps;
+      }
+
       static private AccuracyResult ComputeAccuracy(PakiraTree tree, ImmutableDictionary<int, SampleData> positions, TanukiETL tanukiETL)
       {
          IEnumerable<int> ids = positions.Keys;
@@ -846,7 +953,8 @@ namespace AmaigomaTests
          // ImmutableList<int> averageTransformerSizes = [7, 5, 3];
          //ImmutableList<int> averageTransformerSizes = [5, 3];
          //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
-         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+         //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
+         ImmutableList<int> averageTransformerSizes = [17, 1];
          ImmutableDictionary<string, int> dataSetAccuracy = ImmutableDictionary.CreateRange(new Dictionary<string, int> {
           {"Train", 37},
           {"Validation", 30},
@@ -920,11 +1028,30 @@ namespace AmaigomaTests
          PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringMean);
 
          //ImmutableList<int> abc = im164Positions.Keys.Union(trainPositions.Keys).ToImmutableList();
-         ImmutableList<int> trainingData = imagePositions.Keys.Union(trainPositions.Keys).ToImmutableList();
+         //ImmutableList<int> trainingData = imagePositions.Keys.Union(trainPositions.Keys).ToImmutableList();
+         IEnumerable<int> limitedTrainPositions = trainPositions.Keys.Take(300);
+         const int modelCount = 50;
+         limitedTrainPositions = trainPositions.Keys.Take(109);
+         limitedTrainPositions = [2, 108];
+         limitedTrainPositions = trainPositions.Keys.Take(216);
 
-         ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, 16).AsParallel().Select(i =>
+         PakiraDecisionTreeModel entropyTest;
+
+         //entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(16000), tanukiETL);
+         //entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(16000).Union(trainPositions.Keys), tanukiETL);
+         //entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(16000).Union(limitedTrainPositions), tanukiETL);
+
+         //entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(2).Union(limitedTrainPositions), tanukiETL);
+
+         entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(16000).Union(limitedTrainPositions), tanukiETL);
+
+         ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, modelCount).AsParallel().Select(i =>
          {
-            return pakiraGeneratorClusteringHybrid.Generate(new(), trainingData.Shuffle(new Random(54 + i)), tanukiETL);
+            //IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(16000).Union(limitedTrainPositions);
+            //IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(16000).Union(trainPositions.Keys.Take(200));
+            IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(64000).Union(trainPositions.Keys.Take(200));
+
+            return pakiraGeneratorClusteringHybrid.Generate(new(), trainingData, tanukiETL);
          }).ToImmutableList();
 
          //ImmutableList<string> testNames = ["Train", "Test", "Validation"];
@@ -960,28 +1087,9 @@ namespace AmaigomaTests
          //PakiraDecisionTreeModel pakiraDecisionTreeModelClusteringHybrid = pakiraGeneratorClusteringHybrid.Generate(new(), trainPositions.Keys, tanukiETL);
 
          // Compute leaf ID of each tree for all Train positions and build mapping
-         ImmutableList<ImmutableDictionary<int, ImmutableList<int>>> modelsTrainLeafMaps = Enumerable.Range(0, models.Count)
-            .Select(i =>
-            {
-               PakiraDecisionTreeModel model = models[i];
-               PakiraTreeWalker walker = new(model.Tree, tanukiETL);
-
-               ImmutableDictionary<int, ImmutableList<int>> leafToTrainIds = ImmutableDictionary<int, ImmutableList<int>>.Empty;
-
-               foreach (int trainId in trainPositions.Keys.Take(300))
-               {
-                  BinaryTreeLeaf leaf = walker.PredictLeaf(trainId);
-
-                  if (!leafToTrainIds.ContainsKey(leaf.id))
-                  {
-                     leafToTrainIds = leafToTrainIds.Add(leaf.id, ImmutableList<int>.Empty);
-                  }
-
-                  leafToTrainIds = leafToTrainIds.SetItem(leaf.id, leafToTrainIds[leaf.id].Add(trainId));
-               }
-
-               return leafToTrainIds;
-            }).ToImmutableList();
+         ImmutableList<ImmutableDictionary<int, ImmutableList<int>>> modelsTrainLeafMaps = ComputeModelClustering(models, limitedTrainPositions, tanukiETL);
+         modelsTrainLeafMaps = ComputeModelClustering(models, trainPositions.Keys, tanukiETL);
+         modelsTrainLeafMaps = ComputeModelClustering(models, trainPositions.Keys.Take(5000), tanukiETL);
 
          // UNDONE Add logic to select the best model trees used for majority vote evaluation.
 
@@ -990,50 +1098,90 @@ namespace AmaigomaTests
 
          Dictionary<int, int> overallHighestVoteCountByLabel = new();
 
-         foreach (int testId in validationPositions.Keys)
+         //ImmutableList<int> activeModels = Enumerable.Range(0, 8).ToImmutableList();
+         //ImmutableList<int> inactiveModels = Enumerable.Range(9, models.Count - 8).ToImmutableList();
+         ImmutableList<int> activeModels = Enumerable.Range(0, modelCount).ToImmutableList();
+         ////ImmutableList<int> inactiveModels = Enumerable.Range(9, models.Count - 8).ToImmutableList();
+
+         ImmutableList<int> allTrueValues = ImmutableList<int>.Empty;
+         ImmutableList<int> allFalseValues = ImmutableList<int>.Empty;
+
+         while (true)
          {
-            Dictionary<int, int> voteCounts = new(); // trainId -> votes
-
-            for (int m = 0; m < models.Count; m++)
+            //foreach (int testId in limitedTrainPositions)
+            foreach (int testId in trainPositions.Keys.Take(5000))
+            //foreach (int testId in validationPositions.Keys)
             {
-               PakiraDecisionTreeModel model = models[m];
-               PakiraTreeWalker walker = new(model.Tree, tanukiETL);
-               BinaryTreeLeaf testLeaf = walker.PredictLeaf(testId);
+               Dictionary<int, int> voteCounts = new(); // trainId -> votes
 
-               if (modelsTrainLeafMaps[m].ContainsKey(testLeaf.id))
+               foreach (int m in activeModels)
                {
-                  foreach (int trainId in modelsTrainLeafMaps[m][testLeaf.id])
+                  PakiraDecisionTreeModel model = models[m];
+                  PakiraTreeWalker walker = new(model.Tree, tanukiETL);
+                  BinaryTreeLeaf testLeaf = walker.PredictLeaf(testId);
+
+                  if (modelsTrainLeafMaps[m].ContainsKey(testLeaf.id))
                   {
-                     if (voteCounts.ContainsKey(trainId)) voteCounts[trainId]++; else voteCounts[trainId] = 1;
+                     foreach (int trainId in modelsTrainLeafMaps[m][testLeaf.id])
+                     {
+                        if (voteCounts.ContainsKey(trainId))
+                        {
+                           voteCounts[trainId]++;
+                        }
+                        else
+                        {
+                           voteCounts[trainId] = 1;
+                        }
+                     }
                   }
                }
-            }
 
-            // pick the strongest train sample for each label
-            int maxVotes = voteCounts.Values.DefaultIfEmpty(0).Max();
-            var winners = voteCounts
-               .GroupBy(kv => trainPositions[kv.Key].Label)
-               .Select(grouping => grouping.OrderByDescending(kv => kv.Value).First().Key)
-               .ToImmutableList();
-            var winnerLabels = winners.Select(winnerId => trainPositions[winnerId].Label).ToImmutableList();
+               ImmutableDictionary<bool, int> maxVotePrediction = ImmutableDictionary<bool, int>.Empty.Add(true, 0).Add(false, 0);
+               int testLabel = tanukiETL.TanukiLabelExtractor(testId);
 
-            var highestVoteCountByLabel = voteCounts
-               .GroupBy(kv => trainPositions[kv.Key].Label)
-               .ToImmutableDictionary(
-                  grouping => grouping.Key,
-                  grouping => grouping.Max(kv => kv.Value));
-
-            foreach (var labelVote in highestVoteCountByLabel)
-            {
-               if (!overallHighestVoteCountByLabel.ContainsKey(labelVote.Key) || overallHighestVoteCountByLabel[labelVote.Key] < labelVote.Value)
+               foreach (KeyValuePair<int, int> vote in voteCounts)
                {
-                  overallHighestVoteCountByLabel[labelVote.Key] = labelVote.Value;
-               }
-            }
+                  int label = tanukiETL.TanukiLabelExtractor(vote.Key);
 
-            string labelMaxVotes = string.Join(';', highestVoteCountByLabel.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value}"));
-            string line = testId.ToString() + "," + validationPositions[testId].Label + ",Votes=" + maxVotes + ",Winners=" + string.Join(';', winners) + ",WinnerLabels=" + string.Join(';', winnerLabels) + ",LabelMaxVotes=" + labelMaxVotes;
-            File.AppendAllText("results.txt", line + Environment.NewLine);
+                  if (label == testLabel)
+                  {
+                     maxVotePrediction = maxVotePrediction.SetItem(true, Math.Max(maxVotePrediction[true], vote.Value));
+                  }
+                  else
+                  {
+                     maxVotePrediction = maxVotePrediction.SetItem(false, Math.Max(maxVotePrediction[false], vote.Value));
+                  }
+               }
+
+               allTrueValues = allTrueValues.Add(maxVotePrediction[true]);
+               allFalseValues = allFalseValues.Add(maxVotePrediction[false]);
+
+               // pick the strongest train sample for each label
+               //int maxVotes = voteCounts.Values.DefaultIfEmpty(0).Max();
+               //var winners = voteCounts
+               //   .GroupBy(kv => trainPositions[kv.Key].Label)
+               //   .Select(grouping => grouping.OrderByDescending(kv => kv.Value).First().Key)
+               //   .ToImmutableList();
+               //var winnerLabels = winners.Select(winnerId => trainPositions[winnerId].Label).ToImmutableList();
+
+               //var highestVoteCountByLabel = voteCounts
+               //   .GroupBy(kv => trainPositions[kv.Key].Label)
+               //   .ToImmutableDictionary(
+               //      grouping => grouping.Key,
+               //      grouping => grouping.Max(kv => kv.Value));
+
+               //foreach (var labelVote in highestVoteCountByLabel)
+               //{
+               //   if (!overallHighestVoteCountByLabel.ContainsKey(labelVote.Key) || overallHighestVoteCountByLabel[labelVote.Key] < labelVote.Value)
+               //   {
+               //      overallHighestVoteCountByLabel[labelVote.Key] = labelVote.Value;
+               //   }
+               //}
+
+               //string labelMaxVotes = string.Join(';', highestVoteCountByLabel.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value}"));
+               //string line = testId.ToString() + "," + validationPositions[testId].Label + ",Votes=" + maxVotes + ",Winners=" + string.Join(';', winners) + ",WinnerLabels=" + string.Join(';', winnerLabels) + ",LabelMaxVotes=" + labelMaxVotes;
+               //File.AppendAllText("results.txt", line + Environment.NewLine);
+            }
          }
 
          foreach (int testId in testPositions.Keys)
@@ -1177,11 +1325,6 @@ namespace AmaigomaTests
                   // TODO Invert the result of each node one after the other. This will help identify nodes that are no better than random. Doesn't seem to work well.
                   // If inverting a node's decision does not significantly impact accuracy, it suggests that the node may not be contributing
                   // meaningful information and could be a candidate for removal or further scrutiny. This requires to have enough samples per leaf to be statistically relevant.
-                  //PakiraDecisionTreeGenerator pakiraGenerator2 = new(bestSplitLogic.GetBestSplitClustering2);
-                  PakiraDecisionTreeGenerator pakiraGenerator2 = new(bestSplitLogic.GetBestSplitClustering3);
-                  pakiraGenerator2 = new(bestSplitLogic.GetBestSplitClusteringJensenShannon);
-                  pakiraGenerator2 = new(bestSplitLogic.GetBestSplitClusteringShannon);
-                  //pakiraGenerator2 = new(bestSplitLogic.GetBestSplitClusteringHybrid);
 
                   // TODO Les sous-classes seront conserveees dans le pakira generator. Chaque training va assigner de nouvelles sous-classes en fonction de la leaf ou est tombe le sample. De cette facon, pas besoin de weigths en floating-point. On peut facilement ajouter de nouveaux samples a mesure et ils auront leur sous-classe automatiquement. Utiliser quand meme tout le data de train pour avoir toute la plage de distribution, mais ne calcuer lentropie que sur un sample de chaque cluster. Non, tout utiliser tout le temps sinon on depend trop de quel sample on a choisit. A la fin il faudra peut-être eliminer les nodes du haut en faisant des swap de condition.
 
