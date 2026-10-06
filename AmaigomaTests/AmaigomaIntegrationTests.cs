@@ -158,26 +158,29 @@ namespace AmaigomaTests
          return entropy;
       }
 
-      private static double CalculateNormalizedEntropy(IEnumerable<int> histogram)
+      private static double CalculateNormalizedEntropy(ReadOnlySpan<int> histogram)
       {
-         int total = histogram.Sum();
-         double entropy = 0.0;
+         int total = 0;
+
+         foreach (int count in histogram)
+         {
+            total += count;
+         }
 
          total.ShouldNotBe(0);
+
+         double entropy = 0.0;
 
          foreach (int count in histogram)
          {
             if (count > 0)
             {
-               count.ShouldBeGreaterThan(0);
-
                double p = (double)count / total;
-
                entropy -= p * Math.Log2(p);
             }
          }
 
-         return entropy / Math.Log2(histogram.Count());
+         return entropy;
       }
 
       public static (int featureIndex, double splitThreshold) GetBestSplitBaseline(IReadOnlyList<int> ids, TanukiETL tanukiETL)
@@ -295,7 +298,7 @@ namespace AmaigomaTests
          ImmutableList<double> sortedValues = values.Sort();
          ImmutableList<double> validValues = ImmutableList<double>.Empty.Add(sortedValues[0]);
 
-         for(int i = 1; i < sortedValues.Count; i++)
+         for (int i = 1; i < sortedValues.Count; i++)
          {
             // UNDONE This 0.01 constant could be parametrized
             if (sortedValues[i] > (sortedValues[i - 1] + 0.01))
@@ -374,25 +377,27 @@ namespace AmaigomaTests
                .Select(labelCount => new KeyValuePair<int, double>(
                   labelCount.Key,
                   trainingIds.Count / (double)(trainingLabelCounts.Count * labelCount.Value)))];
+            ImmutableList<ImmutableList<int>> histograms = [];
+            Span<int> counts = stackalloc int[256];
 
             for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
             {
-               ImmutableList<int> transformedData = [.. dataDistributionIds.Select(id => tanukiETL.TanukiDataTransformer(id, featureIndex))];
+               counts.Clear();
 
-               int bestSplitValue = -1;
-               double bestWeightedEntropy = double.MaxValue;
-               ImmutableList<int> histogram = emptyHistogram;
-
-               for (int i = 0; i < transformedData.Count; i++)
+               foreach (int id in dataDistributionIds)
                {
-                  int currentData = transformedData[i];
-
-                  histogram = histogram.SetItem(currentData, histogram[currentData] + 1);
+                  counts[tanukiETL.TanukiDataTransformer(id, featureIndex)]++;
                }
 
-               double normalizedEntropy = CalculateNormalizedEntropy(histogram);
+               normalizedEntropies = normalizedEntropies.Add(CalculateNormalizedEntropy(counts));
+               histograms = histograms.Add([.. counts]);
+            }
 
-               normalizedEntropies = normalizedEntropies.Add(normalizedEntropy);
+            for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
+            {
+               int bestSplitValue = -1;
+               double bestWeightedEntropy = double.MaxValue;
+               ImmutableList<int> histogram = histograms[featureIndex];
 
                // Skip uniform histograms
                //if (normalizedEntropy < 0.95)
@@ -952,9 +957,9 @@ namespace AmaigomaTests
          // ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
          // ImmutableList<int> averageTransformerSizes = [7, 5, 3];
          //ImmutableList<int> averageTransformerSizes = [5, 3];
-         //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
+         ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3, 1];
          //ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
-         ImmutableList<int> averageTransformerSizes = [17, 1];
+         // ImmutableList<int> averageTransformerSizes = [17, 1];
          ImmutableDictionary<string, int> dataSetAccuracy = ImmutableDictionary.CreateRange(new Dictionary<string, int> {
           {"Train", 37},
           {"Validation", 30},
@@ -1106,7 +1111,7 @@ namespace AmaigomaTests
          ImmutableList<int> allTrueValues = ImmutableList<int>.Empty;
          ImmutableList<int> allFalseValues = ImmutableList<int>.Empty;
 
-         while (true)
+         // while (true)
          {
             //foreach (int testId in limitedTrainPositions)
             foreach (int testId in trainPositions.Keys.Take(5000))
@@ -1246,6 +1251,7 @@ namespace AmaigomaTests
          // UNDONE Next task: Create a random forest of about 200 clustering trees and evaluate the accuracy based on majority vote.
 
          PrintEnd();
+
          /*
                   // Generate initial model for clustering
                   // TODO Find a better way to do the initial clustering so that it is not dependent on the data distribution. Maybe consider all samples to be of a different class and then merge the leaves which have the same original class?
