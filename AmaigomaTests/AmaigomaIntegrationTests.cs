@@ -13,8 +13,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.IO.Hashing;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace AmaigomaTests
@@ -900,7 +902,8 @@ namespace AmaigomaTests
          //ImmutableList<int> abc = im164Positions.Keys.Union(trainPositions.Keys).ToImmutableList();
          //ImmutableList<int> trainingData = imagePositions.Keys.Union(trainPositions.Keys).ToImmutableList();
          IEnumerable<int> limitedTrainPositions = trainPositions.Keys.Take(300);
-         const int modelCount = 50;
+         //const int modelCount = 10;
+         int modelCount = 5;
          limitedTrainPositions = trainPositions.Keys.Take(109);
          limitedTrainPositions = [2, 108];
          limitedTrainPositions = trainPositions.Keys.Take(216);
@@ -913,16 +916,51 @@ namespace AmaigomaTests
 
          //entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(2).Union(limitedTrainPositions), tanukiETL);
 
-         entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(64000).Union(limitedTrainPositions), tanukiETL);
+         entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(32000).Union(limitedTrainPositions), tanukiETL);
 
          ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, modelCount).AsParallel().Select(i =>
          {
             //IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(16000).Union(limitedTrainPositions);
-            //IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(16000).Union(trainPositions.Keys.Take(200));
+            //IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(16000).Union(trainPositions.Keys.Take(20530));
+            //IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(32000).Union(trainPositions.Keys.Take(200));
             IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(64000).Union(trainPositions.Keys.Take(200));
 
             return pakiraGeneratorClusteringHybrid.Generate(new(), trainingData, tanukiETL);
          }).ToImmutableList();
+
+         ImmutableList<PakiraTreeWalker> modelWalkers = models
+            .Select(model => new PakiraTreeWalker(model.Tree, tanukiETL))
+            .ToImmutableList();
+
+         ulong HashPosition(int positionId)
+         {
+            int[] leafIds = modelWalkers
+               .Select(walker => walker.PredictLeaf(positionId).id)
+               .ToArray();
+
+            return XxHash64.HashToUInt64(MemoryMarshal.AsBytes(leafIds.AsSpan()));
+         }
+
+         HashSet<ulong> trainPositionHashes = [.. trainPositions.Keys.Select(HashPosition)];
+         HashSet<ulong> validationPositionHashes = [.. validationPositions.Keys.Select(HashPosition)];
+         HashSet<ulong> testPositionHashes = [.. testPositions.Keys.Select(HashPosition)];
+         HashSet<ulong> first200TrainPositionHashes = [.. trainPositions.Keys.Take(200).Select(HashPosition)];
+         HashSet<ulong> unknownValidationHashes = [.. validationPositionHashes.Except(trainPositionHashes)];
+         HashSet<ulong> unknownTestHashes = [.. testPositionHashes.Except(trainPositionHashes)];
+         int first200TrainHashesInFullSet = first200TrainPositionHashes.Intersect(trainPositionHashes).Count();
+         double first200TrainHashCoverage = trainPositionHashes.Count == 0
+            ? 0
+            : (double)first200TrainHashesInFullSet / trainPositionHashes.Count;
+         
+         // UNDONE all models are similar. also validate with test set
+
+         output.WriteLine($"Distinct train-position hashes: {trainPositionHashes.Count}");
+         output.WriteLine($"Distinct validation-position hashes: {validationPositionHashes.Count}");
+         output.WriteLine($"Distinct test-position hashes: {testPositionHashes.Count}");
+         output.WriteLine($"Validation hashes absent from train: {unknownValidationHashes.Count}");
+         output.WriteLine($"Test hashes absent from train: {unknownTestHashes.Count}");
+         output.WriteLine($"Distinct hashes in first 200 train positions: {first200TrainPositionHashes.Count}");
+         output.WriteLine($"First 200 train hash coverage of full train set: {first200TrainHashesInFullSet}/{trainPositionHashes.Count} ({first200TrainHashCoverage:P2})");
 
          //ImmutableList<string> testNames = ["Train", "Test", "Validation"];
          // ImmutableList<string> results = ImmutableList<string>.Empty;
