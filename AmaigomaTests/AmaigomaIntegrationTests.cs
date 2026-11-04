@@ -293,6 +293,12 @@ namespace AmaigomaTests
          return (bestFeature, bestFeatureSplit);
       }
 
+      public static bool LeavesValidation(ILookup<bool, int> updatedDataSamples, TanukiETL tanukiETL)
+      {
+         // UNDONE Replace 9999 by datadistribution
+         return updatedDataSamples[true].Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Count() >= 500 && updatedDataSamples[false].Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Count() >= 500;
+      }
+
       public (int featureIndex, double splitThreshold) GetBestSplitClusteringMean(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
@@ -333,7 +339,7 @@ namespace AmaigomaTests
                .Select(labelCount => new KeyValuePair<int, double>(
                   labelCount.Key,
                   trainingIds.Count / (double)(trainingLabelCounts.Count * labelCount.Value)))];
-            // UNDONE Replace other Immutables with ImmutableArray wherever possible for performance
+            // UNDONE Replace other Immutables with ImmutableArray wherever possible for performance. Probably better to get rid of all Immutables for performance.
             ImmutableArray<ImmutableArray<int>>.Builder histogramsBuilder = ImmutableArray.CreateBuilder<ImmutableArray<int>>(tanukiETL.TanukiFeatureCount);
             Span<int> counts = stackalloc int[256];
 
@@ -596,15 +602,14 @@ namespace AmaigomaTests
          new Rectangle(153, 409, 1, 1),
          new Rectangle(217, 519, 1, 1),
          new Rectangle(155, 549, 1, 1),
-          new Rectangle(190, 540, 280, 20),
-         // new Rectangle(20, 555, 480, 215),
+         new Rectangle(190, 540, 280, 20),
+         new Rectangle(20, 555, 480, 215),
       ];
 
       static private readonly ImmutableList<int> validation_507484246_Labels =
          [
          uppercaseA, uppercaseA, uppercaseA, uppercaseA, uppercaseA,
-         // other, other
-         other
+         other, other
          ];
 
       static private readonly ImmutableList<Rectangle> test_507484246_Rectangles =
@@ -614,21 +619,20 @@ namespace AmaigomaTests
          new Rectangle(137, 851, 1, 1),
          new Rectangle(257, 851, 1, 1),
          new Rectangle(605, 851, 1, 1),
-         // new Rectangle(520, 550, 230, 216),
+         new Rectangle(520, 550, 230, 216),
           new Rectangle(95, 810, 500, 20),
-         // new Rectangle(20, 900, 740, 70),
-         // new Rectangle(180, 960, 310, 23),
+         new Rectangle(20, 900, 740, 70),
+         new Rectangle(180, 960, 310, 23),
       ];
 
       static private readonly ImmutableList<int> test_507484246_Labels =
       [
          uppercaseA, uppercaseA, uppercaseA, uppercaseA, uppercaseA,
-         // other, other, other, other
-         other
+         other, other, other, other
       ];
 
       static private readonly ImmutableList<Rectangle> im164Rectangles = [new Rectangle(8, 8, 483, 358)];
-      static private readonly ImmutableList<int> im164Labels = [datadistribution];
+      static private readonly ImmutableList<int> im164Labels = [other];
       static private readonly ImmutableList<Rectangle> im10Rectangles = [new Rectangle(8, 8, 483, 316)];
       static private readonly ImmutableList<int> im10Labels = [other];
       static private readonly ImmutableList<Rectangle> imageRectangles = [new Rectangle(8, 8, 483, 358)];
@@ -771,16 +775,16 @@ namespace AmaigomaTests
          // Number of transformers per size: 17->1, 7->1, 5->9, 3->25, 1->289
          ImmutableList<int> averageTransformerSizes = [17, 7, 5, 3];
          ImmutableDictionary<string, int> dataSetAccuracy = ImmutableDictionary.CreateRange(new Dictionary<string, int> {
-          {"Train", 38},
+          {"Train", 39},
           {"Validation", 28},
           {"Test", 32},
-          {"im164", 38},
-          {"im10", 38},
+          {"im164", 39},
+          {"im10", 39},
           {"ti31149327_9330", 30}
          });
          ImmutableList<string> dataSetNames = dataSetAccuracy.Keys.ToImmutableList();
 
-         PakiraDecisionTreeGenerator pakiraGenerator = new(TreeNodeSplit.GetBestSplitBaseline);
+         PakiraDecisionTreeGenerator pakiraGenerator = new(TreeNodeSplit.GetBestSplitBaseline, (updatedDataSamples, tanukiETL) => { return true; });
          ImmutableDictionary<int, SampleData> trainPositions = dataSet.Position("Train");
          ImmutableDictionary<int, SampleData> im164Positions = dataSet.Position("im164");
          ImmutableDictionary<int, SampleData> im10Positions = dataSet.Position("im10");
@@ -895,7 +899,7 @@ namespace AmaigomaTests
          //tanukiETL = tanukiETL.AddDataTransformer(edgeDataExtractor.ConvertAll, edgeDataExtractor.FeaturesCount());
 
 
-         PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringMean);
+         PakiraDecisionTreeGenerator pakiraGeneratorClusteringHybrid = new(bestSplitLogic.GetBestSplitClusteringMean, TreeNodeSplit.LeavesValidation);
 
          //ImmutableList<int> abc = im164Positions.Keys.Union(trainPositions.Keys).ToImmutableList();
          //ImmutableList<int> trainingData = imagePositions.Keys.Union(trainPositions.Keys).ToImmutableList();
