@@ -298,6 +298,7 @@ namespace AmaigomaTests
       public static bool LeavesValidation(ILookup<bool, int> updatedDataSamples, TanukiETL tanukiETL)
       {
          // UNDONE Replace 9999 by datadistribution
+         // TODO Evaluate a better threshold. 500 might be too high or too low.
          return updatedDataSamples[true].Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Count() >= 500 && updatedDataSamples[false].Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Count() >= 500;
       }
 
@@ -905,12 +906,13 @@ namespace AmaigomaTests
 
          //ImmutableList<int> abc = im164Positions.Keys.Union(trainPositions.Keys).ToImmutableList();
          //ImmutableList<int> trainingData = imagePositions.Keys.Union(trainPositions.Keys).ToImmutableList();
-         IEnumerable<int> limitedTrainPositions = trainPositions.Keys.Take(300);
+         //IEnumerable<int> limitedTrainPositions = trainPositions.Keys.Take(300);
+         List<int> limitedTrainPositions = trainPositions.Keys.Take(108).Concat(trainPositions.Keys.Skip(108).Shuffle(new Random(42)).Take(108)).ToList();
          //const int modelCount = 10;
          int modelCount = 5;
-         limitedTrainPositions = trainPositions.Keys.Take(109);
-         limitedTrainPositions = [2, 108];
-         limitedTrainPositions = trainPositions.Keys.Take(216);
+         //limitedTrainPositions = trainPositions.Keys.Take(109);
+         //limitedTrainPositions = [2, 108];
+         //limitedTrainPositions = trainPositions.Keys.Take(216);
 
          PakiraDecisionTreeModel entropyTest;
 
@@ -927,7 +929,7 @@ namespace AmaigomaTests
             //IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(16000).Union(limitedTrainPositions);
             //IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(16000).Union(trainPositions.Keys.Take(20530));
             //IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(32000).Union(trainPositions.Keys.Take(200));
-            IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(64000).Union(trainPositions.Keys.Take(200));
+            IEnumerable<int> trainingData = imagePositions.Keys.Shuffle(new Random(54 + i)).Take(64000).Union(limitedTrainPositions);
 
             return pakiraGeneratorClusteringHybrid.Generate(new(), trainingData, tanukiETL);
          }).ToImmutableList();
