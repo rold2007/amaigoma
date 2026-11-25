@@ -295,154 +295,166 @@ namespace AmaigomaTests
          return (bestFeature, bestFeatureSplit);
       }
 
-      public static bool LeavesValidation(ILookup<bool, int> updatedDataSamples, TanukiETL tanukiETL)
+      const int clusteringSampleSize = 500;
+
+      public static bool LeavesValidation(IEnumerable<int> updatedDataSamples, TanukiETL tanukiETL)
       {
          // UNDONE Replace 9999 by datadistribution
-         // TODO Evaluate a better threshold. 500 might be too high or too low.
-         return updatedDataSamples[true].Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Count() >= 500 && updatedDataSamples[false].Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Count() >= 500;
+         return updatedDataSamples.Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Count() >= clusteringSampleSize;
       }
 
       public (int featureIndex, double splitThreshold) GetBestSplitClusteringMean(IReadOnlyList<int> ids, TanukiETL tanukiETL)
       {
          int bestFeature = -1;
          double bestFeatureSplit = double.MaxValue;
-         //const int sampleSize = 1000;
-         int sampleSize = 1000;
-         //const int sampleSize = 10000;
-         //sampleSize = 5000;
-         sampleSize = 10000;
-         //sampleSize = 50000;
-         sampleSize = 1000;
-
-         double averageHistogram = sampleSize / 256;
 
          // UNDONE Replace 9999 by datadistribution
-         ImmutableList<int> dataDistributionIds = [.. ids.Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Take(sampleSize)];
+         ImmutableList<int> dataDistributionIds = [.. ids.Where(id => tanukiETL.TanukiLabelExtractor(id) == 9999).Take(clusteringSampleSize)];
          ImmutableList<int> trainingIds = [.. ids.Where(id => tanukiETL.TanukiLabelExtractor(id) != 9999)];
 
-         if (dataDistributionIds.Count == sampleSize)
-         {
-            //ImmutableList<double> weigthedEntropies = [];
-            ImmutableList<double> histogramNormalizedEntropies = [];
-            ImmutableList<double> splitValues = [];
-            //ImmutableList<double> shannonEntropies = [];
+         //ImmutableList<double> weigthedEntropies = [];
+         ImmutableList<double> histogramNormalizedEntropies = [];
+         ImmutableList<double> splitValues = [];
+         //ImmutableList<double> shannonEntropies = [];
 
-            ImmutableList<double> localShannonEntropies = [];
-            //ImmutableList<double> localWeightedEntropies = [];
-            ImmutableList<double> localCumulativeSum = [];
-            ImmutableList<int> localFeatureIndex = [];
-            ImmutableList<int> localSplitValue = [];
+         ImmutableList<double> localShannonEntropies = [];
+         ImmutableList<double> localCumulativeSum = [];
+         ImmutableList<int> localFeatureIndex = [];
+         ImmutableList<int> localSplitValue = [];
 
-            // UNDONE Idea: take 10% best Shannon, then best cumulative sum percentage then take the best Shannon with at least 50% max of cumulative
+         // UNDONE Idea: take 10% best Shannon, then best cumulative sum percentage then take the best Shannon with at least 50% max of cumulative
 
-            ImmutableDictionary<int, int> trainingLabelCounts = [.. trainingIds
+         ImmutableDictionary<int, int> trainingLabelCounts = [.. trainingIds
                .GroupBy(id => tanukiETL.TanukiLabelExtractor(id))
                .ToImmutableDictionary(group => group.Key, group => group.Count())];
-            ImmutableDictionary<int, double> classWeights = [.. trainingLabelCounts
+         ImmutableDictionary<int, double> classWeights = [.. trainingLabelCounts
                .Select(labelCount => new KeyValuePair<int, double>(
                   labelCount.Key,
                   trainingIds.Count / (double)(trainingLabelCounts.Count * labelCount.Value)))];
-            // UNDONE Replace other Immutables with ImmutableArray wherever possible for performance. Probably better to get rid of all Immutables for performance.
-            ImmutableArray<ImmutableArray<int>>.Builder histogramsBuilder = ImmutableArray.CreateBuilder<ImmutableArray<int>>(tanukiETL.TanukiFeatureCount);
-            Span<int> counts = stackalloc int[256];
+         // UNDONE Replace other Immutables with ImmutableArray wherever possible for performance. Probably better to get rid of all Immutables for performance.
+         ImmutableArray<ImmutableArray<int>>.Builder histogramsBuilder = ImmutableArray.CreateBuilder<ImmutableArray<int>>(tanukiETL.TanukiFeatureCount);
+         Span<int> counts = stackalloc int[256];
 
-            for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
+         for (int featureIndex = 0; featureIndex < tanukiETL.TanukiFeatureCount; featureIndex++)
+         {
+            counts.Clear();
+
+            foreach (int id in dataDistributionIds)
             {
-               counts.Clear();
-
-               foreach (int id in dataDistributionIds)
-               {
-                  counts[tanukiETL.TanukiDataTransformer(id, featureIndex)]++;
-               }
-
-               histogramNormalizedEntropies = histogramNormalizedEntropies.Add(CalculateNormalizedEntropy(counts));
-               histogramsBuilder.Add([.. counts]);
+               counts[tanukiETL.TanukiDataTransformer(id, featureIndex)]++;
             }
 
-            ImmutableArray<ImmutableArray<int>> histograms = histogramsBuilder.MoveToImmutable();
-            double entropyThreshold = ComputeThreshold(histogramNormalizedEntropies, 0.8, 0.8);
-            IEnumerable<int> validFeatureIndices = Enumerable.Range(0, tanukiETL.TanukiFeatureCount)
-               .Where(featureIndex => histogramNormalizedEntropies[featureIndex] <= entropyThreshold);
-
-            foreach (int featureIndex in validFeatureIndices)
-            {
-               int bestSplitValue = -1;
-               ImmutableArray<int> histogram = histograms[featureIndex];
-               int cumulativeSum = 0;
-
-               for (int i = 0; i < 254; i++)
-               {
-                  cumulativeSum += histogram[i];
-
-                  // Lower is better
-                  localCumulativeSum = localCumulativeSum.Add(1 - Math.Min(cumulativeSum, sampleSize - cumulativeSum) * 2.0 / sampleSize);
-                  localFeatureIndex = localFeatureIndex.Add(featureIndex);
-                  localSplitValue = localSplitValue.Add(i);
-
-                  //localWeightedEntropies = localWeightedEntropies.Add(1.0 - (histogram[i] + histogram[i + 1]) / (double)sampleSize);
-
-                  ImmutableDictionary<int, int>.Builder leftTrainingLabelCounts = ImmutableDictionary.CreateBuilder<int, int>();
-                  ImmutableDictionary<int, int>.Builder rightTrainingLabelCounts = ImmutableDictionary.CreateBuilder<int, int>();
-
-                  foreach (int id in trainingIds)
-                  {
-                     int label = tanukiETL.TanukiLabelExtractor(id);
-                     int transformedValue = tanukiETL.TanukiDataTransformer(id, featureIndex);
-                     ImmutableDictionary<int, int>.Builder labelCounts = transformedValue <= i
-                        ? leftTrainingLabelCounts
-                        : rightTrainingLabelCounts;
-
-                     labelCounts[label] = labelCounts.GetValueOrDefault(label) + 1;
-                  }
-
-                  localShannonEntropies = localShannonEntropies.Add(CalculateWeightedSplitEntropy(leftTrainingLabelCounts, rightTrainingLabelCounts, classWeights));
-               }
-
-               splitValues = splitValues.Add(bestSplitValue);
-            }
-
-
-            double cumulativeSumThreshold = ComputeThreshold(localCumulativeSum, 0.8, 0.8);
-            int consecutiveSplitCount = 0;
-            int bestSplitIndex = 0;
-
-            bestFeature = localFeatureIndex[0];
-            bestFeatureSplit = localSplitValue[0];
-
-            for (int splitIndex = 0; splitIndex < localCumulativeSum.Count; splitIndex++)
-            {
-               if (localCumulativeSum[splitIndex] <= cumulativeSumThreshold)
-               {
-                  if (localShannonEntropies[splitIndex] <= localShannonEntropies[bestSplitIndex])
-                  {
-                     if ((localFeatureIndex[splitIndex] == bestFeature) &&
-                        (localShannonEntropies[splitIndex] == localShannonEntropies[bestSplitIndex]) &&
-                        (localSplitValue[splitIndex] == (bestFeatureSplit + consecutiveSplitCount)))
-                     {
-                        consecutiveSplitCount++;
-                     }
-                     else
-                     {
-                        bestFeature = localFeatureIndex[splitIndex];
-                        bestFeatureSplit = localSplitValue[splitIndex];
-                        consecutiveSplitCount = 1;
-                        bestSplitIndex = splitIndex;
-                     }
-                  }
-                  else
-                  {
-                     consecutiveSplitCount = 1;
-                  }
-               }
-            }
-
-            if (consecutiveSplitCount > 1)
-            {
-               bestFeatureSplit += Math.Ceiling(consecutiveSplitCount / 2.0);
-            }
-
-            bestFeature.ShouldBeGreaterThanOrEqualTo(0);
+            histogramNormalizedEntropies = histogramNormalizedEntropies.Add(CalculateNormalizedEntropy(counts));
+            histogramsBuilder.Add([.. counts]);
          }
+
+         ImmutableArray<ImmutableArray<int>> histograms = histogramsBuilder.MoveToImmutable();
+         double entropyThreshold = ComputeThreshold(histogramNormalizedEntropies, 0.8, 0.8);
+         IEnumerable<int> validFeatureIndices = Enumerable.Range(0, tanukiETL.TanukiFeatureCount)
+            .Where(featureIndex => histogramNormalizedEntropies[featureIndex] <= entropyThreshold);
+
+         foreach (int featureIndex in validFeatureIndices)
+         {
+            int bestSplitValue = -1;
+            ImmutableArray<int> histogram = histograms[featureIndex];
+            int cumulativeSum = 0;
+
+            for (int i = 0; i < 255; i++)
+            {
+               cumulativeSum += histogram[i];
+
+               // Lower is better
+               localCumulativeSum = localCumulativeSum.Add(1 - Math.Min(cumulativeSum, clusteringSampleSize - cumulativeSum) * 2.0 / clusteringSampleSize);
+               localFeatureIndex = localFeatureIndex.Add(featureIndex);
+               localSplitValue = localSplitValue.Add(i);
+
+               ImmutableDictionary<int, int>.Builder leftTrainingLabelCounts = ImmutableDictionary.CreateBuilder<int, int>();
+               ImmutableDictionary<int, int>.Builder rightTrainingLabelCounts = ImmutableDictionary.CreateBuilder<int, int>();
+
+               foreach (int id in trainingIds)
+               {
+                  int label = tanukiETL.TanukiLabelExtractor(id);
+                  int transformedValue = tanukiETL.TanukiDataTransformer(id, featureIndex);
+                  ImmutableDictionary<int, int>.Builder labelCounts = transformedValue <= i
+                     ? leftTrainingLabelCounts
+                     : rightTrainingLabelCounts;
+
+                  labelCounts[label] = labelCounts.GetValueOrDefault(label) + 1;
+               }
+
+               localShannonEntropies = localShannonEntropies.Add(CalculateWeightedSplitEntropy(leftTrainingLabelCounts, rightTrainingLabelCounts, classWeights));
+            }
+
+            splitValues = splitValues.Add(bestSplitValue);
+         }
+
+
+         double cumulativeSumThreshold = ComputeThreshold(localCumulativeSum, 0.8, 0.8);
+         int consecutiveSplitCount = -1;
+         int bestSplitIndex = 0;
+
+         bestFeature = localFeatureIndex[0];
+         bestFeatureSplit = localSplitValue[0];
+
+         double localShannonEntropiesMin = 1.0;
+         double localShannonEntropiesMax = 0.0;
+
+         for (int splitIndex = 0; splitIndex < localCumulativeSum.Count; splitIndex++)
+         {
+            if (localCumulativeSum[splitIndex] <= cumulativeSumThreshold)
+            {
+               localShannonEntropiesMin = Math.Min(localShannonEntropiesMin, localShannonEntropies[splitIndex]);
+               localShannonEntropiesMax = Math.Max(localShannonEntropiesMax, localShannonEntropies[splitIndex]);
+            }
+         }
+
+         double shannonEntropyThreshold = localShannonEntropiesMin + (0.5 * (localShannonEntropiesMax - localShannonEntropiesMin));
+
+         double bestShannonEntropy = double.MaxValue;
+
+         for (int splitIndex = 0; splitIndex < localCumulativeSum.Count; splitIndex++)
+         {
+            if (localCumulativeSum[splitIndex] <= cumulativeSumThreshold)
+               //if (localShannonEntropies[splitIndex] <= shannonEntropyThreshold)
+            {
+               if (localShannonEntropies[splitIndex] < bestShannonEntropy)
+               //if (localShannonEntropies[splitIndex] <= localShannonEntropies[bestSplitIndex])
+                  //if (localCumulativeSum[splitIndex] <= localCumulativeSum[bestSplitIndex])
+               {
+                  // UNDONE If this is the final logic, fix the potential issue where index 0 is kept even if it is not good.
+                  bestFeature = localFeatureIndex[splitIndex];
+                  bestFeatureSplit = localSplitValue[splitIndex];
+                  consecutiveSplitCount = 1;
+                  bestSplitIndex = splitIndex;
+                  bestShannonEntropy = localShannonEntropies[splitIndex];
+
+                  //if ((localFeatureIndex[splitIndex] == bestFeature) &&
+                  //   (localShannonEntropies[splitIndex] == localShannonEntropies[bestSplitIndex]) &&
+                  //   (localSplitValue[splitIndex] == (bestFeatureSplit + consecutiveSplitCount)))
+                  //{
+                  //   consecutiveSplitCount++;
+                  //}
+                  //else
+                  //{
+                  //   bestFeature = localFeatureIndex[splitIndex];
+                  //   bestFeatureSplit = localSplitValue[splitIndex];
+                  //   consecutiveSplitCount = 1;
+                  //   bestSplitIndex = splitIndex;
+                  //}
+               }
+               else
+               {
+                  consecutiveSplitCount = 1;
+               }
+            }
+         }
+
+         if (consecutiveSplitCount > 1)
+         {
+            bestFeatureSplit += Math.Ceiling(consecutiveSplitCount / 2.0);
+         }
+
+         bestFeature.ShouldBeGreaterThanOrEqualTo(0);
 
          return (bestFeature, bestFeatureSplit);
       }
@@ -914,7 +926,7 @@ namespace AmaigomaTests
          //limitedTrainPositions = [2, 108];
          //limitedTrainPositions = trainPositions.Keys.Take(216);
 
-         PakiraDecisionTreeModel entropyTest;
+         //PakiraDecisionTreeModel entropyTest;
 
          //entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(16000), tanukiETL);
          //entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(16000).Union(trainPositions.Keys), tanukiETL);
@@ -922,7 +934,10 @@ namespace AmaigomaTests
 
          //entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(2).Union(limitedTrainPositions), tanukiETL);
 
-         entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(32000).Union(limitedTrainPositions), tanukiETL);
+         //entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(32000).Union(limitedTrainPositions), tanukiETL);
+         PakiraDecisionTreeModel entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(42)).Take(64000).Union(limitedTrainPositions), tanukiETL);
+
+         entropyTest = pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Union(limitedTrainPositions), tanukiETL);
 
          ImmutableList<PakiraDecisionTreeModel> models = Enumerable.Range(0, modelCount).AsParallel().Select(i =>
          {
@@ -937,14 +952,87 @@ namespace AmaigomaTests
          ImmutableList<PakiraTreeWalker> modelWalkers = models
             .Select(model => new PakiraTreeWalker(model.Tree, tanukiETL))
             .ToImmutableList();
+         // UNDONE Try Logistic regression and/or Factorization Machines
+         int[] GetLeafVector(int positionId)
+         {
+            return modelWalkers
+               .Select(walker => walker.PredictLeaf(positionId).id)
+               .ToArray();
+         }
 
          ulong HashPosition(int positionId)
          {
-            int[] leafIds = modelWalkers
-               .Select(walker => walker.PredictLeaf(positionId).id)
-               .ToArray();
-
+            int[] leafIds = GetLeafVector(positionId);
             return XxHash64.HashToUInt64(MemoryMarshal.AsBytes(leafIds.AsSpan()));
+         }
+
+         HashSet<int> trainedTrainPositionIds = [.. limitedTrainPositions];
+         List<int> shuffledTrainPositionIds = trainPositions.Keys
+            .Shuffle(new Random())
+            .ToList();
+         int nextTrainPositionIndex = 0;
+         bool trainedInPass = false;
+
+         while (true)
+         {
+            if (nextTrainPositionIndex >= shuffledTrainPositionIds.Count)
+            {
+               if (!trainedInPass)
+               {
+                  break;
+               }
+
+               nextTrainPositionIndex = 0;
+               trainedInPass = false;
+            }
+
+            List<(int PositionId, int[] LeafIds, int Label)> trainEvaluations = trainedTrainPositionIds
+               .AsParallel()
+               .AsOrdered()
+               .Select(positionId => (positionId, GetLeafVector(positionId), trainPositions[positionId].Label))
+               .ToList();
+            Dictionary<int, int[]> trainLeafVectorsByPosition = trainEvaluations
+               .ToDictionary(evaluation => evaluation.PositionId, evaluation => evaluation.LeafIds);
+            LeafVectorSimilarityIndex trainVectorIndex = new();
+            foreach ((int positionId, int[] leafIds, int label) in trainEvaluations)
+            {
+               trainVectorIndex.Add(new LeafVectorSample(positionId, label, leafIds));
+            }
+
+            List<int> trainBatch = [.. trainEvaluations
+               .Where(evaluation => trainVectorIndex.FindSimilar(evaluation.LeafIds)
+                  .Any(neighbor => neighbor.Label != evaluation.Label))
+               .Select(evaluation => evaluation.PositionId)];
+            HashSet<int> trainBatchPositionIds = [.. trainBatch];
+            while (nextTrainPositionIndex < shuffledTrainPositionIds.Count && trainBatch.Count < 200)
+            {
+               int positionId = shuffledTrainPositionIds[nextTrainPositionIndex++];
+               int[] leafIds = trainLeafVectorsByPosition.TryGetValue(positionId, out int[]? trainedLeafIds)
+                  ? trainedLeafIds
+                  : GetLeafVector(positionId);
+               int label = trainPositions[positionId].Label;
+               IReadOnlyList<LeafVectorSample> similarSamples = trainVectorIndex.FindSimilar(leafIds);
+               if (similarSamples.Count == 0 || similarSamples.Any(sample => sample.Label != label))
+               {
+                  if (trainBatchPositionIds.Add(positionId))
+                  {
+                     trainBatch.Add(positionId);
+                  }
+               }
+            }
+
+            if (trainBatch.Count > 0)
+            {
+               ImmutableList<PakiraDecisionTreeModel> newModels = Enumerable.Range(0, modelCount)
+                  .Select(i => pakiraGeneratorClusteringHybrid.Generate(new(), imagePositions.Keys.Shuffle(new Random(54 + i)).Take(64000).Union(trainBatch), tanukiETL))
+                  .ToImmutableList();
+               models = models.AddRange(newModels);
+               trainedTrainPositionIds.UnionWith(trainBatch);
+               trainedInPass = true;
+               modelWalkers = modelWalkers.AddRange(newModels
+                  .Select(model => new PakiraTreeWalker(model.Tree, tanukiETL))
+                  .ToImmutableList());
+            }
          }
 
          HashSet<ulong> trainPositionHashes = [.. trainPositions.Keys.Select(HashPosition)];
@@ -957,7 +1045,7 @@ namespace AmaigomaTests
          double first200TrainHashCoverage = trainPositionHashes.Count == 0
             ? 0
             : (double)first200TrainHashesInFullSet / trainPositionHashes.Count;
-         
+
          // UNDONE all models are similar. also validate with test set
 
          output.WriteLine($"Distinct train-position hashes: {trainPositionHashes.Count}");

@@ -32,7 +32,7 @@ namespace Amaigoma
       public readonly int randomSeed = new Random().Next();
       private readonly Random RandomSource;
       private readonly Func<IReadOnlyList<int>, TanukiETL, (int featureIndex, double splitThreshold)> BestSplit;
-      private readonly Func<ILookup<bool, int>, TanukiETL, bool> LeavesValidation;
+      private readonly Func<IEnumerable<int>, TanukiETL, bool> LeavesValidation;
 
       public PakiraDecisionTreeGenerator()
       {
@@ -42,7 +42,7 @@ namespace Amaigoma
       }
 
       public PakiraDecisionTreeGenerator(Func<IReadOnlyList<int>, TanukiETL, (int featureIndex, double splitThreshold)> bestSplit,
-         Func<ILookup<bool, int>, TanukiETL, bool> leavesValidation)
+         Func<IEnumerable<int>, TanukiETL, bool> leavesValidation)
       {
          BestSplit = bestSplit;
          LeavesValidation = leavesValidation;
@@ -124,8 +124,6 @@ namespace Amaigoma
             {
                ILookup<bool, int> updatedDataSamples = pakiraDecisionTreeModel.DataSamples(leafId).ToLookup(id => ThresholdCompareLessThanOrEqual(tanukiETL.TanukiDataTransformer(id, featureIndex), splitThreshold));
 
-               if(LeavesValidation(updatedDataSamples, tanukiETL))
-               {
                   int leftLabel = PrepareTreeLeavelabel(updatedDataSamples[true].Where(id => tanukiETL.TanukiLabelExtractor(id) != 9999), tanukiETL);
                   int rightLabel = PrepareTreeLeavelabel(updatedDataSamples[false].Where(id => tanukiETL.TanukiLabelExtractor(id) != 9999), tanukiETL);
 
@@ -143,16 +141,15 @@ namespace Amaigoma
                   pakiraDecisionTreeModel = pakiraDecisionTreeModel.AddDataSample(rightLeafId, updatedDataSamples[false]);
 
                   // UNDONE Add a callback so that each logic can decide when to stop splitting
-                  if (leftLabel == UnknownLabelValue)
+                  if (leftLabel == UnknownLabelValue && LeavesValidation(updatedDataSamples[true], tanukiETL))
                   {
                      retrainLeaves = retrainLeaves.Add(leftLeafId);
                   }
 
-                  if (rightLabel == UnknownLabelValue)
+                  if (rightLabel == UnknownLabelValue && LeavesValidation(updatedDataSamples[false], tanukiETL))
                   {
                      retrainLeaves = retrainLeaves.Add(rightLeafId);
                   }
-               }
             }
          }
 
